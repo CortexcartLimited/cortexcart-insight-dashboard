@@ -1,0 +1,506 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ab_experiments {
+  id              Int                   @id @default(autoincrement())
+  user_email      String                @db.VarChar(255)
+  name            String                @db.VarChar(255)
+  description     String?               @db.Text
+  target_selector String                @db.VarChar(255)
+  status          ab_experiments_status @default(draft)
+  created_at      DateTime?             @default(now()) @db.Timestamp(0)
+  target_path     String?               @db.VarChar(2048)
+  ab_variants     ab_variants[]
+
+  @@index([user_email], map: "user_email_idx")
+}
+
+model ab_variants {
+  id             Int            @id @default(autoincrement())
+  experiment_id  Int
+  name           String         @db.VarChar(255)
+  content        String         @db.Text
+  is_control     Boolean?       @default(false)
+  ab_experiments ab_experiments @relation(fields: [experiment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ab_variants_ibfk_1")
+
+  @@index([experiment_id], map: "experiment_id")
+}
+
+model admins {
+  id         Int          @id @default(autoincrement())
+  email      String       @unique(map: "email") @db.VarChar(255)
+  role       String       @default("admin") @db.VarChar(50)
+  created_at DateTime?    @default(now()) @db.Timestamp(0)
+  password   String       @db.VarChar(255)
+  blog_posts blog_posts[]
+}
+
+model alert_banners {
+  id         Int                @id @default(autoincrement())
+  title      String             @db.VarChar(255)
+  message    String             @db.Text
+  type       alert_banners_type @default(info)
+  is_active  Boolean            @default(false)
+  created_at DateTime?          @default(now()) @db.Timestamp(0)
+}
+
+model analysis_reports {
+  id                   Int                    @id @default(autoincrement())
+  user_email           String                 @db.VarChar(255)
+  report_type          String                 @db.VarChar(50)
+  created_at           DateTime?              @default(now()) @db.Timestamp(0)
+  report_details       String?                @db.VarChar(2048)
+  recommendation_items recommendation_items[]
+}
+
+model blog_categories {
+  id         Int          @id @default(autoincrement())
+  name       String       @db.VarChar(100)
+  slug       String       @unique(map: "slug") @db.VarChar(100)
+  blog_posts blog_posts[]
+}
+
+model blog_posts {
+  id                              Int               @id @default(autoincrement())
+  title                           String            @db.VarChar(255)
+  slug                            String            @unique(map: "slug") @db.VarChar(255)
+  content                         String?           @db.Text
+  meta_title                      String?           @db.VarChar(255)
+  meta_description                String?           @db.VarChar(255)
+  author_email                    String?           @db.VarChar(255)
+  status                          blog_posts_status @default(draft)
+  published_at                    DateTime?         @db.Timestamp(0)
+  created_at                      DateTime?         @default(now()) @db.Timestamp(0)
+  updated_at                      DateTime?         @default(now()) @db.Timestamp(0)
+  featured_image_url              String?           @db.Text
+  author_name                     String?           @db.VarChar(255)
+  read_time_minutes               Int?
+  featured_image_attribution_text String?           @db.VarChar(255)
+  featured_image_attribution_link String?           @db.Text
+  category_id                     Int?
+  admins                          admins?           @relation(fields: [author_email], references: [email], onUpdate: NoAction, map: "blog_posts_ibfk_1")
+  blog_categories                 blog_categories?  @relation(fields: [category_id], references: [id], onUpdate: NoAction, map: "fk_blog_category")
+
+  @@index([author_email], map: "author_email")
+  @@index([category_id], map: "fk_blog_category")
+}
+
+model cms_content {
+  id            Int       @id @default(autoincrement())
+  content_key   String    @unique(map: "content_key") @db.VarChar(255)
+  content_value String?   @db.Text
+  updated_at    DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model events {
+  id         Int       @id @default(autoincrement())
+  site_id    String    @db.VarChar(255)
+  event_name String    @db.VarChar(255)
+  event_data String?   @db.Text
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model facebook_pages {
+  id                          Int       @id @default(autoincrement())
+  user_email                  String    @db.VarChar(255)
+  page_id                     String    @db.VarChar(255)
+  page_name                   String    @db.VarChar(255)
+  created_at                  DateTime? @default(now()) @db.Timestamp(0)
+  page_access_token_encrypted String    @db.VarChar(1024)
+  picture_url                 String?   @db.VarChar(1024)
+
+  @@unique([user_email, page_id], map: "unique_user_page")
+}
+
+model facebook_pages_connected {
+  id                      Int       @id @default(autoincrement())
+  user_email              String    @unique(map: "user_email") @db.VarChar(255)
+  active_facebook_page_id String    @db.VarChar(255)
+  updated_at              DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model faqs {
+  id         Int       @id @default(autoincrement())
+  question   String    @db.VarChar(255)
+  answer     String    @db.Text
+  category   String?   @db.VarChar(100)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  updated_at DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model ga4_connections {
+  user_email       String    @id @db.VarChar(255)
+  credentials_json String?   @db.Text
+  created_at       DateTime? @default(now()) @db.Timestamp(0)
+  updated_at       DateTime? @default(now()) @db.Timestamp(0)
+  ga4_property_id  String?   @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model generated_reports {
+  id             Int                      @id @default(autoincrement())
+  user_email     String                   @db.VarChar(255)
+  report_type    String                   @default("monthly_summary") @db.VarChar(50)
+  status         generated_reports_status @default(pending)
+  report_content String?                  @db.LongText
+  created_at     DateTime?                @default(now()) @db.Timestamp(0)
+  chart_data     String?                  @db.LongText
+
+  @@index([user_email], map: "user_email_idx")
+}
+
+model global_settings {
+  setting_key   String    @id @db.VarChar(50)
+  setting_value String    @db.VarChar(255)
+  updated_at    DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model historical_social_posts {
+  id               Int       @id @default(autoincrement())
+  user_email       String    @db.VarChar(255)
+  platform         String    @db.VarChar(50)
+  platform_post_id String    @db.VarChar(255)
+  content          String?   @db.Text
+  likes            Int?      @default(0)
+  shares           Int?      @default(0)
+  impressions      Int?      @default(0)
+  posted_at        DateTime  @db.DateTime(0)
+  last_synced_at   DateTime? @default(now()) @db.Timestamp(0)
+  updated_at       DateTime  @default(now()) @db.Timestamp(0)
+
+  @@unique([user_email, platform, platform_post_id], map: "user_platform_post_id")
+}
+
+model instagram_accounts {
+  id                     Int       @id @default(autoincrement())
+  user_email             String    @db.VarChar(255)
+  instagram_user_id      String    @db.VarChar(255)
+  username               String?   @db.VarChar(255)
+  access_token_encrypted String    @db.Text
+  facebook_page_id       String    @db.VarChar(255)
+  created_at             DateTime? @default(now()) @db.Timestamp(0)
+
+  @@unique([user_email, instagram_user_id], map: "unique_user_instagram")
+}
+
+model notifications {
+  id         Int       @id @default(autoincrement())
+  user_email String    @db.VarChar(255)
+  message    String    @db.Text
+  link       String?   @db.VarChar(255)
+  is_read    Boolean   @default(false)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model payment_history {
+  id                Int      @id @default(autoincrement())
+  user_email        String   @db.VarChar(255)
+  stripe_invoice_id String   @unique(map: "stripe_invoice_id_unique") @db.VarChar(255)
+  amount_paid       Int
+  currency          String   @db.VarChar(10)
+  status            String   @db.VarChar(50)
+  created_at        DateTime @db.Timestamp(0)
+
+  @@index([user_email], map: "idx_user_email")
+}
+
+model pinterest_boards {
+  id         Int       @id @default(autoincrement())
+  user_email String    @db.VarChar(255)
+  board_id   String    @db.VarChar(255)
+  board_name String    @db.VarChar(255)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+
+  @@unique([user_email, board_id], map: "unique_user_board")
+}
+
+model recommendation_items {
+  id               Int              @id @default(autoincrement())
+  report_id        Int
+  category         String           @db.VarChar(50)
+  recommendation   String           @db.Text
+  confidence       Float?           @db.Float
+  status           String           @default("pending") @db.VarChar(20)
+  created_at       DateTime?        @default(now()) @db.Timestamp(0)
+  updated_at       DateTime?        @default(now()) @db.Timestamp(0)
+  analysis_reports analysis_reports @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recommendation_items_ibfk_1")
+
+  @@index([report_id], map: "report_id")
+}
+
+model roadmap_features {
+
+  id          Int                     @id @default(autoincrement())
+  name        String                  @db.VarChar(255)
+  description String?                 @db.Text
+  status      roadmap_features_status @default(future)
+  sort_order  Int                     @default(0)
+  createdAt DateTime @default(now()) @map("createdAt") 
+}
+
+model scheduled_posts {
+  id               Int       @id @default(autoincrement())
+  user_email       String    @db.VarChar(255)
+  platform         String    @db.VarChar(50)
+  content          String    @db.Text
+  hashtags         String?   @db.Text
+  scheduled_at     DateTime  @db.DateTime(0)
+  status           String    @default("scheduled") @db.VarChar(20)
+  created_at       DateTime? @default(now()) @db.Timestamp(0)
+  likes            Int       @default(0) @db.UnsignedInt
+  shares           Int       @default(0) @db.UnsignedInt
+  impressions      Int       @default(0) @db.UnsignedInt
+  platform_post_id String?   @db.VarChar(255)
+}
+
+model shopify_analytics {
+  id                  Int       @id @default(autoincrement())
+  user_email          String    @unique(map: "user_store_unique") @db.VarChar(255)
+  store_url           String    @db.VarChar(255)
+  total_sales         Decimal?  @default(0.00) @db.Decimal(10, 2)
+  total_orders        Int?      @default(0)
+  average_order_value Decimal?  @default(0.00) @db.Decimal(10, 2)
+  synced_at           DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model shopify_orders {
+  id            Int      @id @default(autoincrement())
+  user_email    String   @db.VarChar(255)
+  order_id      BigInt
+  order_number  String   @db.VarChar(255)
+  total_price   Decimal  @db.Decimal(10, 2)
+  customer_name String?  @db.VarChar(255)
+  created_at    DateTime @db.DateTime(0)
+
+  @@unique([user_email, order_id], map: "user_order_unique")
+}
+
+model shopify_stores {
+  id                     Int       @id @default(autoincrement())
+  user_email             String    @unique(map: "user_store_unique") @db.VarChar(255)
+  store_url              String    @db.VarChar(255)
+  access_token_encrypted String    @db.Text
+  created_at             DateTime? @default(now()) @db.Timestamp(0)
+  updated_at             DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model sites {
+  id                 Int                  @id @default(autoincrement())
+  user_email         String               @unique(map: "user_email") @db.VarChar(255)
+  site_name          String?              @db.VarChar(255)
+  site_url           String?              @db.VarChar(255)
+  created_at         DateTime?            @default(now()) @db.Timestamp(0)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(0)
+  currency           String               @default("USD") @db.VarChar(3)
+  social_connect     social_connect[]
+  social_connections social_connections[]
+  user_images        user_images[]
+}
+
+model social_connect {
+  id                          Int       @id @default(autoincrement())
+  user_email                  String    @db.VarChar(255)
+  platform                    String    @db.VarChar(50)
+  access_token_encrypted      String?   @db.Text
+  refresh_token_encrypted     String?   @db.Text
+  expires_at                  DateTime? @db.DateTime(0)
+  created_at                  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at                  DateTime? @default(now()) @db.Timestamp(0)
+  page_id                     String?   @db.VarChar(255)
+  page_access_token_encrypted String?   @db.Text
+  sites                       sites     @relation(fields: [user_email], references: [user_email], onDelete: Cascade, onUpdate: NoAction, map: "social_connect_ibfk_1")
+
+  @@unique([user_email, platform], map: "unique_user_platform")
+}
+
+model social_connections {
+  id                          Int       @id @default(autoincrement())
+  user_email                  String    @db.VarChar(255)
+  platform                    String    @db.VarChar(50)
+  access_token_encrypted      String?   @db.Text
+  refresh_token_encrypted     String?   @db.Text
+  expires_at                  DateTime? @db.DateTime(0)
+  created_at                  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at                  DateTime? @default(now()) @db.Timestamp(0)
+  page_id                     String?   @db.VarChar(255)
+  page_access_token_encrypted String?   @db.Text
+  sites                       sites     @relation(fields: [user_email], references: [user_email], onDelete: Cascade, onUpdate: NoAction, map: "social_connections_ibfk_1")
+
+  @@unique([user_email, platform], map: "unique_user_platform")
+}
+
+model social_demographics {
+  id         Int      @id @default(autoincrement())
+  user_email String   @unique(map: "user_email") @db.VarChar(255)
+  age_range  String?  @db.VarChar(50)
+  sex        String?  @db.VarChar(50)
+  country    String?  @db.VarChar(100)
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  updated_at DateTime @default(now()) @db.Timestamp(0)
+}
+
+model social_optimal_times {
+  id            Int     @id @default(autoincrement())
+  platform      String  @db.VarChar(50)
+  age_range     String  @db.VarChar(50)
+  sex           String? @db.VarChar(50)
+  country       String  @db.VarChar(100)
+  optimal_day   Int?
+  optimal_times String? @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model subscription_plans {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(100)
+  description     String?   @db.Text
+  price_monthly   Decimal   @db.Decimal(10, 2)
+  stripe_price_id String?   @db.VarChar(255)
+  visitor_limit   Int
+  features        String?   @db.LongText
+  is_active       Boolean?  @default(true)
+  is_popular      Boolean?  @default(false)
+  created_at      DateTime? @default(now()) @db.Timestamp(0)
+  updated_at      DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model support_tickets {
+  id             Int              @id @default(autoincrement())
+  user_email     String           @db.VarChar(255)
+  subject        String           @db.VarChar(255)
+  category       String           @db.VarChar(50)
+  status         String           @default("open") @db.VarChar(20)
+  created_at     DateTime?        @default(now()) @db.Timestamp(0)
+  updated_at     DateTime?        @default(now()) @db.Timestamp(0)
+  ticket_replies ticket_replies[]
+
+  @@index([user_email], map: "idx_user_email")
+}
+
+model ticket_replies {
+  id              Int             @id @default(autoincrement())
+  ticket_id       Int
+  author_email    String          @db.VarChar(255)
+  message         String          @db.Text
+  is_ai_reply     Boolean         @default(false)
+  created_at      DateTime?       @default(now()) @db.Timestamp(0)
+  support_tickets support_tickets @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ticket_replies_ibfk_1")
+
+  @@index([ticket_id], map: "ticket_id")
+}
+
+model user_images {
+  id          Int       @id @default(autoincrement())
+  user_email  String    @db.VarChar(255)
+  image_url   String    @db.VarChar(2048)
+  filename    String?   @db.VarChar(255)
+  uploaded_at DateTime? @default(now()) @db.Timestamp(0)
+  sites       sites     @relation(fields: [user_email], references: [user_email], onDelete: Cascade, onUpdate: NoAction, map: "user_images_ibfk_1")
+
+  @@index([user_email], map: "user_email")
+}
+
+model youtube_channel_stats {
+  id               Int       @id @default(autoincrement())
+  user_email       String    @db.VarChar(255)
+  channel_id       String    @db.VarChar(255)
+  subscriber_count Int?      @default(0)
+  view_count       BigInt?   @default(0)
+  video_count      Int?      @default(0)
+  synced_at        DateTime? @default(now()) @db.Timestamp(0)
+
+  @@unique([user_email, channel_id], map: "user_channel_unique")
+}
+
+model youtube_channels {
+  id                      Int       @id @default(autoincrement())
+  user_email              String    @db.VarChar(255)
+  channel_id              String    @db.VarChar(255)
+  channel_name            String?   @db.VarChar(255)
+  access_token_encrypted  String    @db.Text
+  refresh_token_encrypted String    @db.Text
+  expires_at              DateTime  @db.DateTime(0)
+  created_at              DateTime? @default(now()) @db.Timestamp(0)
+  updated_at              DateTime? @default(now()) @db.Timestamp(0)
+
+  @@unique([user_email, channel_id], map: "user_channel_unique")
+}
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+enum alert_banners_type {
+  info
+  success
+  warning
+  danger
+}
+
+enum generated_reports_status {
+  pending
+  completed
+  failed
+}
+
+enum roadmap_features_status {
+  future
+  in_progress
+  completed
+}
+
+enum ab_experiments_status {
+  draft
+  running
+  finished
+}
+
+enum blog_posts_status {
+  draft
+  published
+}
