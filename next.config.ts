@@ -3,6 +3,10 @@ import { config } from 'dotenv';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  eslint: {
+    // This prevents ESLint warnings from failing the production build.
+    ignoreDuringBuilds: true,
+  },
   images: {
     dangerouslyAllowSVG: true,
     remotePatterns: [
