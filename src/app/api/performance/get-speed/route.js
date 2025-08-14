@@ -30,7 +30,7 @@ export async function GET() {
     }
 
     try {
-        const [sites] = await db.query('SELECT site_url FROM sites WHERE user_email = ?', [userEmail]);
+        const [sites] = await db.query('SELECT site_url FROM sites WHERE user_email = TRUE', [userEmail]);
         const siteUrl = sites[0]?.site_url;
 
         if (!siteUrl) {

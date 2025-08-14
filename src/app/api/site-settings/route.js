@@ -35,21 +35,25 @@ export async function POST(request) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
     const userEmail = session.user.email;
-    const { siteName, siteUrl, currency } = await request.json();
+    const { siteName, siteUrl, fullName, email, address, postalCode, currency } = await request.json();
 
     if (!siteName || !siteUrl || !currency) {
         return NextResponse.json({ message: 'Site name, URL, and currency are required' }, { status: 400 });
     }
     try {
         const query = `
-            INSERT INTO sites (user_email, site_name, site_url, currency, full_name, email, address, postal_code)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO sites (user_email, site_name, site_url, full_name, email, address, postal_code, currency)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
-                site_name = VALUES(site_name), 
-                site_url = VALUES(site_url), 
+                site_name = VALUES(site_name),
+                site_url = VALUES(site_url),
+                full_name = VALUES(full_name),
+                email = VALUES(email),
+                address = VALUES(address),
+                postal_code = VALUES(postal_code),
                 currency = VALUES(currency);
         `;
-        await db.query(query, [userEmail, siteName, siteUrl, currency]);
+        await db.query(query, [userEmail, siteName, siteUrl, fullName, email, address, postalCode, currency]);
         return NextResponse.json({ message: 'Settings saved successfully' }, { status: 200 });
     } catch (error) {
         console.error('Error saving site settings:', error);

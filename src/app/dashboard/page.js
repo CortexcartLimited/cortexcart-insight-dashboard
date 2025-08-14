@@ -19,6 +19,7 @@ import SkeletonCard from '@/app/components/SkeletonCard';
 import Ga4LineChart from '@/app/components/Ga4LineChart';
 import PerformanceScore from '@/app/components/PerformanceScore';
 import OnboardingModal from '@/app/components/OnboardingModal';
+import VisitorMap from '@/app/components/VisitorMap';
 
 const currencySymbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$' };
 
@@ -228,7 +229,7 @@ export default function DashboardPage() {
               </ChartContainer>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ChartContainer title="Visitors by Country" className="h-full">
-                 
+                 <VisitorMap />
                 </ChartContainer>
                 <ChartContainer title="Recent Events">
                   <RecentEventsTable events={recentEvents} />

@@ -11,7 +11,7 @@ import {
     ChartPieIcon, Cog6ToothIcon, ArrowRightEndOnRectangleIcon, LightBulbIcon,
     MapIcon, TagIcon, Bars3Icon, XMarkIcon, InformationCircleIcon, 
     ChatBubbleLeftRightIcon, ShareIcon, PuzzlePieceIcon, QuestionMarkCircleIcon,
-    LifebuoyIcon, BellIcon, BeakerIcon, SparklesIcon, ChevronDownIcon, FireIcon
+    LifebuoyIcon, BellIcon, BeakerIcon, SparklesIcon, ChevronDownIcon, FireIcon, WrenchIcon
 } from '@heroicons/react/24/outline';
 
 // --- Sub-component: Top Navigation ---
@@ -263,8 +263,8 @@ const SidebarContent = () => {
         className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-600 hover:text-white transition-colors dark:text-gray-300"
     >
         <div className="flex items-center">
-            <Cog6ToothIcon className="h-6 w-6 mr-3" />
-            <span>Tools</span>
+            <WrenchIcon className="h-6 w-6 mr-3" />
+            <span>Experiment Tools</span>
         </div>
        
         <ChevronDownIcon className={`h-5 w-5 transition-transform ${isToolsMenuOpen ? 'rotate-180' : ''}`} onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} />

@@ -28,7 +28,7 @@ export async function GET() {
                 // Check if the token is valid by trying to decrypt it
                 const decryptedToken = decrypt(row.access_token_encrypted);
                 isConnected = !!decryptedToken; 
-            } catch (e) {
+            } catch {
                 // If decryption fails, the token is invalid or corrupt
                 isConnected = false;
             }

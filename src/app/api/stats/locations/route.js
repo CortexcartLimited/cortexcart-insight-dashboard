@@ -1,74 +1,46 @@
-// src/app/api/stats/locations/route.js
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { simpleCache } from '@/lib/cache';
+import { db } from '@/lib/db';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const siteId = searchParams.get('siteId');
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
+// A helper to map 2-letter country codes (like 'US') to 3-letter codes (like 'USA')
+const countryCodeMapping = {
+    US: 'USA', GB: 'GBR', CA: 'CAN', AU: 'AUS', DE: 'DEU', FR: 'FRA', 
+    IN: 'IND', JP: 'JPN', CN: 'CHN', BR: 'BRA', RU: 'RUS', IT: 'ITA',
+    ES: 'ESP', MX: 'MEX', KR: 'KOR', NL: 'NLD', SE: 'SWE', SG: 'SGP',
+    // Add more mappings as needed
+};
 
-  if (!siteId) {
-    return NextResponse.json({ message: 'Site ID is required' }, { status: 400 });
-  }
+export async function GET() {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+        return new Response('Not authenticated', { status: 401 });
+    }
 
-  const cacheKey = `locations-${siteId}-${startDate}-${endDate}`;
-  // For debugging, let's temporarily bypass the cache to ensure we get fresh data.
-  // const cachedData = simpleCache.get(cacheKey);
-  // if (cachedData) {
-  //   return NextResponse.json(cachedData, { status: 200 });
-  // }
+    try {
+        const [rows] = await db.query(
+            `SELECT 
+                JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) as country_code, 
+                COUNT(*) as value 
+             FROM events 
+             WHERE 
+                site_id = ? AND 
+                event_name = 'pageview' AND 
+                JSON_EXTRACT(event_data, '$.country') IS NOT NULL
+             GROUP BY country_code 
+             ORDER BY value DESC`,
+            [session.user.site_id]
+        );
 
-  let dateFilter = '';
-  const queryParams = [siteId];
+        // Map the database results to the format Nivo expects
+        const formattedData = rows.map(row => ({
+            id: countryCodeMapping[row.country_code] || row.country_code, // Use 3-letter code if available
+            value: row.value,
+        }));
 
-  if (startDate && endDate) {
-    const inclusiveEndDate = new Date(endDate);
-    inclusiveEndDate.setDate(inclusiveEndDate.getDate() + 1);
-    dateFilter = 'AND created_at BETWEEN ? AND ?';
-    queryParams.push(startDate, inclusiveEndDate.toISOString().split('T')[0]);
-  }
-
-  try {
-    // --- This is a simplified and more direct query ---
-    const query = `
-      SELECT
-        CASE
-          WHEN JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) = 'United Kingdom' THEN 'GBR'
-          WHEN JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) = 'GB' THEN 'GBR'
-          WHEN JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) = 'United States' THEN 'USA'
-          WHEN JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) = 'US' THEN 'USA'
-          -- Add more conversions here as needed --
-          ELSE JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country'))
-        END AS country,
-        COUNT(*) as value
-      FROM events
-      WHERE
-        site_id = ?
-        AND event_name = 'pageview'
-        AND JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) IS NOT NULL
-        AND JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) != ''
-        AND JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) != 'null'
-        ${dateFilter}
-      GROUP BY
-        country
-      ORDER BY
-        value DESC;
-    `;
-    
-    const [results] = await db.query(query, queryParams);
-    
-    // --- THIS IS THE CRITICAL DEBUGGING STEP ---
-    // This will print the database results to your server's PM2 log.
-    console.log("Database results for locations:", results);
-    // -----------------------------------------
-
-    simpleCache.set(cacheKey, results, 600);
-    return NextResponse.json(results, { status: 200 });
-
-  } catch (error) {
-    console.error('Error fetching location data:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
-  }
+        return NextResponse.json(formattedData);
+    } catch (error) {
+        console.error('Error fetching location data:', error);
+        return new Response('Internal Server Error', { status: 500 });
+    }
 }

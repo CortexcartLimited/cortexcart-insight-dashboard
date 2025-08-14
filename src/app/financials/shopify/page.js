@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
-import { Terminal, ShoppingCart, Box, Store } from 'lucide-react';
+import Image from 'next/image';
+import { Terminal, ShoppingCart, Box, Store, DollarSign, LineChart } from 'lucide-react';
+import ShopifyProductList from '@/app/components/ShopifyProductList'; // Import the new component
 
 // --- Main Dashboard Component for displaying Shopify stats ---
 const ShopifyDashboard = ({ stats, onReconnect }) => {
@@ -23,7 +25,7 @@ const ShopifyDashboard = ({ stats, onReconnect }) => {
 
     return (
         <div className="space-y-6">
-            <Card className="shadow-sm">
+            <Card className="shadow-md">
                 <CardHeader>
                     <div className="flex items-center gap-x-3">
                          <Store className="h-6 w-6 text-gray-500" />
@@ -42,25 +44,73 @@ const ShopifyDashboard = ({ stats, onReconnect }) => {
             </Card>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                 {/* This card will only show if product count is available */}
+                {/* --- TOTAL SALES CARD (NEW) --- */}
+                <Card className="bg-blue-50 border-blue-200 shadow-md">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.shop.currency_symbol}{parseFloat(stats.totalSales).toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground">All-time net sales</p>
+                    </CardContent>
+                </Card>
+
+                {/* --- TOTAL VISITS CARD (NEW) --- */}
+                <Card className="bg-green-50 border-green-200 shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
+                        <LineChart className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.totalVisits.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground">All-time store sessions</p>
+                    </CardContent>
+                </Card>
+
+                {/* --- TOTAL PRODUCTS CARD --- */}
                 {stats.productsCount !== null && (
-                    <Card>
+                    <Card className="bg-purple-50 border-purple-200 shadow">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Total Products
-                            </CardTitle>
+                            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
                             <Box className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{stats.productsCount}</div>
-                             <p className="text-xs text-muted-foreground">
-                                Number of active products in your store
-                            </p>
+                            <p className="text-xs text-muted-foreground">Number of active products</p>
                         </CardContent>
                     </Card>
                 )}
-                 {/* You can add more cards here for other stats as you expand the API scopes */}
             </div>
+
+            {/* --- RECENT PRODUCTS LIST (NEW) --- */}
+            {stats.recentProducts && stats.recentProducts.length > 0 && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Recently Added Products</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="divide-y divide-gray-200">
+                            {stats.recentProducts.map(product => (
+                                <li key={product.id} className="py-3 flex items-center justify-between">
+                                    <div className="flex items-center space-x-4">
+                                        {product.image?.src ? (
+                                            <Image src={product.image.src} alt={product.title} width={40} height={40} className="h-10 w-10 rounded-md object-cover" />
+                                        ) : (
+                                            <div className="h-10 w-10 rounded-md bg-gray-100 flex items-center justify-center">
+                                                <Box className="h-5 w-5 text-gray-400" />
+                                            </div>
+                                        )}
+                                        <p className="text-sm font-medium text-gray-800">{product.title}</p>
+                                    </div>
+                                    <span className="text-sm text-gray-500">{stats.shop.currency_symbol}{product.variants[0].price}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
+            <ShopifyProductList />
         </div>
     );
 };
@@ -130,14 +180,14 @@ export default function ShopifyPage() {
                         if (!dataRes.ok) throw new Error('Failed to fetch Shopify data');
                         const data = await dataRes.json();
                         setShopifyData(data);
-                    } catch (fetchErr) {
+                    } catch {
                          setError('Could not load Shopify data. The connection might be invalid.');
                     }
 
                 } else {
                     setConnectionStatus({ isConnected: false, isLoading: false });
                 }
-            } catch (err) {
+            } catch {
                 setError('Failed to check Shopify connection status.');
                 setConnectionStatus({ isConnected: false, isLoading: false });
             }
@@ -174,7 +224,7 @@ export default function ShopifyPage() {
         <Layout>
             <div className="mb-6">
                  <h1 className="text-3xl font-bold">Shopify Financials</h1>
-                 <p className="text-gray-500 mt-1">View your store's performance and key metrics.</p>
+                 <p className="text-gray-500 mt-1">View your store&apos;s performance and key metrics.</p>
             </div>
             
             <div className="container mx-auto p-4">
