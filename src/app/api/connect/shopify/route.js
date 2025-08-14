@@ -18,14 +18,13 @@ export async function GET(request) {
     
     const state = randomBytes(16).toString('hex');
 
-    const scopes = 'read_products,read_orders,read_analytics';
+    const scopes = 'read_products,read_analytics';
     const redirectUri = `${process.env.NEXTAUTH_URL}/api/connect/shopify/callback`;
     
     const authUrl = `https:///${shop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_SHOPIFY_API_KEY}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
 
     const response = NextResponse.redirect(authUrl);
     
-    // ✅ ADDED: Explicit cookie flags for better browser compatibility
     response.cookies.set('shopify_oauth_state', state, {
         path: '/',
         httpOnly: true,

@@ -363,22 +363,9 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
 // --- New Platforms Component ---
 const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) => {
     const [shopifyStore, setShopifyStore] = useState('');
-    const [storeInfo, setStoreInfo] = useState(null); // Add state for store info
-
-    // Handle the connection
-useEffect(() => {
-        // Fetch store info if Shopify is connected
-        if (connectionStatus.shopify) {
-            const fetchStoreInfo = async () => {
-                const res = await fetch('/api/shopify/store-info');
-                if (res.ok) {
-                    setStoreInfo(await res.json());
-                }
-            };
-            fetchStoreInfo();
-        }
-    }, [connectionStatus.shopify, setStoreInfo]); // Re-run when connection status changes
     
+
+     
     const handleDisconnect = async (platform) => {
         if (!confirm(`Are you sure you want to disconnect your ${platform} account?`)) return;
         try {
@@ -406,6 +393,7 @@ useEffect(() => {
         window.location.href = `/api/connect/shopify?shop=${shopifyStore}`;
     };
 
+    const shopifyConnection = connectionStatus.shopify || { isConnected: false, shopName: null };
 
     return (
        <div className="max-w-3xl space-y-4">
@@ -415,18 +403,16 @@ useEffect(() => {
             <div className="mt-4 p-4 border border-gray-200 rounded-lg">
                 <p className="font-semibold">Shopify</p>
                 <p className="text-sm text-gray-500">Connect your Shopify store to link social media performance to sales.</p>
-                {connectionStatus.shopify ? (
+                {shopifyConnection.isConnected ? (
                     <>
                     <div className="flex items-center gap-x-4 mt-2">
                         <span className="flex items-center text-sm font-medium text-green-600"><CheckCircleIcon className="h-5 w-5 mr-1.5" />Connected</span>
                         <button onClick={() => handleDisconnect('shopify')} className="text-sm font-medium text-red-600 hover:text-red-800">Disconnect</button>
                     </div>
-                    {storeInfo ? (
+                    {shopifyConnection.shopName && (
                             <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-md border">
-                                Connected to: <span className="font-semibold">{storeInfo.name}</span> ({storeInfo.domain})
+                                Connected to: <span className="font-semibold">{shopifyConnection.shopName}</span>
                             </div>
-                        ) : (
-                            <div className="mt-2 text-sm text-gray-500">Loading store details...</div>
                         )}
                         </>
                 ) : ( 
@@ -453,8 +439,7 @@ useEffect(() => {
                         >
                             Connect
                         </button>
-                    </div>
-                )}
+                    </div>                )}
             </div>
  {/* --- THIS IS THE NEW MAILCHIMP Connection --- */}
              <div className="mt-4 p-4 border border-gray-200 rounded-lg">
@@ -659,9 +644,12 @@ const DangerZoneTabContent = () => {
 
     const fetchConnections = useCallback(async () => {
         try {
-            const statusRes = await fetch('/api/social/connections/status');
+            const statusRes = await fetch('/api/social/connections/status', { cache: 'no-store' });
             if (!statusRes.ok) throw new Error('Could not fetch connection statuses.');
             const statuses = await statusRes.json();
+                       // LOG 1: What did the API return?
+            console.log('Fetched statuses from API:', statuses);
+
             setConnectionStatus(statuses);
         } catch (err) {
             console.error("Failed to fetch platform connection data:", err);
@@ -687,6 +675,9 @@ const DangerZoneTabContent = () => {
     // New useEffect to handle redirect from oauth
     useEffect(() => {
         const connectStatus = searchParams.get('connect_status');
+               // LOG 2: Is the redirect being detected?
+        console.log('Checking for redirect status...', { connectStatus });
+
         if (connectStatus) {
             // If the URL has a status, show a message
             const message = connectStatus === 'success' 
@@ -707,6 +698,8 @@ const DangerZoneTabContent = () => {
             router.push('/'); 
         }
     }, [status, router]);
+   // LOG 3: What is the component rendering with?
+    console.log('Rendering SettingsPage with state:', connectionStatus);
 
     if (status === 'loading') { 
         return <Layout><div className="p-8">Loading...</div></Layout>; 

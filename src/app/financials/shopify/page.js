@@ -1,204 +1,185 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import { Card, CardContent, Typography, Button, Box, Alert, Skeleton } from '@mui/material';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import Layout from '@/app/components/Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
+import { Terminal, ShoppingCart, Box, Store } from 'lucide-react';
 
-// Mock hook to simulate checking for Shopify connection.
-// In a real application, this would come from a user context or API call.
-const useShopifyConnection = () => {
-  // This is for demonstration. Replace with your actual logic.
-  const [isConnected, setIsConnected] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
+// --- Main Dashboard Component for displaying Shopify stats ---
+const ShopifyDashboard = ({ stats, onReconnect }) => {
+    // This component renders the main view when the store is connected.
+    if (!stats || !stats.shop) {
+        return (
+             <div className="text-center">
+                <p className="mb-4">Could not load Shopify data. The connection might have expired.</p>
+                <Button onClick={onReconnect}>Reconnect Now</Button>
+            </div>
+        )
+    }
 
-  React.useEffect(() => {
-    // Simulate fetching user data
- setTimeout(() => {
-      // In a real app, you'd check something like:
-      // const user = await fetchUser();
-      // setIsConnected(user.integrations.shopify.connected);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+    return (
+        <div className="space-y-6">
+            <Card className="shadow-sm">
+                <CardHeader>
+                    <div className="flex items-center gap-x-3">
+                         <Store className="h-6 w-6 text-gray-500" />
+                        <div>
+                            <CardTitle>Welcome, {stats.shop.name}!</CardTitle>
+                            <p className="text-sm text-gray-500 mt-1">Here is a summary of your store.</p>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
+                    <p><strong>Store URL:</strong> <a href={`https://${stats.shop.myshopify_domain}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{stats.shop.myshopify_domain}</a></p>
+                    <p><strong>Contact Email:</strong> {stats.shop.email}</p>
+                    <p><strong>Plan:</strong> <span className="font-medium">{stats.shop.plan_display_name}</span></p>
+                    <p><strong>Currency:</strong> {stats.shop.currency}</p>
+                </CardContent>
+            </Card>
 
-  return { isConnected, isLoading, setIsConnected };
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                 {/* This card will only show if product count is available */}
+                {stats.productsCount !== null && (
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Total Products
+                            </CardTitle>
+                            <Box className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.productsCount}</div>
+                             <p className="text-xs text-muted-foreground">
+                                Number of active products in your store
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+                 {/* You can add more cards here for other stats as you expand the API scopes */}
+            </div>
+        </div>
+    );
 };
 
-// Dummy data for demonstration
-const dummyFinancialData = {
-  totalRevenue: '$125,450',
-  totalOrders: '2,150',
-  averageOrderValue: '$58.35',
-  conversionRate: '2.5%',
-  revenueByMonth: [
-    { month: 'Jan', revenue: 10000 },
-    { month: 'Feb', revenue: 12000 },
-    { month: 'Mar', revenue: 15000 },
-    { month: 'Apr', revenue: 13000 },
-    { month: 'May', revenue: 18000 },
-    { month: 'Jun', revenue: 20000 },
-  ],
-  topProducts: [
-    { name: 'Product A', sales: 50000 },
-    { name: 'Product B', sales: 30000 },
-    { name: 'Product C', sales: 20000 },
-  ],
-};
-
-const ShopifyFinancialsDashboard = () => {
-  return (
-    <Box>
-      <Typography variant="h5" component="h2" gutterBottom>
-        Overview
-      </Typography>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3, mb: 4 }}>
-        <Card>
-          <CardContent>
-            <Typography variant="subtitle1" color="text.secondary">Total Revenue</Typography>
-            <Typography variant="h4">{dummyFinancialData.totalRevenue}</Typography>
-          </CardContent>
+// --- Connection Component for when Shopify is not yet linked ---
+const ShopifyConnect = ({ onConnect }) => {
+    const [shopName, setShopName] = useState('');
+    return (
+        <Card className="max-w-md mx-auto shadow-sm">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-x-2">
+                    <ShoppingCart className="h-5 w-5" />
+                    Connect to Shopify
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="mb-4 text-sm text-gray-600">
+                    To view your financial data, please connect your Shopify store. Enter your store&apos;s name below.
+                </p>
+                <div className="flex w-full max-w-sm items-center space-x-2">
+                    <Input
+                        type="text"
+                        placeholder="your-store-name"
+                        value={shopName}
+                        onChange={(e) => setShopName(e.target.value)}
+                    />
+                     <span className="text-sm text-gray-500">.myshopify.com</span>
+                </div>
+                <Button onClick={() => onConnect(shopName)} className="w-full mt-4 bg-green-600 hover:bg-green-700">
+                    Connect Shopify
+                </Button>
+            </CardContent>
         </Card>
-        <Card>
-          <CardContent>
-            <Typography variant="subtitle1" color="text.secondary">Total Orders</Typography>
-            <Typography variant="h4">{dummyFinancialData.totalOrders}</Typography>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent>
-            <Typography variant="subtitle1" color="text.secondary">Average Order Value</Typography>
-            <Typography variant="h4">{dummyFinancialData.averageOrderValue}</Typography>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent>
-            <Typography variant="subtitle1" color="text.secondary">Conversion Rate</Typography>
-            <Typography variant="h4">{dummyFinancialData.conversionRate}</Typography>
-          </CardContent>
-        </Card>
-      </Box>
+    );
+}
 
-      <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4 }}>
-        Revenue Trends
-      </Typography>
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>Revenue by Month</Typography>
-          {/* Simple bar chart representation */}
-          <Box sx={{ display: 'flex', alignItems: 'flex-end', height: 200, borderBottom: '1px solid #eee', borderLeft: '1px solid #eee', pr: 1, pb: 1 }}>
-            {dummyFinancialData.revenueByMonth.map((data, index) => (
-              <Box key={index} sx={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                height: '100%',
-                px: 0.5,
-              }}>
-                <Box sx={{
-                  width: '60%',
-                  height: `${(data.revenue / Math.max(...dummyFinancialData.revenueByMonth.map(d => d.revenue))) * 90}%`, // Scale to 90% of container height
-                  bgcolor: 'primary.main',
-                  borderRadius: '4px 4px 0 0',
-                  mb: 0.5,
-                }} />
-                <Typography variant="caption">{data.month}</Typography>
-              </Box>
-            ))}
-          </Box>
-        </CardContent>
-      </Card>
+// --- Main Page Component ---
+export default function ShopifyPage() {
+    const { data: session } = useSession();
+    const [connectionStatus, setConnectionStatus] = useState({ isConnected: false, isLoading: true });
+    const [shopifyData, setShopifyData] = useState(null);
+    const [error, setError] = useState(null);
 
-      <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4 }}>
-        Top Products
-      </Typography>
-      <Card>
-        <CardContent>
-          {dummyFinancialData.topProducts.map((product, index) => (
-            <Typography key={index} variant="body1">{product.name}: ${product.sales.toLocaleString()}</Typography>
-          ))}
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
+    const handleConnect = (shopName) => {
+        if (!shopName) {
+            alert('Please enter your shop name.');
+            return;
+        }
+        window.location.href = `/api/connect/shopify?shop=${shopName}`;
+    };
+    
+    useEffect(() => {
+        const checkConnectionAndFetchData = async () => {
+            if (!session) return;
 
-const ConnectShopifyPrompt = () => {
-  return (
-    <Card sx={{ textAlign: 'center', p: 4 }}>
-      <CardContent>
-         <MonetizationOnIcon color="primary" sx={{ fontSize: '2.75rem' }} />
-        <Typography variant="h5" component="h2" gutterBottom>
-          Connect to Shopify
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          To view your financial dashboard, please connect your Shopify account in the settings.
-        </Typography>
-        <Link href="/settings#shopify" passHref>
-          <Button variant="contained" color="primary">
-            Go to Shopify Settings
-          </Button>
-        </Link>
-      </CardContent>
-    </Card>
-  );
-};
+            // First, check the connection status
+            try {
+                const statusRes = await fetch('/api/social/connections/status', { cache: 'no-store' });
+                const statusData = await statusRes.json();
+                
+                if (statusData.shopify?.isConnected) {
+                    setConnectionStatus({ isConnected: true, isLoading: false });
+                    
+                    // If connected, fetch the store data
+                    try {
+                        const dataRes = await fetch('/api/shopify/store-info');
+                        if (!dataRes.ok) throw new Error('Failed to fetch Shopify data');
+                        const data = await dataRes.json();
+                        setShopifyData(data);
+                    } catch (fetchErr) {
+                         setError('Could not load Shopify data. The connection might be invalid.');
+                    }
 
-const FinancialsPageSkeleton = () => (
-  <Layout>
-    <Box sx={{ flexGrow: 1, p: 3 }}>
-      {/* Header Skeleton */}
-      <Box sx={{ mb: 4 }}>
-        <Skeleton variant="text" width="40%" sx={{ fontSize: '2.5rem' }} />
-      </Box>
+                } else {
+                    setConnectionStatus({ isConnected: false, isLoading: false });
+                }
+            } catch (err) {
+                setError('Failed to check Shopify connection status.');
+                setConnectionStatus({ isConnected: false, isLoading: false });
+            }
+        };
 
-      {/* Alert Skeleton */}
-      <Skeleton variant="rounded" width={400} height={56} sx={{ mb: 4 }} />
+        checkConnectionAndFetchData();
+    }, [session]);
 
-      {/* Main Card Skeleton */}
-      <Card sx={{ p: 2 }}>
-        <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <Skeleton variant="circular" width={56} height={56} />
-          <Skeleton variant="text" width="50%" sx={{ fontSize: '1.5rem' }} />
-          <Skeleton variant="text" width="80%" />
-          <Skeleton variant="rounded" width={220} height={36} />
-        </CardContent>
-      </Card>
-    </Box>
-  </Layout>
-);
+    const renderContent = () => {
+        if (connectionStatus.isLoading) {
+            return <div className="text-center">Loading...</div>;
+        }
+    
+        if (error) {
+             return (
+                <Alert variant="destructive" className="max-w-md mx-auto">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>An Error Occurred</AlertTitle>
+                    <AlertDescription>
+                        {error} Please try refreshing the page.
+                    </AlertDescription>
+                </Alert>
+            );
+        }
 
-export default function FinancialsPage() {
-  const { isConnected, isLoading, setIsConnected } = useShopifyConnection();
+        if (connectionStatus.isConnected) {
+            return <ShopifyDashboard stats={shopifyData} onReconnect={handleConnect}/>;
+        } else {
+            return <ShopifyConnect onConnect={handleConnect} />;
+        }
+    };
 
-  if (isLoading) {
-    return <FinancialsPageSkeleton />;
-  }
-
-  return (
-    <Layout>
-    <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          Shopify Financials Dashboard
-        </Typography>
-        {/* Add any global actions or filters here if needed */}
-      </Box>
-
-      {/* The following Alert is for demonstration purposes to allow toggling the state. Remove in production. */}
-      <Alert severity="info" action={
-        <Button color="inherit" size="small" onClick={() => setIsConnected((prev) => !prev)}>
-          Toggle Connection
-        </Button>
-      } sx={{ mb: 4, maxWidth: 'fit-content' }}>
-        For demonstration: You are currently {isConnected ? 'connected' : 'not connected'} to Shopify.
-      </Alert>
-
-      {isConnected ? <ShopifyFinancialsDashboard /> : <ConnectShopifyPrompt />}
-    </Box>
-    </Layout>
-  );
+    return (
+        <Layout>
+            <div className="mb-6">
+                 <h1 className="text-3xl font-bold">Shopify Financials</h1>
+                 <p className="text-gray-500 mt-1">View your store's performance and key metrics.</p>
+            </div>
+            
+            <div className="container mx-auto p-4">
+                 {renderContent()}
+            </div>
+        </Layout>
+    );
 }
