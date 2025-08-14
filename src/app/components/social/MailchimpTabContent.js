@@ -114,9 +114,6 @@ export default function MailchimpTabContent() {
 
     const totalSubs = growthData.reduce((acc, day) => acc + day.subs, 0);
     const totalUnsubs = growthData.reduce((acc, day) => acc + day.unsubs, 0);
-    const formatCurrency = (amount, currencyCode) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode }).format(amount);
-    }
 
     if (isLoading) return <Spinner />;
     if (error && !audiences.length && !campaigns.length) return <div className="p-4 text-red-600 bg-red-100 rounded-md">{error}</div>;

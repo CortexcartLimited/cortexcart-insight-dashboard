@@ -63,13 +63,12 @@ export default function OnboardingModal({ isOpen, onComplete, siteId }) {
                 <Dialog.Panel className="w-full max-w-lg rounded-lg bg-white p-8 shadow-xl">
                     {step === 'form' && (
                         <>
-                            <Dialog.Title className="text-xl font-bold text-gray-900">Welcome! Let's get you set up.</Dialog.Title>
-                            <p className="mt-2 text-sm text-gray-500">Please provide some essential details to start tracking your site's performance.</p>
-                            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                                {/* Add your form fields here, for example: */}
+                            <Dialog.Title className="text-xl font-bold text-gray-900">Welcome! Let&apos;s get you set up.</Dialog.Title>
+                            <p className="mt-2 text-sm text-gray-500">Please provide some basic information about your site:</p><form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                                
                                 <input name="siteName" onChange={handleChange} placeholder="Site Name" required className="w-full border-gray-300 rounded-md" />
                                 <input name="siteUrl" onChange={handleChange} placeholder="Site URL (e.g., https://example.com)" type="url" required className="w-full border-gray-300 rounded-md" />
-                                {/* ... other fields: fullName, email, address, etc. ... */}
+                                
                                 <button type="submit" disabled={isSaving} className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:bg-blue-300">
                                     {isSaving ? 'Saving...' : 'Continue'}
                                 </button>
@@ -78,7 +77,7 @@ export default function OnboardingModal({ isOpen, onComplete, siteId }) {
                     )}
                     {step === 'widgetCode' && (
                         <>
-                            <Dialog.Title className="text-xl font-bold text-gray-900">You're All Set!</Dialog.Title>
+                            <Dialog.Title className="text-xl font-bold text-gray-900">You&apos;re All Set!</Dialog.Title>
                             <p className="mt-2 text-sm text-gray-500">To start collecting data, copy and paste this code snippet into the `<head>paste code headers</head>` section of your website.</p>
                             <div className="p-4 bg-gray-900 rounded-md text-white font-mono text-sm overflow-x-auto relative mt-4">
                                 <button onClick={handleCopy} className="absolute top-2 right-2 flex items-center gap-x-2 bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-md text-xs">
@@ -87,7 +86,7 @@ export default function OnboardingModal({ isOpen, onComplete, siteId }) {
                                 </button>
                                 <pre><code>{widgetSnippet}</code></pre>
                             </div>
-                             <p className="mt-2 text-xs text-gray-500">Don't worry, you can always find this code later in Settings &gt; Widget Settings.</p>
+                             <p className="mt-2 text-xs text-gray-500">Don&apos;t worry, you can always find this code later in Settings &gt; Widget Settings.</p>
                             <div className="mt-6 text-right">
                                 <button onClick={onComplete} className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">Done</button>
                             </div>

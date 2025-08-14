@@ -28,7 +28,7 @@ export async function GET(req) {
         return NextResponse.redirect(redirectUrl);
     }
     
-    let userEmail, userId;
+    let userEmail;
 
     try {
         // --- THIS IS THE NEW HYBRID LOGIC ---
@@ -37,15 +37,13 @@ export async function GET(req) {
 
         if (session && session.user) {
             userEmail = session.user.email;
-            userId = session.user.id;
         } 
         // 2. If session fails, fall back to the JWT state token (will work in development)
         else if (stateToken) {
             try {
                 const { payload } = await jwtVerify(stateToken, getStateSecret());
                 userEmail = payload.userEmail;
-                userId = payload.userId;
-            } catch (jwtError) {
+            } catch {
                 // If the state token is invalid, we must stop.
                 throw new Error("Invalid or expired state token.");
             }

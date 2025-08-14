@@ -4,12 +4,10 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react'; // ✅ Import useSession
 import { useRouter } from 'next/navigation'; // ✅ Import useRouter
 import Layout from '@/app/components/Layout';
-import ReactMarkdown from 'react-markdown';
-import ReportChart from '@/app/components/reports/ReportChart';
 
 export default function ReportsPage() {
     // ✅ --- ADD THIS AUTHENTICATION LOGIC ---
-    const { data: session, status } = useSession();
+    const { status } = useSession();
     const router = useRouter();
 
     useEffect(() => {

@@ -122,7 +122,7 @@ const RegistrationPage = () => {
                         Welcome to CortexCart
                     </h2>
                     <p className="mt-4 text-lg leading-6 text-gray-500">
-                        Let's get your account set up. A few details and you'll be on your way.
+                        Let&apos;s get your account set up. A few details and you&apos;ll be on your way.
                     </p>
                 </div>
 

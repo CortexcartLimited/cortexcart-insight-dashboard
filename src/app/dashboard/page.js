@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 
 // Import all components
 import Layout from '@/app/components/Layout';
@@ -32,7 +31,6 @@ const DataSourceToggle = ({ dataSource, setDataSource }) => (
 
 export default function DashboardPage() {
   const { data: session, status, update } = useSession();
-  const router = useRouter();
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   // State for CortexCart data
   const [stats, setStats] = useState(null);
@@ -40,7 +38,6 @@ export default function DashboardPage() {
   const [recentEvents, setRecentEvents] = useState([]);
   const [topPages, setTopPages] = useState([]);
   const [topReferrers, setTopReferrers] = useState([]);
-  const [locationData, setLocationData] = useState([]);
   const [deviceData, setDeviceData] = useState([]);
   const [performanceData, setPerformanceData] = useState(null);
   const [performanceError, setPerformanceError] = useState('');
@@ -179,7 +176,7 @@ export default function DashboardPage() {
         .catch(console.error);
     }, 10000); 
     return () => clearInterval(interval);
-  }, [siteId]);
+  }, [siteId, status]);
   
   const handleDateFilterChange = (startDate, endDate) => { setDateRange({ startDate, endDate }); };
 

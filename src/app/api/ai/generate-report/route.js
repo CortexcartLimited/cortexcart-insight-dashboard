@@ -17,7 +17,7 @@ export async function POST(request) {
         let aggregatedData = {};
         try {
             aggregatedData = await request.json();
-        } catch (e) {
+        } catch {
             console.warn("No aggregated data provided in the request body, proceeding with empty data.");
         }
 

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Layout from '@/app/components/Layout';
 import { ArrowPathIcon, SparklesIcon, StarIcon, CalendarIcon, PaperAirplaneIcon, InformationCircleIcon, CakeIcon, UserIcon, GlobeAltIcon, ClipboardDocumentIcon, ChartBarIcon, PencilSquareIcon, XCircleIcon } from '@heroicons/react/24/solid';
@@ -15,7 +15,7 @@ import Image from 'next/image';
 import RecentPostsCard from '@/app/components/RecentPostsCard';
 import EngagementByPlatformChart from '@/app/components/EngagementByPlatformChart';
 import PlatformPostsChart from '@/app/components/PlatformPostsChart';
-import { Cog6ToothIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import MailchimpTabContent from '@/app/components/social/MailchimpTabContent'; // Our new component
 
 const PinterestIcon = (props) => (
@@ -85,7 +85,7 @@ const PLATFORMS = {
 };
 
 const SocialNav = ({ activeTab, setActiveTab }) => {
-    const tabs = [{ name: 'Composer', icon: PencilSquareIcon }, { name: 'Analytics', icon: ChartBarIcon }, { name: 'Schedule', icon: CalendarIcon }, { name: 'Demographics', icon: InformationCircleIcon },  { name: 'Mailchimp', icon: ClipboardDocumentIcon }, { name: 'Shopify', icon: ChartBarIcon }];
+    const tabs = [{ name: 'Composer', icon: PencilSquareIcon }, { name: 'Analytics', icon: ChartBarIcon }, { name: 'Schedule', icon: CalendarIcon }, { name: 'Demographics', icon: InformationCircleIcon },  { name: 'Mailchimp', icon: ClipboardDocumentIcon }];
     return (
         <div className="border-b border-gray-200 mb-8">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
@@ -1204,25 +1204,7 @@ export default function SocialMediaManagerPage() {
                     optimalTimes={optimalTimes}
                 />
             )}
-            {activeTab === 'Demographics' && <DemographicsTabContent />}
-            {activeTab === 'Shopify' && ( // This block needs to be wrapped in a component or a valid JSX element
-                <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full flex flex-col items-center justify-center text-center">
-                    <div className="bg-indigo-100 p-3 rounded-full">
-                        <ShoppingCartIcon className="h-8 w-8 text-indigo-600" />
-                    </div>
-                    <h3 className="mt-4 font-semibold text-lg text-gray-900">Unlock Shopify E-commerce Insights</h3>
-                    <p className="mt-1 text-sm text-gray-500 max-w-md">
-                        Connect Shopify to see your revenue, orders, and top-selling products right here.
-                    </p>
-                    <a
-                        href="/api/connect/shopify" // Changed href to point to your Shopify connection API
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-indigo-500" disabled={true}>
-                        Connect Your Shopify Store
-                    </a>
-                </div>
-            )}
+            {activeTab === 'Demographics' && <DemographicsTabContent />} 
             {activeTab === 'Mailchimp' && <MailchimpTabContent />}
             
         </Layout>

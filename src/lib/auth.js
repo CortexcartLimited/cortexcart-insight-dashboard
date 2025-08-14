@@ -69,7 +69,7 @@ export const authOptions = {
             }
             if (!email) return false;
             
-            const connection = await db.getConnection();
+            // const connection = await db.getConnection(); // Removed as it was unused
             try {
                 const [userResult] = await db.query('SELECT * FROM sites WHERE user_email = ?', [email]);
                 if (userResult.length === 0) {
