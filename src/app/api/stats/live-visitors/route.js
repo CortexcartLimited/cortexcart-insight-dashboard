@@ -26,6 +26,18 @@ export async function GET(request) {
     return NextResponse.json({ liveVisitors: result.visitor_count || 0 }, { status: 200 });
 
   } catch (error) {
+    // Added a check to ensure connection to db is retried if connection is lost due to being idle!
+       if (error.code === 'ECONNRESET') {
+        console.warn('Database connection was reset. Retrying once...');
+        try {
+            // Retry the query one more time
+            const visitorCount = await getVisitorCount(siteId);
+            return NextResponse.json({ liveVisitors: visitorCount }, { status: 200 });
+        } catch (retryError) {
+            console.error('Error on retry fetching live visitor count:', retryError);
+            return NextResponse.json({ message: 'Internal Server Error after retry' }, { status: 500 });
+        }
+    }
     console.error('Error fetching live visitor count:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }

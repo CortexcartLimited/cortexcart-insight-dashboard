@@ -20,7 +20,11 @@ export async function GET() {
         );
         if (!connections.length) throw new Error('Facebook account not connected.');
         const accessToken = decrypt(connections[0].access_token_encrypted);
-
+        // Added this check to make the check for the access token more robust, we check the key is decrypted before using it!
+               if (!accessToken) {
+        // This means decryption failed.
+            throw new Error('Failed to decrypt access token. Please check server configuration.');
+        }
         // 2. Get the list of Facebook pages the user manages
         const pagesUrl = `https://graph.facebook.com/me/accounts?access_token=${accessToken}&fields=id,name`;
         const pagesResponse = await fetch(pagesUrl);
