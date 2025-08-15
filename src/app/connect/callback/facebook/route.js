@@ -1,5 +1,3 @@
-// src/app/connect/callback/facebook/route.js (Full and Corrected)
-
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
@@ -19,7 +17,7 @@ async function fetchUserPagesWithTokens(userAccessToken) {
 }
 
 export async function GET(request) {
-    const appUrl = process.env.NNEXTAUTH_URL || 'http://localhost:3000';
+    const appUrl = process.env.NNEXTAUTH_URL || 'https://tracker.cortexcart.com';
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
         const errorUrl = new URL('/settings', appUrl);
