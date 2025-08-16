@@ -305,7 +305,7 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                                             </li>
                                         ))}
                                     </ul>
-                                ) : <p className="text-sm text-gray-500 mt-2">No Instagram Business accounts found.</p>}
+                                ) : <p className="text-sm text-gray-500 mt-2">No Instagram Business accounts found. Please ensure you have connected your account on facebook business page</p>}
                             </div>
                         </>
                     )}
@@ -473,10 +473,7 @@ const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) =
                 </div>
             </div>
             {/* --- THIS IS THE NEW QuickBooks Connection --- */}
-            <QuickBooksConnect 
-                isInitiallyConnected={!!connectionStatus.quickbooks} 
-                setAlert={setAlert} 
-            />
+             <QuickBooksConnect />
         </div>
     );
 };

@@ -1,224 +1,157 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link'; // Assuming Link is used for navigation
-import { Card, CardHeader, CardContent, Typography, Button, Box, Alert, Skeleton } from '@mui/material';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { DollarSign, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+
+// Import your Tailwind-based UI components
 import Layout from '@/app/components/Layout';
+import QuickBooksStatCard from '@/app/components/QuickBooksStatCard';
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
 
-// Mock hook to simulate checking for QuickBooks connection.
-// In a real application, this would come from a user context or API call.
-const useQuickBooksConnection = () => {
-  // This is for demonstration. Replace with your actual logic.
-  const [isConnected, setIsConnected] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    // Simulate fetching user data
-    setTimeout(() => {
-      // In a real app, you'd check something like:
-      // const user = await fetchUser();
-      // setIsConnected(user.integrations.quickbooks.connected);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
-
-  return { isConnected, isLoading, setIsConnected };
-};
-
-const QuickBooksFinancialsDashboard = () => {
-  // Placeholder for the actual financials dashboard.
-  // This would be composed of various components showing financial data.
-  return (
-
-    <Card className="border-0">
-      <CardHeader title="QuickBooks Financials Dashboard" />
-      <CardContent>
-        <Typography variant="body1">
-          Your key financial metrics from QuickBooks are displayed here.
-        </Typography>
-        {/* TODO: Implement actual financial charts and data display */}
-      </CardContent>
-    </Card>
-  );
-};
-
-const ConnectQuickBooksPrompt = () => {
-  return (
-    <Card sx={{ textAlign: 'center', p: 4 }}>
-      <CardContent>
-         <MonetizationOnIcon color="primary" sx={{ fontSize: '2.75rem' }} />
-        <Typography variant="h5" component="h2" gutterBottom>
-          Connect to QuickBooks
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          To view your financial dashboard, please connect your QuickBooks account in the settings.
-        </Typography>
-        <Link href="/settings#platforms" passHref>
-          <Button variant="contained" color="primary">
-            Go to QuickBooks Settings
-          </Button>
-        </Link>
-      </CardContent>
-    </Card>
-  );
-};
-
-const FinancialsPageSkeleton = () => (
-  <Layout>
-    <Box sx={{ flexGrow: 1, p: 3 }}>
-      {/* Header Skeleton */}
-      <Box sx={{ mb: 4 }}>
-        <Skeleton variant="text" width="40%" sx={{ fontSize: '2.5rem' }} />
-      </Box>
-
-      {/* Alert Skeleton */}
-      <Skeleton variant="rounded" width={400} height={56} sx={{ mb: 4 }} />
-
-      {/* Main Card Skeleton */}
-      <Card sx={{ p: 2 }}>
-        <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <Skeleton variant="circular" width={56} height={56} />
-          <Skeleton variant="text" width="50%" sx={{ fontSize: '1.5rem' }} />
-          <Skeleton variant="text" width="80%" />
-          <Skeleton variant="rounded" width={220} height={36} />
-        </CardContent>
-      </Card>
-    </Box>
-  </Layout>
+const ConnectQuickBooksPrompt = () => (
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed shadow-sm p-8 text-center mt-4">
+        <DollarSign className="h-12 w-12 text-gray-400" />
+        <h3 className="mt-4 text-lg font-semibold">Connect to QuickBooks</h3>
+        <p className="mt-2 mb-4 text-sm text-muted-foreground">
+            To view your financial dashboard, please connect your QuickBooks account.
+        </p>
+        <Button asChild>
+            <Link href="/api/connect/quickbooks">Connect QuickBooks</Link>
+        </Button>
+    </div>
 );
 
+const FinancialsPageSkeleton = () => (
+    <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+        </div>
+        <SkeletonCard height="h-[400px]" />
+    </div>
+);
+
+const SkeletonCard = ({ height = "h-32" }) => (
+    <div className={`w-full bg-gray-200 animate-pulse rounded-lg ${height}`}></div>
+);
+
+
 export default function FinancialsPage() {
-  const { isConnected, isLoading, setIsConnected } = useQuickBooksConnection();
+    const [isConnected, setIsConnected] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [financialData, setFinancialData] = useState(null);
+    const [error, setError] = useState(null);
 
-  if (isLoading) {
-    return <FinancialsPageSkeleton />;
-  }
-const dummyQuickBooksData = {
-  totalRevenue: '$250,000',
-  totalExpenses: '$180,000',
-  netProfit: '$70,000',
-  accountsReceivable: '$30,000',
-  accountsPayable: '$15,000',
-  profitAndLoss: [
-    { month: 'Jan', revenue: 20000, expenses: 15000 },
-    { month: 'Feb', revenue: 22000, expenses: 16000 },
-    { month: 'Mar', revenue: 25000, expenses: 18000 },
-    { month: 'Apr', revenue: 23000, expenses: 17000 },
-    { month: 'May', revenue: 28000, expenses: 20000 },
-    { month: 'Jun', revenue: 30000, expenses: 22000 },
-  ],
-  balanceSheet: {
-    assets: {
-      currentAssets: 50000,
-      fixedAssets: 100000,
-      totalAssets: 150000,
-    },
-    liabilities: {
-      currentLiabilities: 20000,
-      longTermLiabilities: 30000,
-      totalLiabilities: 50000,
-    },
-    },
-  };
-  
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                const response = await fetch('/api/quickbooks/status');
+                const data = await response.json();
+                if (response.ok) {
+                    setIsConnected(data.isConnected);
+                    if (data.isConnected) {
+                        fetchFinancials();
+                    } else {
+                        setIsLoading(false);
+                    }
+                } else { throw new Error(data.message || 'Failed to check status'); }
+            } catch (err) {
+                setError(err.message);
+                setIsLoading(false);
+            }
+        };
 
-  return (
-    <Layout>
-    <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          QuickBooks 
-<Box sx={{ flexGrow: 1, p: 3 }}></Box>
-        </Typography>
-        {/* Add any global actions or filters here if needed */}
-      </Box>
+        const fetchFinancials = async () => {
+            try {
+                const response = await fetch('/api/quickbooks/financial-summary');
+                const data = await response.json();
+                if (response.ok) {
+                    setFinancialData(data);
+                } else { throw new Error(data.message || 'Failed to fetch financial data'); }
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-      {/* The following Alert is for demonstration purposes to allow toggling the state. Remove in production. */}
-      <Alert severity="info" action={
-        <Button color="inherit" size="small" onClick={() => setIsConnected(prev => !prev)}>
-          Toggle Connection
-        </Button>
-      } sx={{ mb: 4, maxWidth: 'fit-content' }}>
-        For demonstration: You are currently {isConnected ? 'connected' : 'not connected'} to QuickBooks.
-      </Alert>
+        checkStatus();
+    }, []);
 
-      {isConnected ? (
-        <>
-          <QuickBooksFinancialsDashboard />
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" component="h2" gutterBottom>
-              Key Financials
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    Total Revenue
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {dummyQuickBooksData.totalRevenue}
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    Total Expenses
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {dummyQuickBooksData.totalExpenses}
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    Net Profit
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {dummyQuickBooksData.netProfit}
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    Accounts Receivable
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {dummyQuickBooksData.accountsReceivable}
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    Accounts Payable
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {dummyQuickBooksData.accountsPayable}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Box>
-          </Box>
+    const chartData = [
+        { name: 'Revenue', value: parseFloat(financialData?.totalRevenue) || 0 },
+        { name: 'Expenses', value: parseFloat(financialData?.totalExpenses) || 0 },
+        { name: 'Profit', value: parseFloat(financialData?.netProfit) || 0 },
+    ];
 
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" component="h2" gutterBottom>
-              Profit and Loss Trend
-            </Typography>
-            <Card>
-              <CardContent>
-                {/* Placeholder */}
-              </CardContent>
-            </Card>
-          </Box>
-        </>
-      ) : (
-        <ConnectQuickBooksPrompt />
-      )}
-    </Box>
-    </Layout>
-  );
+    const renderContent = () => {
+        if (isLoading) return <FinancialsPageSkeleton />;
+        if (error) return (
+            <div className="flex flex-col items-center text-red-600">
+                <AlertCircle className="h-8 w-8 mb-2" />
+                <p>Error: {error}</p>
+            </div>
+        );
+        if (!isConnected) return <ConnectQuickBooksPrompt />;
+        if (isConnected && !financialData) return <p>Could not load financial data. Please try again.</p>;
+
+        return (
+            <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <QuickBooksStatCard 
+                        title="Total Revenue" 
+                        value={financialData.totalRevenue}
+                        icon={TrendingUp}
+                        description="This Fiscal Year-to-date"
+                        className="bg-green-100 dark:bg-green-900/50 border-green-200 dark:border-green-800"
+                    />
+                    <QuickBooksStatCard 
+                        title="Total Expenses" 
+                        value={financialData.totalExpenses}
+                        icon={TrendingDown}
+                        description="This Fiscal Year-to-date"
+                        className="bg-red-100 dark:bg-red-900/50 border-red-200 dark:border-red-800"
+                    />
+                    <QuickBooksStatCard 
+                        title="Net Profit" 
+                        value={financialData.netProfit}
+                        icon={DollarSign}
+                        description="This Fiscal Year-to-date"
+                        className="bg-blue-100 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800"
+                    />
+                </div>
+
+                <Card className="border-0 shadow-md">
+                    <CardHeader>
+                        <CardTitle>Financial Overview</CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[400px] p-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis />
+                                <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+                                <Legend />
+                                <Bar dataKey="value" fill="hsl(var(--primary))" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    };
+
+    return (
+        <Layout>
+            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+                <h2 className="text-3xl font-bold tracking-tight">QuickBooks Dashboard</h2>
+                {renderContent()}
+            </div>
+        </Layout>
+    );
 }
