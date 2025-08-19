@@ -9,6 +9,8 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+# PM2 configuration
+ecosystem.config.js
 
 # testing
 /coverage
