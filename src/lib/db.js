@@ -1,23 +1,14 @@
 // src/lib/db.js
 
-import { PrismaClient } from '@prisma/client';
-
-// This block prevents multiple instances of Prisma Client in development
-const globalForPrisma = globalThis;
-
-export const prisma = globalForPrisma.prisma || new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
-}
-
-// You can keep your mysql2 pool if other parts of the app use it for raw queries
 import mysql from 'mysql2/promise';
+
+// This creates the connection pool.
+// We've updated the property names to match your .env.local file.
 export const db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
+    host: process.env.MYSQL_HOST,         // Changed from DB_HOST
+    user: process.env.MYSQL_USER,         // Changed from DB_USERNAME
+    password: process.env.MYSQL_PASSWORD, // Changed from DB_PASSWORD
+    database: process.env.MYSQL_DATABASE, // Changed from DB_DATABASE
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,

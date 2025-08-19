@@ -5,7 +5,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
 import FacebookProvider from "next-auth/providers/facebook";
 import PinterestProvider from "next-auth/providers/pinterest";
-import { db } from '@/lib/db';
+import { db } from '@/lib/db'; // Ensure this is correctly configured for your database
 import axios from 'axios';
 import { encrypt } from '@/lib/crypto';
 
