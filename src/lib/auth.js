@@ -4,11 +4,14 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
 import TwitterProvider from "next-auth/providers/twitter";
 import FacebookProvider from "next-auth/providers/facebook";
-import { db as prisma } from '@/lib/db';
+// We need to import the Prisma client instance for the adapter
+import { prisma } from '@/lib/db'; 
 
 /** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
+    // Use the PrismaAdapter with the Prisma client instance
     adapter: PrismaAdapter(prisma),
+    
     session: {
         strategy: 'jwt',
     },
@@ -44,8 +47,9 @@ export const authOptions = {
         },
         async jwt({ token, user }) {
             if (user) {
+                // With Prisma adapter, we can query the user from the DB
                 const dbUser = await prisma.user.findFirst({
-                    where: { email: user.email },
+                    where: { email: token.email },
                 });
                 if (dbUser) {
                     token.id = dbUser.id;
