@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 export async function GET() {
     // HARDCODE the URI for this test
-    const redirectUri = 'http://localhost:3000/connect/callback/youtube';
+    const redirectUri = 'http://localhost:3000/api/connect/callback/youtube';
 
     const oauth2Client = new google.auth.OAuth2(
         process.env.YOUTUBE_CLIENT_ID,

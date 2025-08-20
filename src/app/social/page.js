@@ -578,7 +578,7 @@ const AnalyticsTabContent = () => {
     const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [isSyncing, setIsSyncing] = useState({ x: false, facebook: false, pinterest: false, youtube: false , shopify: false});
+    const [isSyncing, setIsSyncing] = useState({ x: false, facebook: false, pinterest: false, youtube: false});
     const [syncMessage, setSyncMessage] = useState('');
     const [syncMessageType, setSyncMessageType] = useState('info');
   // Define the colors for each platform to match your sync buttons
@@ -684,10 +684,7 @@ const AnalyticsTabContent = () => {
                             <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.youtube ? 'animate-spin' : ''}`} />
                             {isSyncing.youtube ? 'Syncing...' : 'Sync with YouTube'}
                         </button>
-                           <button onClick={() => handleSync('shopify')} disabled={isSyncing.shopify} className="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-700 disabled:bg-green-400">
-                            <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.shopify ? 'animate-spin' : ''}`} />
-                            {isSyncing.shopify ? 'Syncing...' : 'Sync with Shopify'}
-                        </button>
+                     
                    
                 </div>
                 {syncMessage && (

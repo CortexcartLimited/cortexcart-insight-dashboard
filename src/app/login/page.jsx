@@ -28,7 +28,7 @@ export default function LoginPage() {
     return (
         <div
             className="flex items-center justify-center min-h-screen bg-cover bg-center"
-            style={{ backgroundImage: "url('uploads/Gemini_Generated_Image_mpqbl4mpqbl4mpqb.png')", backgroundSize: "cover" }}
+            style={{ backgroundImage: "url('uploads/Gemini_Generated_Image_mpqbl4mpqbl4mpqb.webp')", backgroundSize: "cover" }}
         >
 
             <Card className="w-full max-w-sm bg-white shadow-md">
@@ -40,8 +40,8 @@ export default function LoginPage() {
                 <CardContent>
                     <div className="space-y-3">
                         {providers && Object.values(providers).map((provider) => (
-                            // Filter out Pinterest as a sign-in option
-                            provider.name !== 'Pinterest' && (
+                            // Filter out Pinterest and Facebook as sign-in options
+                            provider.name !== 'Pinterest' && provider.name !== 'Facebook' && (
                                 <Button
                                 key={provider.name}
                                 onClick={() => signIn(provider.id, { callbackUrl: '/dashboard' })}

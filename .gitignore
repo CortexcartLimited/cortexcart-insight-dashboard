@@ -48,6 +48,9 @@ analytics-dashboard-464606-6c0947d73aab.json
 *.bak
 .env
 
+# Ignore auth.js
+
+
 # Ignore update scripts
 admin-password-reset.js
 merge-env.js
