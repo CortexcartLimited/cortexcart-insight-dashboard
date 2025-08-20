@@ -10,6 +10,7 @@ import axios from 'axios';
 import { encrypt } from '@/lib/crypto';
 
 export const authOptions = {
+    adapter: undefined,
       debug: process.env.NODE_ENV !== 'production', // Added debug for dev
 
     providers: [
