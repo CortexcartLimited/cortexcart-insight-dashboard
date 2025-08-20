@@ -8,7 +8,7 @@ import PinterestProvider from "next-auth/providers/pinterest";
 import { db } from '@/lib/db'; // Ensure this is correctly configured for your database
 import axios from 'axios';
 import { encrypt } from '@/lib/crypto';
-
+/** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
     adapter: undefined,
       debug: process.env.NODE_ENV !== 'production', // Added debug for dev
