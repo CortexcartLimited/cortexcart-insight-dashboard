@@ -144,57 +144,70 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         handlePostNow();
     }
 };
-    const handleUploadToYouTube = async () => {
+const handleUploadToYouTube = async () => {
     if (!videoFile || !videoTitle) {
         setPostStatus({ message: 'A video file and title are required.', type: 'error' });
         return;
     }
 
     setIsPosting(true);
-    let newVideoId = null;
+    setPostStatus({ message: '', type: '' });
 
     try {
-        // --- Step 1: Initialize Upload ---
+        // --- Step 1: Get the upload URL from our server ---
         setPostStatus({ message: 'Step 1/3: Initializing upload...', type: 'info' });
+
         const initRes = await fetch('/api/social/youtube/initiate-upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 title: videoTitle,
                 description: postContent,
-                privacyStatus: privacyStatus,
+                fileSize: videoFile.size,
+                fileType: videoFile.type,
             }),
         });
-        const { uploadUrl } = await initRes.json();
-        if (!initRes.ok) throw new Error('Failed to initialize upload.');
 
-        // --- Step 2: Upload Video File ---
-        setPostStatus({ message: 'Step 2/3: Uploading video file...', type: 'info' });
+        if (!initRes.ok) {
+            const errorResult = await initRes.json();
+            throw new Error(errorResult.error || 'Failed to initialize upload.');
+        }
+
+        const { uploadUrl } = await initRes.json();
+        
+        // --- Step 2: Upload the video file directly to Google ---
+        setPostStatus({ message: 'Step 2/3: Uploading video...', type: 'info' });
+        
         const uploadRes = await fetch(uploadUrl, {
             method: 'PUT',
             body: videoFile,
             headers: { 'Content-Type': videoFile.type },
         });
-        if (!uploadRes.ok) throw new Error('Video file upload failed.');
-        
-        const videoData = await uploadRes.json();
-        newVideoId = videoData.id; // Get the ID of the new video
 
-        // --- Step 3: Upload Thumbnail (if one is provided) ---
+        if (!uploadRes.ok) {
+            throw new Error('The final step of uploading the file to Google failed.');
+        }
+        
+        // After a successful upload, Google's response contains the new video's data
+        const videoData = await uploadRes.json();
+        const newVideoId = videoData.id;
+
+        // --- Step 3: Set the custom thumbnail (if one exists) ---
         if (postImages.length > 0 && newVideoId) {
             setPostStatus({ message: 'Step 3/3: Setting custom thumbnail...', type: 'info' });
             await fetch('/api/social/youtube/set-thumbnail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    videoId: newVideoId,
+                    videoId: newVideoId, // Use the ID we just received
                     imageUrl: postImages[0].image_url,
                 }),
             });
         }
 
         setPostStatus({ message: 'Video successfully published to YouTube!', type: 'success' });
-        // Reset state
+        
+        // Reset state after success
         setVideoFile(null);
         setVideoTitle('');
         setPostContent('');
@@ -202,11 +215,11 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
 
     } catch (err) {
         setPostStatus({ message: err.message, type: 'error' });
+        console.error("YouTube upload process failed:", err);
     } finally {
         setIsPosting(false);
     }
 };
-
     const handleImageAdded = (newImage) => {
         setPostImages([newImage]);
     };

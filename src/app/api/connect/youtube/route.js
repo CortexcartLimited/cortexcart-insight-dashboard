@@ -1,37 +1,37 @@
+// src/app/api/connect/youtube/route.js
+
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import crypto from 'crypto';
 
 export async function GET() {
-    
-    const redirectUri = '/api/connect/callback/youtube';
 
+    // --- FIX #1: Create the full, absolute redirect URI ---
+    // This dynamically creates the correct URL for production or development.
+    const redirectUri = process.env.NODE_ENV === 'production'
+        ? `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`
+        : 'http://localhost:3000/api/connect/callback/youtube';
+
+    // --- FIX #2: Use the correct environment variables ---
+    // Ensure these match what's in your .env file (GOOGLE_CLIENT_ID, not YOUTUBE_CLIENT_ID)
     const oauth2Client = new google.auth.OAuth2(
-        process.env.YOUTUBE_CLIENT_ID,
-        process.env.YOUTUBE_CLIENT_SECRET,
-        redirectUri 
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        redirectUri
     );
-    
-    const state = crypto.randomBytes(16).toString('hex');
-    const scopes = ['https://www.googleapis.com/auth/youtube.readonly'];
+
+    const scopes = [
+        'https://www.googleapis.com/auth/youtube.upload',
+        'https://www.googleapis.com/auth/youtube.readonly'
+    ];
 
     const authorizationUrl = oauth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: scopes,
         prompt: 'consent',
-        state: state
+        // --- FIX #3: Explicitly add the missing parameter ---
+        // This guarantees the parameter is never missed.
+        response_type: 'code',
     });
 
-    const response = NextResponse.redirect(authorizationUrl);
-    
-         response.cookies.set('facebook_oauth_state', state, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            path: '/',
-            sameSite: 'lax',
-            domain: '.cortexcart.com' // Set the root domain here
-        });
-
-
-    return response;
+    return NextResponse.redirect(authorizationUrl);
 }
