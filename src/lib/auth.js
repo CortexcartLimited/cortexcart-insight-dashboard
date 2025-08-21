@@ -1,17 +1,17 @@
 // src/lib/auth.js (Full, Corrected, and Unabbreviated)
 
-import { getServerSession } from "next-auth/next"; // <-- THIS IS THE NEW IMPORT
+import { getServerSession } from "next-auth/next";
 import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
 import FacebookProvider from "next-auth/providers/facebook";
 import PinterestProvider from "next-auth/providers/pinterest";
-import { db } from '@/lib/db'; // Ensure this is correctly configured for your database
+import { db } from '@/lib/db';
 import axios from 'axios';
 import { encrypt } from '@/lib/crypto';
 /** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
     adapter: undefined,
-      debug: process.env.NODE_ENV !== 'production', // Added debug for dev
+      debug: process.env.NODE_ENV !== 'production',
 
     providers: [
         GoogleProvider({
@@ -70,7 +70,7 @@ export const authOptions = {
             }
             if (!email) return false;
             
-            // const connection = await db.getConnection(); // Removed as it was unused
+           
             try {
                 const [userResult] = await db.query('SELECT * FROM sites WHERE user_email = ?', [email]);
                 if (userResult.length === 0) {
@@ -172,14 +172,14 @@ export const authOptions = {
             }
             if (session.user?.email) {
         try {
-            // ✅ Add 'onboarding_completed' to the SELECT statement
+            //Add 'onboarding_completed' to the SELECT statement
             const [siteRows] = await db.query(
                 'SELECT id, onboarding_completed FROM sites WHERE user_email = ? LIMIT 1',
                 [session.user.email]
             );
             if (siteRows.length > 0) {
                 session.user.site_id = siteRows[0].id;
-                session.user.onboarding_completed = siteRows[0].onboarding_completed; // ✅ Add the flag to the session
+                session.user.onboarding_completed = siteRows[0].onboarding_completed; // Add the flag to the session
             }
         } catch (error) {
             console.error("Error attaching site data to session:", error);
