@@ -3,15 +3,15 @@ import { google } from 'googleapis';
 import crypto from 'crypto';
 
 export async function GET() {
-    // HARDCODE the URI for this test
-    const redirectUri = 'http://localhost:3000/api/connect/callback/youtube';
+    
+    const redirectUri = '/api/connect/callback/youtube';
 
     const oauth2Client = new google.auth.OAuth2(
         process.env.YOUTUBE_CLIENT_ID,
         process.env.YOUTUBE_CLIENT_SECRET,
         redirectUri 
     );
-    // ... rest of the file is identical
+    
     const state = crypto.randomBytes(16).toString('hex');
     const scopes = ['https://www.googleapis.com/auth/youtube.readonly'];
 

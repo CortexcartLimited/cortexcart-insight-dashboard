@@ -16,8 +16,8 @@ const nextConfig: NextConfig = {
         pathname: '/images/**',
       },
       {
-      protocol: 'https',
-      hostname: 'scontent-man2-1.xx.fbcdn.net',
+        protocol: 'https',
+        hostname: '**.fbcdn.net', // This allows all subdomains of fbcdn.net
       },
       {
         protocol: 'https',
