@@ -40,7 +40,7 @@ const RoadmapPage = async () => {
             <header className="mb-10 text-center">
                 <h1 className="text-5xl font-extrabold text-gray-900 leading-tight mb-4">CortexCart Roadmap</h1>
                 <p className="text-xl text-gray-700 max-w-2xl mx-auto">
-                    Discover what we're building next, what's currently in progress, and what we've already delivered.
+                    Discover what we&apos;re building next, what&apos;s currently in progress, and what we&apos;ve already delivered.
                 </p>
             </header>
 
