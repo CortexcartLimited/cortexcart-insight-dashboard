@@ -1,88 +1,78 @@
-import { getServerSession } from 'next-auth/next';
+// src/app/api/social/facebook/create-post/route.js
+
+import { NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
-import { NextResponse } from 'next/server';
 import axios from 'axios';
 
-export async function POST(request) {
+export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    if (!session || !session.user || !session.user.email) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const connection = await db.getConnection();
+    const { content, imageUrl } = await req.json();
+    const userEmail = session.user.email;
 
     try {
-        const { content, imageUrl } = await request.json();
-
-        // --- The Refactored Query ---
-        // This single JOIN query is more efficient. It finds the active page
-        // and retrieves its encrypted access token in one step.
-        const sqlQuery = `
-            SELECT
-                fp.page_access_token_encrypted
-            FROM
-                facebook_pages_connected AS fpc
-            JOIN
-                facebook_pages AS fp ON fpc.active_facebook_page_id = fp.page_id AND fpc.user_email = fp.user_email
-            WHERE
-                fpc.user_email = ?;
-        `;
-        
-        const [results] = await connection.query(sqlQuery, [session.user.email]);
-
-        if (results.length === 0 || !results[0].page_access_token_encrypted) {
-            throw new Error('No active Facebook Page with a valid token was found. Please connect a page in your settings.');
-        }
-        
-        // --- The Column Name Fix ---
-        // We now correctly reference 'page_access_token_encrypted' from the result.
-        const pageAccessToken = decrypt(results[0].page_access_token_encrypted);
-        
-        // We also need the Page ID for the API endpoint.
-        // We can get this from a similar query or assume you might store it in the session/client-side.
-        // For simplicity, let's re-add a small query for the active page ID. A more optimized version
-        // could pass the pageId from the client request.
-        const [sites] = await connection.query(
-            'SELECT active_facebook_page_id FROM facebook_pages_connected WHERE user_email = ?',
-            [session.user.email]
+        // --- Step 1: Get the user's connected page and their main social connection token ---
+        const [pageRows] = await db.query(
+            'SELECT page_id, page_name, access_token_encrypted FROM facebook_pages WHERE user_email = ? AND is_active = 1',
+            [userEmail]
         );
-        const pageId = sites[0]?.active_facebook_page_id;
-        if (!pageId) {
-             throw new Error('No active Facebook Page has been set.');
-        }
 
-        // Prepare the request to the Facebook Graph API
-        let endpoint, params;
-        if (imageUrl) {
-            // Posting a photo with a caption
-            endpoint = `https://graph.facebook.com/${pageId}/photos`;
-            params = { url: imageUrl, caption: content, access_token: pageAccessToken };
-        } else {
-            // Posting a simple text update
-            endpoint = `https://graph.facebook.com/${pageId}/feed`;
-            params = { message: content, access_token: pageAccessToken };
+        if (pageRows.length === 0) {
+            return NextResponse.json({ error: 'No active Facebook Page connected. Please select one in your settings.' }, { status: 404 });
         }
         
-        const response = await axios.post(endpoint, params);
+        const activePage = pageRows[0];
+        const pageAccessToken = decrypt(activePage.access_token_encrypted);
+        const pageId = activePage.page_id;
 
-        if (response.data.error) {
-            // Extract a clearer error message from Facebook's response
-            throw new Error(`Facebook API Error: ${response.data.error.message}`);
+        // --- Step 2: Construct the appropriate API endpoint based on whether there's an image ---
+        const endpoint = imageUrl 
+            ? `https://graph.facebook.com/${pageId}/photos` 
+            : `https://graph.facebook.com/${pageId}/feed`;
+
+        // --- Step 3: Construct the request body ---
+        const requestBody = {
+            access_token: pageAccessToken,
+            message: content, // For feed posts
+            caption: content, // For photo posts
+        };
+
+        if (imageUrl) {
+            requestBody.url = imageUrl; // For photo posts, provide the image URL
         }
 
-        return NextResponse.json({ 
-            message: 'Successfully posted to Facebook!', 
-            postId: response.data.id || response.data.post_id 
-        });
+        // --- Step 4: Make the API call to Facebook ---
+        const response = await axios.post(endpoint, requestBody);
+
+        if (response.status !== 200) {
+            throw new Error(`Facebook API responded with status ${response.status}`);
+        }
+
+        return NextResponse.json({ success: true, postId: response.data.id });
 
     } catch (error) {
-        // Log the detailed error on the server for debugging
-        console.error('Error in create-post function:', error.message);
-        // Return a cleaner, user-friendly error message
-        return NextResponse.json({ message: error.message }, { status: 500 });
-    } finally {
-        if (connection) connection.release();
+        // --- Step 5: Provide detailed error logging ---
+        console.error("Error in create-post function:", error.response ? error.response.data : error.message);
+        
+        const fbError = error.response?.data?.error;
+        if (fbError) {
+            // If it's an expired token error, give a specific message
+            if (fbError.code === 190) {
+                 return NextResponse.json({
+                    error: "Your Facebook connection has expired. Please go to your settings and reconnect your account."
+                }, { status: 401 });
+            }
+            // For other Facebook errors, pass the message along
+            return NextResponse.json({ error: `Facebook Error: ${fbError.message}` }, { status: 500 });
+        }
+        
+        // For generic network errors
+        return NextResponse.json({ error: 'An unexpected error occurred while posting to Facebook.' }, { status: 500 });
     }
 }
