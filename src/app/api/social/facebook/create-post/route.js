@@ -17,9 +17,9 @@ export async function POST(req) {
     const userEmail = session.user.email;
 
     try {
-        // --- THE FIX: Corrected the column name in the database query ---
+        // --- THE FINAL FIX: Corrected the column name to page_access_token_encrypted ---
         const [pageRows] = await db.query(
-            'SELECT page_id, page_name, access_token_encrypted FROM facebook_pages WHERE user_email = ? AND is_active = 1',
+            'SELECT page_id, page_name, page_access_token_encrypted FROM facebook_pages WHERE user_email = ? AND is_active = 1',
             [userEmail]
         );
 
@@ -28,8 +28,8 @@ export async function POST(req) {
         }
         
         const activePage = pageRows[0];
-        // Use the corrected column name when decrypting the token
-        const pageAccessToken = decrypt(activePage.access_token_encrypted);
+        // Use the corrected column name here as well
+        const pageAccessToken = decrypt(activePage.page_access_token_encrypted);
         const pageId = activePage.page_id;
 
         const endpoint = imageUrl 
@@ -67,7 +67,6 @@ export async function POST(req) {
             return NextResponse.json({ error: `Facebook Error: ${fbError.message}` }, { status: 500 });
         }
         
-        // This will now catch the database error and report it clearly
         return NextResponse.json({ error: `An unexpected server error occurred: ${error.message}` }, { status: 500 });
     }
 }
