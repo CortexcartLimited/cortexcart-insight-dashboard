@@ -115,7 +115,8 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [postStatus, setPostStatus] = useState({ message: '', type: '' });
     const [error, setError] = useState('');
     const { data: session } = useSession();
-    console.log("Current Session Data:", session); 
+    console.log("Current Session Data:", session);
+    const pinterestBoards = useMemo(() => session?.user?.pinterestBoards || [], [session?.user?.pinterestBoards]); 
     const instagramAccounts = useMemo(() => session?.user?.instagramAccounts || [], [session?.user?.instagramAccounts]);
     const [selectedInstagramId, setSelectedInstagramId] = useState('');
     const [selectedBoardId, setSelectedBoardId] = useState('');
