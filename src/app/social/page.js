@@ -132,10 +132,19 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     }, [selectedPlatform, instagramAccounts]); // Now this is safe
     //Pinterest boards
-    const pinterestBoards = useMemo(() => {
-    return session?.user?.pinterestBoards || [];
-}, [session?.user?.pinterestBoards]);
-
+const pinterestBoards = useMemo(() => session?.user?.pinterestBoards || [], [session?.user?.pinterestBoards]);
+// New code added 23/08/2025 for pinterest boards to show default board
+useEffect(() => {
+    // When switching to Pinterest, pre-select the first board if available
+    if (selectedPlatform === 'pinterest' && pinterestBoards.length > 0 && !selectedBoardId) {
+        setSelectedBoardId(pinterestBoards[0].board_id);
+    }
+    
+    // When switching to Instagram, pre-select the first account if available
+    if (selectedPlatform === 'instagram' && instagramAccounts.length > 0 && !selectedInstagramId) {
+        setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
+    }
+}, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]); // Added dependencies
 
     const currentPlatform = PLATFORMS[selectedPlatform];
     const handleSubmit = () => {
