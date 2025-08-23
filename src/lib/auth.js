@@ -165,7 +165,6 @@ export const authOptions = {
                 session.user.image = token.picture;
             }
              try {
-                console.log("[PINTEREST SESSION] Attaching boards to session for user:", token.email);
                 const [boards] = await db.query('SELECT board_id, board_name FROM pinterest_boards WHERE user_email = ?', [token.email]);
                 session.user.pinterestBoards = boards || [];
                 
@@ -180,7 +179,6 @@ export const authOptions = {
                 }
                 
             } catch (error) {
-                console.error("Error attaching data to session:", error);
                 session.user.pinterestBoards = [];
             }
             if (session.user?.email) {
