@@ -124,29 +124,22 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [videoTitle, setVideoTitle] = useState('');
     const [privacyStatus, setPrivacyStatus] = useState('private');
 
-    useEffect(() => {
+useEffect(() => {
+        // This logic runs ONLY when the selected platform changes.
         
-        // When switching to Instagram, pre-select the first account if available
+        if (selectedPlatform === 'pinterest' && pinterestBoards.length > 0) {
+            // If we are on the Pinterest tab and there are boards, select the first one.
+            setSelectedBoardId(pinterestBoards[0].board_id);
+        }
+        
         if (selectedPlatform === 'instagram' && instagramAccounts.length > 0) {
+            // If we are on the Instagram tab and there are accounts, select the first one.
             setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
         }
-    }, [selectedPlatform, instagramAccounts]); // Now this is safe
-    //Pinterest boards
-const pinterestBoards = useMemo(() => session?.user?.pinterestBoards || [], [session?.user?.pinterestBoards]);
-// New code added 23/08/2025 for pinterest boards to show default board
-useEffect(() => {
-    // When switching to Pinterest, pre-select the first board if available
-    if (selectedPlatform === 'pinterest' && pinterestBoards.length > 0 && !selectedBoardId) {
-        setSelectedBoardId(pinterestBoards[0].board_id);
-    }
-    
-    // When switching to Instagram, pre-select the first account if available
-    if (selectedPlatform === 'instagram' && instagramAccounts.length > 0 && !selectedInstagramId) {
-        setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
-    }
-}, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]); // Added dependencies
+    }, [selectedPlatform, pinterestBoards, instagramAccounts]); // This dependency array prevents the loop.
 
     const currentPlatform = PLATFORMS[selectedPlatform];
+
     const handleSubmit = () => {
     if (selectedPlatform === 'youtube') {
         handleUploadToYouTube();
@@ -419,7 +412,7 @@ const handleUploadToYouTube = async () => {
             <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">
                 Choose a board:
             </label>
-            <select
+             <select
                 id="board-select"
                 value={selectedBoardId}
                 onChange={(e) => setSelectedBoardId(e.target.value)}
