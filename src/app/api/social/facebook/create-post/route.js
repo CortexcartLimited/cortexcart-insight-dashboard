@@ -13,18 +13,17 @@ export async function POST(req) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { content, imageUrl } = await req.json();
+    const { content, imageUrl } = await req.json(); // imageUrl is relative (e.g., /uploads/image.jpg)
     const userEmail = session.user.email;
 
     try {
-        // --- THE FIX: Removed 'is_active' and now select the most recent page ---
         const [pageRows] = await db.query(
             'SELECT page_id, page_name, page_access_token_encrypted FROM facebook_pages WHERE user_email = ? ORDER BY id DESC LIMIT 1',
             [userEmail]
         );
 
         if (pageRows.length === 0) {
-            return NextResponse.json({ error: 'No Facebook Page connected. Please connect a page in your settings.' }, { status: 404 });
+            return NextResponse.json({ error: 'No Facebook Page connected.' }, { status: 404 });
         }
         
         const activePage = pageRows[0];
@@ -41,8 +40,11 @@ export async function POST(req) {
             caption: content,
         };
 
+        // --- THE FIX: Convert the relative imageUrl to an absolute URL ---
         if (imageUrl) {
-            requestBody.url = imageUrl;
+            // This combines your site's base URL with the relative image path
+            const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
+            requestBody.url = absoluteImageUrl;
         }
 
         const response = await axios.post(endpoint, requestBody);
@@ -54,7 +56,7 @@ export async function POST(req) {
         return NextResponse.json({ success: true, postId: response.data.id });
 
     } catch (error) {
-        console.error("Error in create-post function:", error.response ? error.response.data : error.message);
+        console.error("Error in create-post function:", error.response ? error.response.data.error : error.message);
         
         const fbError = error.response?.data?.error;
         if (fbError) {
