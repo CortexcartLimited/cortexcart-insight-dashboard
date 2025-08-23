@@ -17,18 +17,17 @@ export async function POST(req) {
     const userEmail = session.user.email;
 
     try {
-        // --- THE FINAL FIX: Corrected the column name to page_access_token_encrypted ---
+        // --- THE FIX: Removed 'is_active' and now select the most recent page ---
         const [pageRows] = await db.query(
-            'SELECT page_id, page_name, page_access_token_encrypted FROM facebook_pages WHERE user_email = ? AND is_active = 1',
+            'SELECT page_id, page_name, page_access_token_encrypted FROM facebook_pages WHERE user_email = ? ORDER BY id DESC LIMIT 1',
             [userEmail]
         );
 
         if (pageRows.length === 0) {
-            return NextResponse.json({ error: 'No active Facebook Page connected. Please select one in your settings.' }, { status: 404 });
+            return NextResponse.json({ error: 'No Facebook Page connected. Please connect a page in your settings.' }, { status: 404 });
         }
         
         const activePage = pageRows[0];
-        // Use the corrected column name here as well
         const pageAccessToken = decrypt(activePage.page_access_token_encrypted);
         const pageId = activePage.page_id;
 
