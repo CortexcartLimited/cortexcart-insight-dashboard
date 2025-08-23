@@ -61,7 +61,7 @@ const PLATFORMS = {
         placeholder: 'Add a Pin description or Generate with AI including pin tags...', 
         disabled: false,
         color: '#E60023',
-        apiEndpoint: '/api/social/pinterest/sync',
+        apiEndpoint: '/api/social/pinterest/post',
     },
     instagram: {
         name: 'Instagram',
@@ -115,6 +115,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [postStatus, setPostStatus] = useState({ message: '', type: '' });
     const [error, setError] = useState('');
     const { data: session } = useSession();
+    console.log("Current Session Data:", session); 
     const instagramAccounts = useMemo(() => session?.user?.instagramAccounts || [], [session?.user?.instagramAccounts]);
     const [selectedInstagramId, setSelectedInstagramId] = useState('');
     const [selectedBoardId, setSelectedBoardId] = useState('');
