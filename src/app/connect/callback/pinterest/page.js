@@ -1,78 +1,65 @@
+// src/app/connect/callback/pinterest/page.js
+
+'use server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import axios from 'axios';
 
-export const runtime = 'nodejs';
-
+// The component needs to be async to use await
 export default async function PinterestCallbackPage({ searchParams }) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-        redirect('/api/auth/signin');
+    if (!session || !session.user || !session.user.email) {
+        return redirect('/login?error=unauthenticated');
     }
 
+    // --- THE FIX ---
+    // We don't need to await searchParams itself, just use it directly
     const { code, state } = searchParams;
-    const codeVerifier = cookies().get('pinterest_oauth_code_verifier')?.value;
-    const originalState = cookies().get('pinterest_oauth_state')?.value;
+    // We DO need to await the cookies() calls
+    const codeVerifier = (await cookies().get('pinterest_oauth_code_verifier'))?.value;
+    const originalState = (await cookies().get('pinterest_oauth_state'))?.value;
 
     if (!code || !state || !codeVerifier || !originalState || state !== originalState) {
-        // You can create a more generic error display component if you like
-        return new Response('Error: Invalid callback parameters', { status: 400 });
+        return <p>Error: Invalid callback parameters. Please try connecting again.</p>;
     }
 
     try {
-        const tokenUrl = 'https://api.pinterest.com/v5/oauth/token';
-
-        const body = new URLSearchParams({
+        const tokenResponse = await axios.post('https://api.pinterest.com/v5/oauth/token', new URLSearchParams({
             grant_type: 'authorization_code',
             code: code,
+            redirect_uri: new URL('/connect/callback/pinterest', process.env.NEXTAUTH_URL).toString(),
             code_verifier: codeVerifier,
-            redirect_uri: `${process.env.NEXTAUTH_URL}/connect/callback/pinterest`,
-        });
-
-        const basicAuth = Buffer.from(`${process.env.PINTEREST_APP_ID}:${process.env.PINTEREST_APP_SECRET}`).toString('base64');
-
-        const tokenResponse = await fetch(tokenUrl, {
-            method: 'POST',
+        }), {
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Basic ${basicAuth}`,
-            },
-            body: body.toString(),
+                'Authorization': `Basic ${Buffer.from(`${process.env.PINTEREST_CLIENT_ID}:${process.env.PINTEREST_CLIENT_SECRET}`).toString('base64')}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         });
 
-        if (!tokenResponse.ok) {
-            const errorText = await tokenResponse.text();
-            throw new Error(`Token request failed: ${errorText}`);
-        }
+        const { access_token, refresh_token, expires_in } = tokenResponse.data;
+        const expires_at = new Date(Date.now() + expires_in * 1000);
 
-        const tokenData = await tokenResponse.json();
-        const { access_token, refresh_token, expires_in } = tokenData;
+        await db.query(
+            `INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE 
+                 access_token_encrypted = VALUES(access_token_encrypted), 
+                 refresh_token_encrypted = VALUES(refresh_token_encrypted),
+                 expires_at = VALUES(expires_at);`,
+            [session.user.email, 'pinterest', encrypt(access_token), encrypt(refresh_token), expires_at]
+        );
         
-        const userEmail = session.user.email;
-        const encryptedAccessToken = encrypt(access_token);
-        const encryptedRefreshToken = refresh_token ? encrypt(refresh_token) : null;
-        const expiresAt = new Date(Date.now() + expires_in * 1000);
+        // Clear the cookies after use
+        await cookies().delete('pinterest_oauth_state');
+        await cookies().delete('pinterest_oauth_code_verifier');
 
-        const query = `
-            INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
-            VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                access_token_encrypted = VALUES(access_token_encrypted),
-                refresh_token_encrypted = VALUES(refresh_token_encrypted),
-                expires_at = VALUES(expires_at);
-        `;
-        // Note the platform is 'pinterest'
-        await db.query(query, [userEmail, 'pinterest', encryptedAccessToken, encryptedRefreshToken, expiresAt]);
-
+        return redirect('/settings?success=pinterest_connected');
     } catch (error) {
-        console.error("Error during Pinterest OAuth2 callback:", error);
-        return new Response(`Error connecting Pinterest: ${error.message}`, { status: 500 });
-    } finally {
-       await fetch(`${process.env.NEXTAUTH_URL}/api/connect/pinterest/clear-cookies`, { method: 'POST' });
-        }
-    
-    redirect('/settings?connect_status=success');
+        console.error("Pinterest OAuth Error:", error.response ? error.response.data : error.message);
+        return <p>An error occurred while connecting your Pinterest account. Please try again.</p>;
+    }
 }
