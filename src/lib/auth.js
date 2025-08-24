@@ -5,7 +5,7 @@ import FacebookProvider from "next-auth/providers/facebook";
 import PinterestProvider from "next-auth/providers/pinterest";
 import { db } from '@/lib/db';
 import axios from 'axios';
-import { encrypt } from '@/lib/crypto';
+import { encrypt, decrypt } from '@/lib/crypto';
 /** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
     adapter: undefined,
@@ -34,12 +34,10 @@ export const authOptions = {
             clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
             scope: 'email,public_profile,pages_show_list,pages_read_engagement,pages_manage_posts',
         }),
-        PinterestProvider({
+         PinterestProvider({
             clientId: process.env.PINTEREST_CLIENT_ID,
             clientSecret: process.env.PINTEREST_CLIENT_SECRET,
-            scope: 'boards:read pins:read pins:write user_accounts:read',
-            token: `${process.env.PINTEREST_API_URL}/v5/oauth/token`,
-            userinfo: `${process.env.PINTEREST_API_URL}/v5/user_account`,
+            scope: 'boards:read pins:read user_accounts:read pins:write',
         }),
     ],
     cookies: {
@@ -121,13 +119,16 @@ export const authOptions = {
                         console.error("[AUTH] Error fetching FB Pages:", error.response?.data?.error); 
                     }
                 }
-               if (account.provider === 'pinterest') {
+                if (account.provider === 'pinterest') {
+                    console.log("[AUTH.JS] JWT: Pinterest login detected. Access token received.");
                     try {
+                        console.log("[AUTH.JS] JWT: Attempting to fetch boards from Pinterest API...");
                         const boardsResponse = await axios.get('https://api.pinterest.com/v5/boards', {
                             headers: { 'Authorization': `Bearer ${account.access_token}` }
                         });
                         
                         if (boardsResponse.data && boardsResponse.data.items) {
+                            console.log(`[AUTH.JS] JWT: Successfully fetched ${boardsResponse.data.items.length} boards.`);
                             for (const board of boardsResponse.data.items) {
                                 await db.query(
                                     `INSERT INTO pinterest_boards (user_email, board_id, board_name)
@@ -135,9 +136,12 @@ export const authOptions = {
                                     [token.email, board.id, board.name]
                                 );
                             }
+                            console.log("[AUTH.JS] JWT: Finished saving boards to database.");
+                        } else {
+                            console.log("[AUTH.JS] JWT: API call successful, but no boards were found in the response.");
                         }
                     } catch (error) {
-                        console.error("[AUTH.JS] CRITICAL: An error occurred while fetching boards from the Pinterest API.", error.response ? error.response.data : error.message);
+                        console.error("[AUTH.JS] JWT CRITICAL: An error occurred while fetching/saving boards.", error.response ? error.response.data : error.message);
                     }
                 }
             }
@@ -152,21 +156,12 @@ export const authOptions = {
                 session.user.name = token.name;
                 session.user.image = token.picture;
             }
-             try {
+                         try {
                 const [boards] = await db.query('SELECT board_id, board_name FROM pinterest_boards WHERE user_email = ?', [token.email]);
                 session.user.pinterestBoards = boards || [];
-                
-                if (session.user?.email) {
-                    const [siteRows] = await db.query(
-                        'SELECT id FROM sites WHERE user_email = ? LIMIT 1',
-                        [session.user.email]
-                    );
-                    if (siteRows.length > 0) {
-                        session.user.site_id = siteRows[0].id;
-                    }
-                }
-                
+                console.log(`[AUTH.JS] SESSION: Attached ${session.user.pinterestBoards.length} Pinterest boards to the session.`);
             } catch (error) {
+                console.error("[AUTH.JS] SESSION CRITICAL: Failed to attach Pinterest boards to session.", error);
                 session.user.pinterestBoards = [];
             }
             if (session.user?.email) {
