@@ -41,25 +41,38 @@ export async function completePinterestConnection(code, state) {
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
         const expires_at = new Date(Date.now() + expires_in * 1000);
 
+        // Save the connection tokens
         await db.query(
             `INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
-             VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE 
+             VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE 
                  access_token_encrypted = VALUES(access_token_encrypted), 
                  refresh_token_encrypted = VALUES(refresh_token_encrypted),
                  expires_at = VALUES(expires_at);`,
             [session.user.email, 'pinterest', encrypt(access_token), encrypt(refresh_token), expires_at]
         );
         
-        // This is now safe because we are in a Server Action
+        // --- FETCH AND SAVE BOARDS ---
+        const boardsResponse = await axios.get('https://api.pinterest.com/v5/boards', {
+            headers: { 'Authorization': `Bearer ${access_token}` }
+        });
+        
+        if (boardsResponse.data && boardsResponse.data.items) {
+            for (const board of boardsResponse.data.items) {
+                await db.query(
+                    `INSERT INTO pinterest_boards (user_email, board_id, board_name)
+                     VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE board_name = VALUES(board_name);`,
+                    [session.user.email, board.id, board.name]
+                );
+            }
+        }
+
         cookieStore.delete('pinterest_oauth_state');
         cookieStore.delete('pinterest_oauth_code_verifier');
 
     } catch (error) {
-        console.error("CRITICAL Pinterest OAuth Error in Server Action:", error.response ? JSON.stringify(error.response.data, null, 2) : error.message);
+        console.error("CRITICAL Pinterest Connection Error:", error.response ? JSON.stringify(error.response.data, null, 2) : error.message);
         throw new Error('An error occurred while connecting your Pinterest account.');
     }
 
-    // A Server Action can safely perform a redirect.
     redirect('/settings?success=pinterest_connected');
 }

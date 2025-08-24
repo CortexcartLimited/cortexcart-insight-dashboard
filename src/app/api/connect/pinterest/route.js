@@ -16,13 +16,6 @@ export async function GET() {
 
         const redirectUri = new URL('/connect/callback/pinterest', process.env.NEXTAUTH_URL).toString();
 
-        // --- NEW LOGGING ---
-        console.log("--- PINTEREST AUTH INITIATION ---");
-        console.log("Generated Redirect URI:", redirectUri);
-        console.log("NEXTAUTH_URL variable:", process.env.NEXTAUTH_URL);
-        console.log("-------------------------------");
-        // --- END NEW LOGGING ---
-
         const params = new URLSearchParams({
             response_type: 'code',
             client_id: process.env.PINTEREST_CLIENT_ID,

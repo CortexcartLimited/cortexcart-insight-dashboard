@@ -1,11 +1,10 @@
 // src/app/connect/callback/pinterest/page.js
 
 'use client';
-import { useEffect, useState, Suspense } from 'react'; // Import Suspense
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { completePinterestConnection } from '@/lib/actions';
 
-// This new component will contain the logic that uses useSearchParams
 function PinterestCallbackHandler() {
     const searchParams = useSearchParams();
     const [error, setError] = useState(null);
@@ -16,7 +15,6 @@ function PinterestCallbackHandler() {
         const state = searchParams.get('state');
 
         if (code && state) {
-            // Call the server action
             completePinterestConnection(code, state).catch(err => {
                 setError(err.message);
                 setMessage('Connection Failed');
@@ -36,12 +34,9 @@ function PinterestCallbackHandler() {
         );
     }
     
-    // On success, the server action will redirect, so this message will only be seen briefly.
     return <p>{message}</p>;
 }
 
-
-// The main page component now wraps the handler in a Suspense boundary
 export default function PinterestCallbackPage() {
     return (
         <div>
