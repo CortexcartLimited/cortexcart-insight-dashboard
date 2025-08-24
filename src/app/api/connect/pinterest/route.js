@@ -10,11 +10,18 @@ export async function GET() {
         const codeVerifier = crypto.randomBytes(32).toString('hex');
         const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
 
-        await cookies().set('pinterest_oauth_state', state, { httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
-        await cookies().set('pinterest_oauth_code_verifier', codeVerifier, { httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
+        const cookieStore = await cookies();
+        cookieStore.set('pinterest_oauth_state', state, { httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
+        cookieStore.set('pinterest_oauth_code_verifier', codeVerifier, { httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
 
-        // --- THE FIX: Ensure redirect_uri is always included ---
         const redirectUri = new URL('/connect/callback/pinterest', process.env.NEXTAUTH_URL).toString();
+
+        // --- NEW LOGGING ---
+        console.log("--- PINTEREST AUTH INITIATION ---");
+        console.log("Generated Redirect URI:", redirectUri);
+        console.log("NEXTAUTH_URL variable:", process.env.NEXTAUTH_URL);
+        console.log("-------------------------------");
+        // --- END NEW LOGGING ---
 
         const params = new URLSearchParams({
             response_type: 'code',
