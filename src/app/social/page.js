@@ -1214,16 +1214,17 @@ export default function SocialMediaManagerPage() {
             {activeTab === 'Analytics' && <AnalyticsTabContent />}
             {activeTab === 'Schedule' && (
     <ScheduleTabWithNoSSR 
-        scheduledPosts={scheduledPosts} 
-        setScheduledPosts={setScheduledPosts} 
-        // ... (pass all the other necessary props)
-        calendarDate={calendarDate}
-        setCalendarDate={setCalendarDate}
-        view={view}
-        setView={setView}
-        optimalTimes={optimalTimes}
+                    scheduledPosts={scheduledPosts} 
+                    setScheduledPosts={setScheduledPosts} 
+                    fetchScheduledPosts={fetchScheduledPosts} 
+                    calendarDate={calendarDate}
+                    setCalendarDate={setCalendarDate}
+                    view={view}
+                    setView={setView}
+                    optimalTimes={optimalTimes}
     />
 )}
+
             {activeTab === 'Demographics' && <DemographicsTabContent />} 
             {activeTab === 'Mailchimp' && <MailchimpTabContent />}
             
