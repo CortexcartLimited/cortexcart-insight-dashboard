@@ -20,7 +20,7 @@ export async function GET() {
             response_type: 'code',
             client_id: process.env.PINTEREST_CLIENT_ID,
             redirect_uri: redirectUri,
-            scope: 'boards:read pins:read user_accounts:read pins:write',
+            scope: 'boards:read pins:read user_accounts:read pins:write boards:write',
             state: state,
             code_challenge: codeChallenge,
             code_challenge_method: 'S256',
