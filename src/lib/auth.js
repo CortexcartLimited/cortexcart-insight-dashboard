@@ -121,37 +121,25 @@ export const authOptions = {
                         console.error("[AUTH] Error fetching FB Pages:", error.response?.data?.error); 
                     }
                 }
-                if (account.provider === 'pinterest') {
-    console.log("[PINTEREST AUTH] JWT callback triggered for Pinterest.");
-    try {
-        console.log("[PINTEREST AUTH] Attempting to fetch boards from Pinterest API...");
-        const boardsResponse = await axios.get('https://api.pinterest.com/v5/boards', {
-            headers: { 'Authorization': `Bearer ${account.access_token}` }
-        });
-        
-        if (boardsResponse.data && boardsResponse.data.items) {
-            console.log(`[PINTEREST AUTH] Successfully fetched ${boardsResponse.data.items.length} boards.`);
-            
-            for (const board of boardsResponse.data.items) {
-                // This inner try-catch handles errors for a single board without stopping the whole process
-                try {
-                    const boardQuery = `
-                        INSERT INTO pinterest_boards (user_email, board_id, board_name)
-                        VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE board_name = VALUES(board_name);`;
-                    await db.query(boardQuery, [token.email, board.id, board.name]);
-                    console.log(`[PINTEREST AUTH] Successfully saved/updated board: ${board.name}`);
-                } catch (dbError) {
-                    console.error(`[PINTEREST AUTH] FAILED to save board '${board.name}' to database.`, dbError);
+               if (account.provider === 'pinterest') {
+                    try {
+                        const boardsResponse = await axios.get('https://api.pinterest.com/v5/boards', {
+                            headers: { 'Authorization': `Bearer ${account.access_token}` }
+                        });
+                        
+                        if (boardsResponse.data && boardsResponse.data.items) {
+                            for (const board of boardsResponse.data.items) {
+                                await db.query(
+                                    `INSERT INTO pinterest_boards (user_email, board_id, board_name)
+                                     VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE board_name = VALUES(board_name);`,
+                                    [token.email, board.id, board.name]
+                                );
+                            }
+                        }
+                    } catch (error) {
+                        console.error("[AUTH.JS] CRITICAL: An error occurred while fetching boards from the Pinterest API.", error.response ? error.response.data : error.message);
+                    }
                 }
-            }
-        } else {
-            console.log("[PINTEREST AUTH] Fetched data, but no boards were found in the response.");
-        }
-    } catch (error) {
-        // This outer catch now safely handles errors from the main API call
-        console.error("[PINTEREST AUTH] CRITICAL: An error occurred while fetching boards from the Pinterest API.", error.response ? error.response.data : error.message);
-    }
-}
             }
             return token;
         },
