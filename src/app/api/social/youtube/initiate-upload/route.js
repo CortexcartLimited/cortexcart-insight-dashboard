@@ -25,8 +25,7 @@ export async function POST(req) {
         const refreshToken = decrypt(rows[0].refresh_token_encrypted);
         const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
         oauth2Client.setCredentials({ refresh_token: refreshToken });
-        const { token: accessToken } = await oauth2Client.getAccessToken();
-
+        
         // Initiate resumable upload with Google
         const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
         const videoResource = {
@@ -34,28 +33,26 @@ export async function POST(req) {
             status: { privacyStatus: 'private' },
         };
         
+        // --- THE FIX: Removed the `media.body` property ---
         const response = await youtube.videos.insert({
             part: 'snippet,status',
             requestBody: videoResource,
-            media: {
-                body: req.body, // This is just for the API call structure, not the actual file
-            }
+            // The media object is not needed for the initiation request,
+            // the headers are passed in the second options object.
         }, {
-             // This is the key part to get the resumable upload URL
-            headers: {
+             headers: {
                 'X-Upload-Content-Type': fileType,
                 'X-Upload-Content-Length': fileSize
             }
         });
         
         const uploadUrl = response.headers.location;
-        const videoId = response.data.id; // The video ID is available in this initial response
+        const videoId = response.data.id;
 
         if (!uploadUrl || !videoId) {
             throw new Error('Failed to get upload URL or Video ID from Google.');
         }
 
-        // Return BOTH the upload URL and the new Video ID
         return NextResponse.json({ uploadUrl, videoId });
 
     } catch (error) {
