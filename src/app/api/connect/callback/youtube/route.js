@@ -21,8 +21,12 @@ export async function GET(req) {
         console.error('YouTube Auth Error: No authorization code provided.');
         return NextResponse.redirect(new URL('/settings?error=youtube_auth_failed', req.nextUrl.origin));
     }
+    console.log(`[YouTube Connect] NEXTAUTH_URL on server is: ${process.env.NEXTAUTH_URL}`);
 
-    const redirectUri = `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`;
+       const redirectUri = process.env.NODE_ENV === 'production'
+        ? `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`
+        : 'http://localhost:3000/api/connect/callback/youtube';
+        console.log(`[YouTube Connect] Generated Redirect URI: ${redirectUri}`);
 
     const oAuth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
