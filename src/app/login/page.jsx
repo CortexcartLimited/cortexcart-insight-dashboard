@@ -35,7 +35,7 @@ export default function LoginPage() {
             className="flex items-center justify-center min-h-screen bg-cover bg-center"
             style={{ backgroundImage: "url('uploads/Gemini_Generated_Image_mpqbl4mpqbl4mpqb.webp')", backgroundSize: "cover" }}
         >
-
+<Suspense fallback={<div>Loading...</div>}>
             <Card className="w-full max-w-sm bg-white shadow-md">
                 <CardHeader className="text-center">
                     <Image src="/cortexcart-com-logo-home.png" alt="CortexCart Logo" width={320} height={100} className="mx-auto mb-4" />
@@ -68,8 +68,12 @@ export default function LoginPage() {
                     <p className="text-center text-sm text-gray-500 mt-4">App Version: {process.env.NEXT_PUBLIC_APP_VERSION}</p>
                 </CardContent>
             </Card>
+            </Suspense>
         </div>
-        </div><footer className="w-full text-center p-4 bg-blue-950 text-gray-100 text-sm">
+         
+        </div>
+       
+        <footer className="w-full text-center p-4 bg-blue-950 text-gray-100 text-sm">
                 &copy; {new Date().getFullYear()} CortexCart. All Rights Reserved.
                 <div className="flex justify-center space-x-4 mt-2">
                     <Link href="/terms" className="hover:underline">Terms of Service</Link>
