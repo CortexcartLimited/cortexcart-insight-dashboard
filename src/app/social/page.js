@@ -180,8 +180,6 @@ const handleUploadToYouTube = async () => {
         }
         
         // Get both pieces of data from our server's response
-        const { uploadUrl, videoId: newVideoId } = await initRes.json();
-        videoId = newVideoId; // Store the video ID for later
 
         // --- Step 2: Upload the video file directly to Google ---
         setPostStatus({ message: 'Step 2/3: Uploading video file...', type: 'info' });
@@ -196,7 +194,9 @@ const handleUploadToYouTube = async () => {
         if (!uploadRes.ok) {
             throw new Error('Video file upload to Google failed.');
         }
-        
+        const { uploadUrl, videoId: newVideoId } = await initRes.json();
+        videoId = newVideoId; // Store the video ID for later
+
         // --- Step 3: Set the custom thumbnail ---
         if (postImages.length > 0 && videoId) {
             setPostStatus({ message: 'Step 3/3: Setting custom thumbnail...', type: 'info' });
