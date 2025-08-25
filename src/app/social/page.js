@@ -157,9 +157,10 @@ const handleUploadToYouTube = async () => {
 
     setIsPosting(true);
     setPostStatus({ message: '', type: '' });
+    let videoId = null; // Keep track of the video ID
 
     try {
-        // --- Step 1: Get the upload URL from our server ---
+        // --- Step 1: Get the upload URL AND the new video ID from our server ---
         setPostStatus({ message: 'Step 1/3: Initializing upload...', type: 'info' });
 
         const initRes = await fetch('/api/social/youtube/initiate-upload', {
@@ -177,11 +178,13 @@ const handleUploadToYouTube = async () => {
             const errorResult = await initRes.json();
             throw new Error(errorResult.error || 'Failed to initialize upload.');
         }
-
-        const { uploadUrl } = await initRes.json();
         
+        // Get both pieces of data from our server's response
+        const { uploadUrl, videoId: newVideoId } = await initRes.json();
+        videoId = newVideoId; // Store the video ID for later
+
         // --- Step 2: Upload the video file directly to Google ---
-        setPostStatus({ message: 'Step 2/3: Uploading video...', type: 'info' });
+        setPostStatus({ message: 'Step 2/3: Uploading video file...', type: 'info' });
         
         const uploadRes = await fetch(uploadUrl, {
             method: 'PUT',
@@ -189,30 +192,30 @@ const handleUploadToYouTube = async () => {
             headers: { 'Content-Type': videoFile.type },
         });
 
+        // A successful PUT request returns a 200/201 but has NO body. We only check if it was successful.
         if (!uploadRes.ok) {
-            throw new Error('The final step of uploading the file to Google failed.');
+            throw new Error('Video file upload to Google failed.');
         }
         
-        // After a successful upload, Google's response contains the new video's data
-        const videoData = await uploadRes.json();
-        const newVideoId = videoData.id;
-
-        // --- Step 3: Set the custom thumbnail (if one exists) ---
-        if (postImages.length > 0 && newVideoId) {
+        // --- Step 3: Set the custom thumbnail ---
+        if (postImages.length > 0 && videoId) {
             setPostStatus({ message: 'Step 3/3: Setting custom thumbnail...', type: 'info' });
-            await fetch('/api/social/youtube/set-thumbnail', {
+            const thumbRes = await fetch('/api/social/youtube/set-thumbnail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    videoId: newVideoId, // Use the ID we just received
+                    videoId: videoId,
                     imageUrl: postImages[0].image_url,
                 }),
             });
+            if (!thumbRes.ok) {
+                 throw new Error('Failed to set thumbnail.');
+            }
         }
 
         setPostStatus({ message: 'Video successfully published to YouTube!', type: 'success' });
         
-        // Reset state after success
+        // Reset state
         setVideoFile(null);
         setVideoTitle('');
         setPostContent('');
@@ -225,7 +228,7 @@ const handleUploadToYouTube = async () => {
         setIsPosting(false);
     }
 };
-    const handleImageAdded = (newImage) => {
+const handleImageAdded = (newImage) => {
         setPostImages([newImage]);
     };
 
