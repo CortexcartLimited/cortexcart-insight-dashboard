@@ -157,12 +157,9 @@ const handleUploadToYouTube = async () => {
 
     setIsPosting(true);
     setPostStatus({ message: '', type: '' });
-    let videoId = null; // Keep track of the video ID
 
     try {
-        // --- Step 1: Get the upload URL AND the new video ID from our server ---
-        setPostStatus({ message: 'Step 1/3: Initializing upload...', type: 'info' });
-
+        // Step 1: Get the upload URL from our server
         const initRes = await fetch('/api/social/youtube/initiate-upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -179,26 +176,25 @@ const handleUploadToYouTube = async () => {
             throw new Error(errorResult.error || 'Failed to initialize upload.');
         }
         
-        // Get both pieces of data from our server's response
+        const { uploadUrl } = await initRes.json();
 
-        // --- Step 2: Upload the video file directly to Google ---
-        setPostStatus({ message: 'Step 2/3: Uploading video file...', type: 'info' });
-        
+        // Step 2: Upload the video file directly to Google
         const uploadRes = await fetch(uploadUrl, {
             method: 'PUT',
             body: videoFile,
             headers: { 'Content-Type': videoFile.type },
         });
 
-        // A successful PUT request returns a 200/201 but has NO body. We only check if it was successful.
         if (!uploadRes.ok) {
             throw new Error('Video file upload to Google failed.');
         }
-        const { uploadUrl, videoId: newVideoId } = await initRes.json();
-        videoId = newVideoId; // Store the video ID for later
+        
+        // --- THE FIX: Get the videoId from the FINAL response ---
+        const videoData = await uploadRes.json();
+        const newVideoId = videoData.id;
 
         // --- Step 3: Set the custom thumbnail ---
-        if (postImages.length > 0 && videoId) {
+        if (postImages.length > 0 && newVideoId) {
             setPostStatus({ message: 'Step 3/3: Setting custom thumbnail...', type: 'info' });
             const thumbRes = await fetch('/api/social/youtube/set-thumbnail', {
                 method: 'POST',
