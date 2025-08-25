@@ -192,7 +192,7 @@ const handleUploadToYouTube = async () => {
         // --- THE FIX: Get the videoId from the FINAL response ---
         const videoData = await uploadRes.json();
         const newVideoId = videoData.id;
-
+        
         // --- Step 3: Set the custom thumbnail ---
         if (postImages.length > 0 && newVideoId) {
             setPostStatus({ message: 'Step 3/3: Setting custom thumbnail...', type: 'info' });
