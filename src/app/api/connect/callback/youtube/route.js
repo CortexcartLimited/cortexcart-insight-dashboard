@@ -22,8 +22,7 @@ export async function GET(req) {
         return NextResponse.redirect(new URL('/settings?error=youtube_auth_failed', req.nextUrl.origin));
     }
 
-    const redirectUri = process.env.NODE_ENV === 'production'
-        ? `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube` : 'http://localhost:3000/api/connect/callback/youtube';
+    const redirectUri = `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`;
 
     const oAuth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
