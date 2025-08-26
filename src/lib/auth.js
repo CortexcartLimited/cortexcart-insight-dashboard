@@ -6,12 +6,41 @@ import PinterestProvider from "next-auth/providers/pinterest";
 import { db } from '@/lib/db';
 import axios from 'axios';
 import { encrypt, decrypt } from '@/lib/crypto';
+import bcrypt from 'bcryptjs';
+import CredentialsProvider from "next-auth/providers/credentials";
 /** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
     adapter: undefined,
       debug: process.env.NODE_ENV !== 'production',
 
     providers: [
+        CredentialsProvider({
+            name: 'Credentials',
+            credentials: {
+                email: { label: "Email", type: "text" },
+                password: { label: "Password", type: "password" }
+            },
+            async authorize(credentials) {
+                if (!credentials?.email || !credentials?.password) {
+                    return null;
+                }
+                
+                try {
+                    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [credentials.email]);
+                    if (rows.length === 0) return null; // User not found
+                    
+                    const user = rows[0];
+                    const passwordMatch = await bcrypt.compare(credentials.password, user.password_hash);
+
+                    if (!passwordMatch) return null; // Incorrect password
+                    
+                    return { id: user.id, email: user.email, name: user.name };
+                } catch (error) {
+                    console.error("Credentials auth error:", error);
+                    return null;
+                }
+            }
+        }),
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
