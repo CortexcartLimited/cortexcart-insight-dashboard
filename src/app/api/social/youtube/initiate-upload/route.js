@@ -13,7 +13,10 @@ export async function POST(req) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const videoMetadata = await req.json(); // <-- This is the correct variable name
+        // The incoming data is correctly parsed into this variable
+        const videoMetadata = await req.json(); 
+
+        // --- THE FIX: Use the correct variable name 'videoMetadata' ---
         const { title, description, fileSize, fileType } = videoMetadata;
 
         if (!title || !fileSize || !fileType) {
@@ -34,6 +37,7 @@ export async function POST(req) {
             throw new Error('Failed to retrieve access token.');
         }
 
+        // Use a direct fetch call to initiate the resumable upload
         const response = await fetch('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', {
             method: 'POST',
             headers: {
