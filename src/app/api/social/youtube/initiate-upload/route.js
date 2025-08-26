@@ -13,6 +13,8 @@ export async function POST(req) {
 
     try {
         const { title, description, fileSize, fileType } = await req.json();
+        console.log("Backend received initiate-upload request with body:", body);
+
         if (!title || !fileSize || !fileType) {
             return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
         }
