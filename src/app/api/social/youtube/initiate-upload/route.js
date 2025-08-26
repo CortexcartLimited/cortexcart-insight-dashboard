@@ -25,46 +25,39 @@ export async function POST(req) {
         const refreshToken = decrypt(rows[0].refresh_token_encrypted);
         const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
         oauth2Client.setCredentials({ refresh_token: refreshToken });
-        const { token: accessToken } = await oauth2Client.getAccessToken();
-
-        if (!accessToken) {
-            throw new Error('Failed to retrieve access token.');
-        }
-
-        // --- THE FIX: Use a direct fetch call for more control ---
-        const videoMetadata = {
+        
+        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+        const videoResource = {
             snippet: { title, description },
             status: { privacyStatus: 'private' },
         };
-
-        const response = await fetch('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json; charset=UTF-8',
+        
+        // This initial request to the YouTube API gets us the resumable upload URL and the video ID
+        const response = await youtube.videos.insert({
+            part: 'snippet,status',
+            requestBody: videoResource,
+            media: {
+                body: ' ', // A placeholder body is required by the library for this call
+            }
+        }, {
+             headers: {
                 'X-Upload-Content-Type': fileType,
-                'X-Upload-Content-Length': fileSize.toString(),
-            },
-            body: JSON.stringify(videoMetadata),
+                'X-Upload-Content-Length': fileSize
+            }
         });
+        
+        const uploadUrl = response.headers.location;
+        const videoId = response.data.id; // The video ID is available in this initial response
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || `Google API responded with status ${response.status}`);
-        }
-        
-        const uploadUrl = response.headers.get('Location');
-        // The video ID is not in the response body for this request, it comes after the PUT upload
-        // We will need to adjust the frontend to handle this.
-        
-        if (!uploadUrl) {
-            throw new Error('Could not get YouTube upload URL from Google\'s response headers.');
+        if (!uploadUrl || !videoId) {
+            throw new Error('Failed to get upload URL or Video ID from Google.');
         }
 
-        return NextResponse.json({ uploadUrl });
+        // Return BOTH the upload URL and the new Video ID
+        return NextResponse.json({ uploadUrl, videoId });
 
     } catch (error) {
-        console.error("CRITICAL Error in initiate-upload:", error.message);
+        console.error("CRITICAL Error in initiate-upload:", error.response ? error.response.data.error : error.message);
         return NextResponse.json({ error: 'Failed to initiate YouTube upload.' }, { status: 500 });
     }
 }
