@@ -18,7 +18,6 @@ import LiveVisitorCount from '@/app/components/LiveVisitorCount';
 import SkeletonCard from '@/app/components/SkeletonCard';
 import Ga4LineChart from '@/app/components/Ga4LineChart';
 import PerformanceScore from '@/app/components/PerformanceScore';
-//import OnboardingModal from '@/app/components/OnboardingModal';
 import VisitorMap from '@/app/components/VisitorMap';
 
 const currencySymbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$' };
@@ -64,12 +63,7 @@ export default function DashboardPage() {
 
   const siteId = session?.user?.email;
 
-    useEffect(() => {
-        if (status === 'authenticated' && session?.user && !session.user.onboarding_completed) {
-            setIsOnboardingOpen(true);
-        }
-    }, [status, session]);
-
+    
     
 
     // ✅ FIXED: Main data fetching logic is now correctly wrapped in useEffect
@@ -186,7 +180,7 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-                {/* <OnboardingModal /> */}
+               
 
       <div className="space-y-4 mb-6 bg-grey-200">
         {alerts.map((alert) => (
