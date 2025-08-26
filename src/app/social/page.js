@@ -160,6 +160,13 @@ const handleUploadToYouTube = async () => {
     let videoId = null; // Keep track of the video ID
 
     try {
+        
+         console.log("Preparing to upload. File details:", { 
+            name: videoFile.name, 
+            size: videoFile.size, 
+            type: videoFile.type // This is the value we need to check
+        });
+
         // --- Step 1: Get the upload URL AND the new video ID from our server ---
         setPostStatus({ message: 'Step 1/3: Initializing upload...', type: 'info' });
 
