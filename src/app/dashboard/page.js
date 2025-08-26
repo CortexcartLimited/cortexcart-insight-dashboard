@@ -18,7 +18,7 @@ import LiveVisitorCount from '@/app/components/LiveVisitorCount';
 import SkeletonCard from '@/app/components/SkeletonCard';
 import Ga4LineChart from '@/app/components/Ga4LineChart';
 import PerformanceScore from '@/app/components/PerformanceScore';
-import OnboardingModal from '@/app/components/OnboardingModal';
+//import OnboardingModal from '@/app/components/OnboardingModal';
 import VisitorMap from '@/app/components/VisitorMap';
 
 const currencySymbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$' };
@@ -31,8 +31,8 @@ const DataSourceToggle = ({ dataSource, setDataSource }) => (
 );
 
 export default function DashboardPage() {
-  const { data: session, status, update } = useSession();
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const { data: session, status } = useSession();
+
   // State for CortexCart data
   const [stats, setStats] = useState(null);
   const [chartApiData, setChartApiData] = useState([]);
@@ -70,10 +70,7 @@ export default function DashboardPage() {
         }
     }, [status, session]);
 
-    const handleOnboardingComplete = () => {
-        setIsOnboardingOpen(false);
-        update(); // This call will now work correctly
-    };
+    
 
     // ✅ FIXED: Main data fetching logic is now correctly wrapped in useEffect
     useEffect(() => {
@@ -189,11 +186,7 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-                 <OnboardingModal 
-                isOpen={isOnboardingOpen} 
-                onComplete={handleOnboardingComplete} 
-                siteId={session?.user?.site_id}
-            />
+                {/* <OnboardingModal /> */}
 
       <div className="space-y-4 mb-6 bg-grey-200">
         {alerts.map((alert) => (

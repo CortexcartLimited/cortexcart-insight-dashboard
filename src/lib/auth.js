@@ -5,7 +5,7 @@ import FacebookProvider from "next-auth/providers/facebook";
 import PinterestProvider from "next-auth/providers/pinterest";
 import { db } from '@/lib/db';
 import axios from 'axios';
-import { encrypt, decrypt } from '@/lib/crypto';
+import { encrypt } from '@/lib/crypto';
 import bcrypt from 'bcryptjs';
 import CredentialsProvider from "next-auth/providers/credentials";
 /** @type {import('next-auth').AuthOptions} */
