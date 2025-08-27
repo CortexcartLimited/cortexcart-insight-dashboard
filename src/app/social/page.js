@@ -1,4 +1,5 @@
 'use client';
+import UploadProgressModal from '@/app/components/UploadProgressModal'
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -125,6 +126,9 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [videoFile, setVideoFile] = useState(null);
     const [videoTitle, setVideoTitle] = useState('');
     const [privacyStatus, setPrivacyStatus] = useState('private');
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadMessage, setUploadMessage] = useState('');
 
 useEffect(() => {
         // This logic runs ONLY when the selected platform changes.
@@ -150,92 +154,76 @@ useEffect(() => {
     }
 };
 const handleUploadToYouTube = async () => {
-    if (!videoFile || !videoTitle) {
-        setPostStatus({ message: 'A video file and title are required.', type: 'error' });
-        return;
-    }
-
-    setIsPosting(true);
-    setPostStatus({ message: '', type: '' });
-    let videoId = null; // Keep track of the video ID
-
-    try {
-        
-         console.log("Preparing to upload. File details:", { 
-            name: videoFile.name, 
-            size: videoFile.size, 
-            type: videoFile.type // This is the value we need to check
-        });
-
-        // --- Step 1: Get the upload URL AND the new video ID from our server ---
-        setPostStatus({ message: 'Step 1/3: Initializing upload...', type: 'info' });
-
-        const initRes = await fetch('/api/social/youtube/initiate-upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: videoTitle,
-                description: postContent,
-                fileSize: videoFile.size,
-                fileType: videoFile.type,
-            }),
-        });
-
-        if (!initRes.ok) {
-            const errorResult = await initRes.json();
-            throw new Error(errorResult.error || 'Failed to initialize upload.');
+        if (!videoFile || !videoTitle) {
+            setPostStatus({ message: 'A video file and title are required.', type: 'error' });
+            return;
         }
         
-        const { uploadUrl, videoId: newVideoId } = await initRes.json();
-        videoId = newVideoId;
+        setIsUploading(true);
+        setUploadProgress(0);
+        setUploadMessage('Preparing upload...');
 
-        // --- Step 2: Upload the video file directly to Google ---
-        setPostStatus({ message: 'Step 2/3: Uploading video file...', type: 'info' });
-        
-        const uploadRes = await fetch(uploadUrl, {
-            method: 'PUT',
-            body: videoFile,
-            headers: { 'Content-Type': videoFile.type },
-        });
+        try {
+            const formData = new FormData();
+            formData.append('video', videoFile);
+            formData.append('title', videoTitle);
+            formData.append('description', postContent);
+            formData.append('privacyStatus', privacyStatus);
 
-        // A successful PUT request returns a 200/201 but has NO body.
-        // We only check if it was successful, we DO NOT call .json().
-        if (!uploadRes.ok) {
-            throw new Error('Video file upload to Google failed.');
-        }
-        
-        // --- Step 3: Set the custom thumbnail ---
-        if (postImages.length > 0 && videoId) {
-            setPostStatus({ message: 'Step 3/3: Setting custom thumbnail...', type: 'info' });
-            const thumbRes = await fetch('/api/social/youtube/set-thumbnail', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    videoId: videoId,
-                    imageUrl: postImages[0].image_url,
-                }),
-            });
-            if (!thumbRes.ok) {
-                 throw new Error('Failed to set thumbnail.');
+            if (postImages.length > 0 && postImages[0].image_url) {
+                const response = await fetch(postImages[0].image_url);
+                if (!response.ok) throw new Error('Failed to load thumbnail image.');
+                const blob = await response.blob();
+                formData.append('thumbnail', blob, 'thumbnail.jpg');
             }
+
+            // This Promise wraps the XMLHttpRequest to handle the upload
+            const result = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                // Listen for progress events
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        setUploadProgress(percentComplete);
+                        setUploadMessage('Uploading video file...');
+                    }
+                });
+
+                // Handle successful upload
+                xhr.onload = () => {
+                    setUploadMessage('Processing video and setting thumbnail...');
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        reject(new Error(xhr.statusText));
+                    }
+                };
+
+                // Handle errors
+                xhr.onerror = () => {
+                    reject(new Error('Upload failed. Please check your network connection.'));
+                };
+
+                xhr.open('POST', '/api/social/youtube/upload-video', true);
+                xhr.send(formData);
+            });
+
+            setPostStatus({ message: result.message, type: 'success' });
+            setVideoFile(null);
+            setVideoTitle('');
+            setPostContent('');
+            setPostImages([]);
+
+        } catch (err) {
+            setPostStatus({ message: err.message, type: 'error' });
+            console.error("YouTube upload process failed:", err);
+        } finally {
+            setIsUploading(false);
         }
-
-        setPostStatus({ message: 'Video successfully published to YouTube!', type: 'success' });
-        
-        setVideoFile(null);
-        setVideoTitle('');
-        setPostContent('');
-        setPostImages([]);
-
-    } catch (err) {
-        setPostStatus({ message: err.message, type: 'error' });
-        console.error("YouTube upload process failed:", err);
-    } finally {
-        setIsPosting(false);
-    }
-};
-
-const handleImageAdded = (newImage) => {
+    };
+    
+    const handleImageAdded = (newImage) => {
         setPostImages([newImage]);
     };
 
@@ -355,7 +343,11 @@ const handleImageAdded = (newImage) => {
 
     return (
         <>
-         
+          <UploadProgressModal 
+                isOpen={isUploading} 
+                progress={uploadProgress} 
+                message={uploadMessage} 
+            />
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
                         <div className="flex items-center border-b pb-4 overflow-x-auto whitespace-nowrap">
