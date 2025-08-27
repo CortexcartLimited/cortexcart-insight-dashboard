@@ -33,7 +33,7 @@ export async function POST(req) {
         const refreshToken = decrypt(rows[0].refresh_token_encrypted);
 
         // --- Step 1: Refresh the Access Token ---
-        const tokenResponse = await axios.post('https://api.pinterest.com/v5/oauth/token', new URLSearchParams({
+        const tokenResponse = await axios.post('https://api.sandbox.pinterest.com/v5/oauth/token', new URLSearchParams({
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
         }), {
