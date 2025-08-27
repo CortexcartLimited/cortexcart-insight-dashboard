@@ -1,79 +1,64 @@
-
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { encrypt } from '@/lib/crypto';
+import { encrypt } from '@/lib/crypto'; // Using the new encrypt function
 
 export async function GET(req) {
-    const url = new URL(req.url);
-    const code = url.searchParams.get('code');
-    const error = url.searchParams.get('error');
-
-    // Handle cases where the user denies access
-    if (error) {
-        console.error('YouTube Auth Error: User denied access.', error);
-        return NextResponse.redirect(new URL('/settings?error=youtube_access_denied', req.nextUrl.origin));
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        // Not authorized
+        return NextResponse.redirect('/login');
     }
-    
+
+    const { searchParams } = new URL(req.url);
+    const code = searchParams.get('code');
+
     if (!code) {
-        console.error('YouTube Auth Error: No authorization code provided.');
-        return NextResponse.redirect(new URL('/settings?error=youtube_auth_failed', req.nextUrl.origin));
+        // Handle error if no code is provided
+        const errorRedirectUrl = new URL('/settings', process.env.NEXTAUTH_URL);
+        errorRedirectUrl.searchParams.set('error', 'YouTube connection failed: Authorization code not found.');
+        return NextResponse.redirect(errorRedirectUrl);
     }
-    console.log(`[YouTube Connect] NEXTAUTH_URL on server is: ${process.env.NEXTAUTH_URL}`);
-
-       const redirectUri = process.env.NODE_ENV === 'production'
-        ? `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`
-        : 'http://localhost:3000/api/connect/callback/youtube';
-        console.log(`[YouTube Connect] Generated Redirect URI: ${redirectUri}`);
-
-    const oAuth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        redirectUri
-    );
 
     try {
-        // --- Step 1: Exchange code for tokens ---
-        console.log("Attempting to get YouTube tokens with code:", code);
-        const { tokens } = await oAuth2Client.getToken(code);
-        oAuth2Client.setCredentials(tokens);
-        console.log("Successfully received YouTube tokens.");
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            // This redirect URI must EXACTLY match the one in your Google Cloud Console
+            `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`
+        );
 
-        // --- Step 2: Get user session ---
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user || !session.user.email) {
-            console.error("YouTube Auth Error: No active user session found.");
-            return NextResponse.redirect(new URL('/login?error=session_expired', req.nextUrl.origin));
-        }
+        const { tokens } = await oauth2Client.getToken(code);
         
-        const userEmail = session.user.email;
-        const accessToken = tokens.access_token;
-        const refreshToken = tokens.refresh_token;
-        const expiryDate = new Date(tokens.expiry_date);
+        // Encrypt the refresh token before storing it
+        const encryptedRefreshToken = encrypt(tokens.refresh_token);
 
-        // --- Step 3: Save tokens to the database ---
-        try {
-            console.log(`Saving YouTube tokens for user: ${userEmail}`);
-            await db.query(
-                `INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
-                 VALUES (?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE access_token_encrypted = VALUES(access_token_encrypted), refresh_token_encrypted = VALUES(refresh_token_encrypted), expires_at = VALUES(expires_at)`,
-                [userEmail, 'youtube', encrypt(accessToken), refreshToken ? encrypt(refreshToken) : null, expiryDate]
-            );
-            console.log("Successfully saved YouTube tokens to DB.");
-        } catch (dbError) {
-            console.error("CRITICAL: Failed to save YouTube tokens to database.", dbError);
-            return NextResponse.redirect(new URL('/settings?error=database_error', req.nextUrl.origin));
-        }
+        // Store the encrypted refresh token in the database
+        await db.query(
+            `INSERT INTO social_connect (user_email, platform, refresh_token_encrypted, access_token, expiry_date)
+             VALUES (?, 'youtube', ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+             refresh_token_encrypted = VALUES(refresh_token_encrypted),
+             access_token = VALUES(access_token),
+             expiry_date = VALUES(expiry_date)`,
+            [session.user.email, encryptedRefreshToken, tokens.access_token, tokens.expiry_date]
+        );
 
-        // --- Step 4: Redirect on success ---
-        return NextResponse.redirect(new URL('/settings?success=youtube_connected', req.nextUrl.origin));
+        // --- THE FIX ---
+        // Dynamically create the success URL using the environment variable
+        const successRedirectUrl = new URL('/settings', process.env.NEXTAUTH_URL);
+        successRedirectUrl.searchParams.set('success', 'true');
+        successRedirectUrl.searchParams.set('platform', 'youtube');
+        
+        return NextResponse.redirect(successRedirectUrl);
 
-    } catch (tokenError) {
-        // This will catch errors from oAuth2Client.getToken(code)
-        console.error("CRITICAL: Failed to exchange authorization code for YouTube tokens.", tokenError.response?.data || tokenError.message);
-        return NextResponse.redirect(new URL('/settings?error=youtube_token_exchange_failed', req.nextUrl.origin));
+    } catch (error) {
+        console.error('Error during YouTube OAuth callback:', error);
+        // Also use the environment variable for the error redirect
+        const errorRedirectUrl = new URL('/settings', process.env.NEXTAUTH_URL);
+        errorRedirectUrl.searchParams.set('error', 'Failed to connect YouTube account.');
+        return NextResponse.redirect(errorRedirectUrl);
     }
 }
