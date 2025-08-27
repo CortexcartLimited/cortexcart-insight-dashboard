@@ -1,37 +1,57 @@
+import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { db } from '@/lib/db';import { NextResponse } from 'next/server';
-import { encrypt } from '@/lib/crypto'; // We'll use our existing encryption utility
+import { db } from '@/lib/db';
+import { NextResponse } from 'next/server';
 
-export async function POST(request) {
+export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
+    // The client will automatically find the credentials from the environment variable
+    const analyticsDataClient = new BetaAnalyticsDataClient();
+
     try {
-        const { propertyId, jsonKey } = await request.json();
-        if (!propertyId || !jsonKey) {
-            return NextResponse.json({ message: 'GA4 Property ID and JSON Key are required.' }, { status: 400 });
+        const [connections] = await db.query(
+            'SELECT ga4_property_id FROM ga4_connections WHERE user_email = ?',
+            [session.user.email]
+        );
+        const propertyId = connections[0]?.ga4_property_id;
+
+        if (!propertyId) {
+            throw new Error("Your GA4 Property ID has not been set. Please add it in the Settings > Integrations tab.");
         }
 
-        // Encrypt the sensitive JSON key content before saving
-        const encryptedJsonKey = encrypt(JSON.stringify(jsonKey));
+        const [response] = await analyticsDataClient.runReport({
+            property: `properties/${propertyId}`,
+            dateRanges: [{ startDate: '28daysAgo', endDate: 'today' }],
+            metrics: [
+                { name: 'totalUsers' },
+                { name: 'screenPageViews' },
+                { name: 'sessions' },
+                { name: 'conversions' },
+            ],
+        });
 
-        const query = `
-            INSERT INTO ga4_connections (user_email, property_id, credentials_json)
-            VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                property_id = VALUES(property_id), 
-                credentials_json = VALUES(credentials_json);
-        `;
-        
-        await db.query(query, [session.user.email, propertyId, encryptedJsonKey]);
+        const ga4Stats = {
+            users: 0,
+            pageviews: 0,
+            sessions: 0,
+            conversions: 0,
+        };
 
-        return NextResponse.json({ message: 'Google Analytics credentials saved successfully.' }, { status: 200 });
+        if (response.rows && response.rows.length > 0) {
+            ga4Stats.users = parseInt(response.rows[0].metricValues[0].value, 10);
+            ga4Stats.pageviews = parseInt(response.rows[0].metricValues[1].value, 10);
+            ga4Stats.sessions = parseInt(response.rows[0].metricValues[2].value, 10);
+            ga4Stats.conversions = parseInt(response.rows[0].metricValues[3].value, 10);
+        }
 
+        return NextResponse.json(ga4Stats, { status: 200 });
     } catch (error) {
-        console.error('Error saving GA4 credentials:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        console.error('Error fetching GA4 data:', error);
+        return NextResponse.json({ message: `Failed to fetch GA4 data: ${error.message}` }, { status: 500 });
     }
 }
