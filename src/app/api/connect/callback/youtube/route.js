@@ -37,13 +37,13 @@ export async function GET(req) {
 
         // Store the encrypted refresh token in the database
         await db.query(
-            `INSERT INTO social_connect (user_email, platform, refresh_token_encrypted, access_token, expiry_date)
+            `INSERT INTO social_connect (user_email, platform, refresh_token_encrypted, access_token_encrypted, expiry_date)
              VALUES (?, 'youtube', ?, ?, ?)
              ON DUPLICATE KEY UPDATE
              refresh_token_encrypted = VALUES(refresh_token_encrypted),
-             access_token = VALUES(access_token),
+             access_token_encrypted = VALUES(access_token_encrypted),
              expiry_date = VALUES(expiry_date)`,
-            [session.user.email, encryptedRefreshToken, tokens.access_token, tokens.expiry_date]
+            [session.user.email, encryptedRefreshToken, tokens.access_token_encrypted, tokens.expiry_date]
         );
 
         // --- THE FIX ---
