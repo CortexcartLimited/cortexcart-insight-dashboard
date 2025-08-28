@@ -4,7 +4,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import FacebookProvider from 'next-auth/providers/facebook';
 import TwitterProvider from 'next-auth/providers/twitter';
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from 'bcrypt';
+import { compare } from 'bcryptjs';
 
 export const authOptions = {
     pages: {
