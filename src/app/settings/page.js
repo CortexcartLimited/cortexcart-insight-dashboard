@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect, useCallback } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import Layout from '@/app/components/Layout';
 import SettingsTabs from '@/app/components/SettingsTabs';
 import { CheckCircleIcon, ClipboardDocumentIcon } from '@heroicons/react/24/solid';
@@ -118,6 +118,17 @@ const GeneralTabContent = () => {
         </div>
     );
 };
+
+const handlePinterestConnect = () => {
+        // Define the full scope that Pinterest requires
+        const pinterestScope = 'pins:read, boards:read, user_accounts:read';
+
+        // Pass the scope explicitly in the third argument of the signIn function
+        signIn('pinterest', 
+            { callbackUrl: '/settings' }, 
+            { scope: pinterestScope }
+        );
+    };
 
 // --- Integrations Settings Component ---
 const IntegrationsTabContent = () => {

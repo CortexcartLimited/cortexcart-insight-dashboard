@@ -11,7 +11,7 @@
 !.yarn/versions
 # PM2 configuration
 ecosystem.config.js
-
+/backup files
 # testing
 /coverage
 
