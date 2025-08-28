@@ -62,7 +62,7 @@ export const authOptions = {
         FacebookProvider({
             clientId: process.env.FACEBOOK_CLIENT_ID,
             clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-            scope: 'email,public_profile',
+            scope: 'email,public_profile,instagram_basic',
         }),
          PinterestProvider({
             clientId: process.env.PINTEREST_CLIENT_ID,
