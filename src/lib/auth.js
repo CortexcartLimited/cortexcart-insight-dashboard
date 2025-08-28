@@ -5,7 +5,7 @@ import FacebookProvider from 'next-auth/providers/facebook';
 import TwitterProvider from 'next-auth/providers/twitter';
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from 'bcryptjs';
-
+/** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
     pages: {
         signIn: '/login',
