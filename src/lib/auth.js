@@ -83,36 +83,54 @@ export const authOptions = {
     },
     callbacks: {
         async signIn({ user, account }) {
+                  // --- DEBUGGING ---
+      console.log("NextAuth SignIn Callback Triggered");
+      console.log("Provider:", account.provider);
+      console.log("User Object:", user);
+      console.log("Profile Object:", profile);
+                  // --- END DEBUGGING ---
     let { email, name } = user;
 
     // Existing fallback for Twitter
     if (account.provider === 'twitter' && !email) {
         email = `${user.id}@users.twitter.com`;
     }
-        if (account.provider === 'pinterest' && !email) {
-        // Pinterest doesn't provide an email, so we create a unique pseudo-email
-        email = `${user.id}@users.pinterest.com`;
-        // We also need to add this email back to the user object for the next steps
-        user.email = email;
-    }
+      if (account.provider === 'pinterest' && !userEmail) {
+                console.log("Pinterest user has no email. Creating a placeholder.");
+                // Use the user's unique ID from Pinterest to create a fake email.
+                userEmail = `${user.id}@users.pinterest.com`;
+                // IMPORTANT: We must update the top-level user object so the session gets the new email.
+                user.email = userEmail;
+            }
 
-    if (!email) {
-        console.error(`Sign-in denied for provider ${account.provider}: email not available.`);
-        return false;
-    }
-    
-    try {
-        const [userResult] = await db.query('SELECT * FROM sites WHERE user_email = ?', [email]);
-        if (userResult.length === 0) {
-            await db.query('INSERT INTO sites (user_email, site_name) VALUES (?, ?)', [email, `${name}'s Site`]);
-        }
-    } catch (error) {
-        console.error("DB Error during signIn:", error);
-        return false;
-    }
-    
-    return true;
-},
+            // --- General Logic for All Providers ---
+            // If after all that, we still don't have an email, we can't proceed.
+            if (!userEmail) {
+                console.error(`Sign-in denied for ${account.provider}. Email not available.`);
+                return false; // This will stop the login and show an error.
+            }
+
+            // --- Database Interaction ---
+            // Now we can safely interact with the database.
+            try {
+                // Check if a user with this email already exists in our 'sites' table.
+                const [existingUser] = await db.query('SELECT * FROM sites WHERE user_email = ?', [userEmail]);
+
+                // If they don't exist, create a new entry for them.
+                if (existingUser.length === 0) {
+                    console.log(`New user: ${userEmail}. Creating site entry.`);
+                    await db.query('INSERT INTO sites (user_email, site_name) VALUES (?, ?)', [userEmail, `${userName}'s Site`]);
+                } else {
+                    console.log(`Returning user: ${userEmail}`);
+                }
+
+                return true; // The sign-in was successful.
+            } catch (error) {
+                // If the database query fails for any reason, log the error and stop the sign-in.
+                console.error("Database error during signIn:", error);
+                return false;
+            }
+        },
 
         async jwt({ token, user, account }) {
             if (account && user) {
