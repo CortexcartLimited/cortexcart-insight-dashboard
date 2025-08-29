@@ -68,7 +68,7 @@ export const authOptions = {
         //    clientId: process.env.PINTEREST_CLIENT_ID,
         //    clientSecret: process.env.PINTEREST_CLIENT_SECRET,
         //    scope: 'boards:read, pins:read, user_accounts:read',
-        }),
+       // }),
     ],
     cookies: {
         sessionToken: {
