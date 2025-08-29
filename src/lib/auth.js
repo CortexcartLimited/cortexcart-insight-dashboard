@@ -119,7 +119,7 @@ export const authOptions = {
                 // If they don't exist, create a new entry for them.
                 if (existingUser.length === 0) {
                     console.log(`New user: ${userEmail}. Creating site entry.`);
-                    await db.query('INSERT INTO sites (user_email, site_name) VALUES (?, ?)', [userEmail, `${userName}'s Site`]);
+                await db.query('INSERT INTO sites (user_email, email, site_name) VALUES (?, ?, ?)', [userEmail, userEmail, `${userName}'s Site`]);
                 } else {
                     console.log(`Returning user: ${userEmail}`);
                 }
