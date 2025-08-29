@@ -22,8 +22,6 @@ function LoginForm() {
     // This object maps provider IDs to their button labels and icons
     const providerDetails = {
         'google': { label: 'Google & YouTube', icon: <GoogleIcon /> },
-        'facebook': { label: 'Facebook & Instagram', icon: <FacebookIcon /> },
-        'pinterest': { label: 'Pinterest', icon: <PinterestIcon /> },
          'x': { label: 'x', icon: <twitterIcon /> },
     };
 

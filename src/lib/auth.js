@@ -1,8 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
-import FacebookProvider from "next-auth/providers/facebook";
-import PinterestProvider from "next-auth/providers/pinterest";
+//import FacebookProvider from "next-auth/providers/facebook";
 import { db } from '@/lib/db';
 import axios from 'axios';
 import { encrypt } from '@/lib/crypto';
@@ -59,16 +58,6 @@ export const authOptions = {
             clientSecret: process.env.X_CLIENT_SECRET,
             version: "2.0",
         }),
-        FacebookProvider({
-            clientId: process.env.FACEBOOK_CLIENT_ID,
-            clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-            scope: 'email, public_profile',
-        }), // Removed FacebookProvider
-        // PinterestProvider({ // Removed PinterestProvider
-        //    clientId: process.env.PINTEREST_CLIENT_ID,
-        //    clientSecret: process.env.PINTEREST_CLIENT_SECRET,
-        //    scope: 'boards:read, pins:read, user_accounts:read',
-       // }),
     ],
     cookies: {
         sessionToken: {
