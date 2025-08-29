@@ -49,7 +49,7 @@ analytics-dashboard-464606-6c0947d73aab.json
 .env
 
 # Ignore auth.js
-auth.js
+
 
 # Ignore update scripts
 admin-password-reset.js
