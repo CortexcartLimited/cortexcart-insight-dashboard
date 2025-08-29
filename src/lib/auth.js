@@ -63,11 +63,11 @@ export const authOptions = {
             clientId: process.env.FACEBOOK_CLIENT_ID,
             clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
             scope: 'email, public_profile',
-        }),
-         PinterestProvider({
-            clientId: process.env.PINTEREST_CLIENT_ID,
-            clientSecret: process.env.PINTEREST_CLIENT_SECRET,
-            scope: 'boards:read, pins:read, user_accounts:read',
+        }), // Removed FacebookProvider
+        // PinterestProvider({ // Removed PinterestProvider
+        //    clientId: process.env.PINTEREST_CLIENT_ID,
+        //    clientSecret: process.env.PINTEREST_CLIENT_SECRET,
+        //    scope: 'boards:read, pins:read, user_accounts:read',
         }),
     ],
     cookies: {
@@ -95,13 +95,6 @@ export const authOptions = {
     if (account.provider === 'twitter' && !email) {
         email = `${user.id}@users.twitter.com`;
     }
-      if (account.provider === 'pinterest' && !userEmail) {
-                console.log("Pinterest user has no email. Creating a placeholder.");
-                // Use the user's unique ID from Pinterest to create a fake email.
-                userEmail = `${user.id}@users.pinterest.com`;
-                // IMPORTANT: We must update the top-level user object so the session gets the new email.
-                user.email = userEmail;
-            }
 
             // --- General Logic for All Providers ---
             // If after all that, we still don't have an email, we can't proceed.
@@ -119,7 +112,7 @@ export const authOptions = {
                 // If they don't exist, create a new entry for them.
                 if (existingUser.length === 0) {
                     console.log(`New user: ${userEmail}. Creating site entry.`);
-                await db.query('INSERT INTO sites (user_email, email, site_name) VALUES (?, ?, ?)', [userEmail, userEmail, `${userName}'s Site`]);
+                await db.query('INSERT INTO sites (user_email, email, site_name) VALUES (?, ?, ?)', [userEmail, userEmail, `${name}'s Site`]);
                 } else {
                     console.log(`Returning user: ${userEmail}`);
                 }
@@ -153,44 +146,6 @@ export const authOptions = {
                     console.error("CRITICAL ERROR saving social connection:", dbError);
                 }
 
-                if (account.provider === 'facebook') {
-                    try {
-                        const pagesResponse = await axios.get(`https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture&access_token=${account.access_token}`);
-                        if (pagesResponse.data.data) {
-                            for (const page of pagesResponse.data.data) {
-                                const pageQuery = `
-                                    INSERT INTO facebook_pages (user_email, page_id, page_name, access_token_encrypted)
-                                    VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE
-                                    page_name = VALUES(page_name), access_token_encrypted = VALUES(access_token_encrypted);`;
-                                await db.query(pageQuery, [token.email, page.id, page.name, encrypt(page.access_token)]);
-                            }
-                        }
-                    } catch (error) { 
-                        console.error("[AUTH] Error fetching FB Pages:", error.response?.data?.error); 
-                    }
-                }
-
-                // --- FIX 1: Isolate the entire Pinterest board fetching process ---
-                // If this fails, it will now log the error but will NOT crash the login process.
-                if (account.provider === 'pinterest') {
-                    try {
-                        const boardsResponse = await axios.get('https://api.pinterest.com/v5/boards', {
-                            headers: { 'Authorization': `Bearer ${account.access_token}` }
-                        });
-                        
-                        if (boardsResponse.data && boardsResponse.data.items) {
-                            for (const board of boardsResponse.data.items) {
-                                await db.query(
-                                    `INSERT INTO pinterest_boards (user_email, board_id, board_name)
-                                     VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE board_name = VALUES(board_name);`,
-                                    [token.email, board.id, board.name]
-                                );
-                            }
-                        }
-                    } catch (error) {
-                        console.error("[AUTH.JS] JWT WARNING: Could not fetch/save Pinterest boards during login.", error.response ? error.response.data : error.message);
-                    }
-                }
             }
             return token;
         },
@@ -201,16 +156,6 @@ export const authOptions = {
                 session.user.email = token.email;
                 session.user.name = token.name;
                 session.user.image = token.picture;
-            }
-
-            // --- FIX 2: Make fetching boards for the session resilient ---
-            // If the database connection fails here, it logs the error and provides an empty array, preventing a crash.
-            try {
-                const [boards] = await db.query('SELECT board_id, board_name FROM pinterest_boards WHERE user_email = ?', [token.email]);
-                session.user.pinterestBoards = boards || [];
-            } catch (error) {
-                console.error("[AUTH.JS] SESSION WARNING: Failed to attach Pinterest boards to session.", error);
-                session.user.pinterestBoards = []; // Default to an empty array on error
             }
 
             if (session.user?.email) {
