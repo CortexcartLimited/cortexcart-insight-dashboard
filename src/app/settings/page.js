@@ -195,12 +195,14 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                     const [pagesRes, igRes, activePageRes] = await Promise.all([
                         fetch('/api/social/facebook/pages'),
                         fetch('/api/social/instagram/accounts'),
-                        fetch('/api/social/facebook/active-page')
+                        fetch('/api/social/facebook/active-page'),
+                        fetch('/api/social/instagram/active-account')
                     ]);
 
                     if (pagesRes.ok) setFacebookPages(await pagesRes.json());
                     if (igRes.ok) setInstagramAccounts(await igRes.json());
                     if (activePageRes.ok) setActivePageId((await activePageRes.json()).active_facebook_page_id);
+                    if (activeIgRes.ok) setActiveInstagramId((await activeIgRes.json()).active_instagram_account_id);
                 } catch (err) { // Catch and display errors during data fetching
                     console.error("Failed to fetch connection data:", err);
                     setAlert({ show: true, message: err.message, type: 'danger' });
@@ -209,6 +211,8 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                 // If not connected, clear the data
                 setFacebookPages([]);
                 setInstagramAccounts([]);
+                setActiveInstagramId(null);
+                setActivePageId(null);
             }
         };
         fetchPageData();
@@ -231,7 +235,22 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
             setAlert({ show: true, message: err.message, type: 'danger' });
         }
     };
-
+const handleConnectInstagram = async (accountId) => {
+    setAlert({ show: false, message: '', type: 'info' });
+    try {
+        const res = await fetch('/api/social/instagram/connect-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountId: accountId })
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to connect Instagram account.');
+        setActiveInstagramId(accountId); // Update state on success
+        setAlert({ show: true, message: `Instagram account connected successfully!`, type: 'success' });
+    } catch (error) {
+        setAlert({ show: true, message: error.message, type: 'danger' });
+    }
+};
     const handleConnectPage = async (pageId) => {
         setAlert({ show: false, message: '', type: 'info' });
         try {
@@ -304,19 +323,28 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                             </div>
                             <div className="mt-4 pt-4 border-t">
                                 <h4 className="text-base font-medium text-gray-800">Your Instagram Accounts</h4>
-                                {instagramAccounts.length > 0 ? (
-                                    <ul className="mt-2 space-y-2">
-                                        {instagramAccounts.map(acc => (
-                                            <li key={acc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                                                <div className="flex items-center">
-                                                    {acc.profile_picture_url && <Image src={acc.profile_picture_url} alt={acc.username} className="h-8 w-8 rounded-full mr-3" />}
-                                                    <span className="text-sm font-medium text-gray-700">@{acc.username}</span>
-                                                </div>
-                                                <button className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50">Connect</button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : <p className="text-sm text-gray-500 mt-2">No Instagram Business accounts found. Please ensure you have connected your account on facebook business page</p>}
+                                <ul className="mt-2 space-y-2">
+    {instagramAccounts.map(acc => (
+        <li key={acc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+            <div className="flex items-center">
+                {acc.profile_picture_url && <Image src={acc.profile_picture_url} alt={acc.username} className="h-8 w-8 rounded-full mr-3" width={32} height={32} />}
+                <span className="text-sm font-medium text-gray-700">@{acc.username}</span>
+            </div>
+            {/* THIS IS THE UPDATED LOGIC */}
+            {acc.id === activeInstagramId ? (
+                <span className="flex items-center text-sm font-medium text-green-600">
+                    <CheckCircleIcon className="h-5 w-5 mr-1.5" />
+                    Active
+                </span>
+            ) : (
+                <button onClick={() => handleConnectInstagram(acc.id)} className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100">
+                    Connect
+                </button>
+            )}
+        </li>
+    ))}
+</ul>
+ ) : <p className="text-sm text-gray-500 mt-2">No Instagram Business accounts found. Please ensure you have connected your account on facebook business page</p>{'}'}
                             </div>
                         </>
                     )}
