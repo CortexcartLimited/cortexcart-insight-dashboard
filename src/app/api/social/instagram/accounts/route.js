@@ -13,6 +13,7 @@ export async function GET() {
     }
 
     try {
+        // 1. Get the user's main Facebook access token
         const [connections] = await db.query(
             'SELECT access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = ?',
             [session.user.email, 'facebook']
@@ -27,21 +28,22 @@ export async function GET() {
             throw new Error('Failed to decrypt access token.');
         }
 
-        // A single, more efficient API call to get pages with their linked Instagram accounts
+        // 2. Make a single, efficient API call to get all pages and their linked Instagram accounts
         const url = `https://graph.facebook.com/me/accounts?fields=name,picture,instagram_business_account{id,username,profile_picture_url}&access_token=${accessToken}`;
         
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.error) {
+            console.error("Facebook Graph API Error:", data.error);
             throw new Error(data.error.message);
         }
 
-        // Filter out pages that don't have an Instagram account linked
-        // and format the data for the frontend.
+        // 3. Filter out pages that don't have an Instagram account linked
+        //    and map the data to the format the frontend expects.
         const instagramAccounts = data.data
-            .filter(page => page.instagram_business_account)
-            .map(page => page.instagram_business_account);
+            .filter(page => page.instagram_business_account) // Keep only pages that have an IG account
+            .map(page => page.instagram_business_account);   // Extract just the IG account details
 
         return NextResponse.json(instagramAccounts, { status: 200 });
 
