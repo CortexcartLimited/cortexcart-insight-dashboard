@@ -7,13 +7,13 @@ import { decrypt } from '@/lib/crypto';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+    console.log("\n--- [DEBUG] Fetching Instagram Accounts ---"); // Added log
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
     try {
-        // 1. Get the user's main Facebook access token
         const [connections] = await db.query(
             'SELECT access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = ?',
             [session.user.email, 'facebook']
@@ -28,27 +28,30 @@ export async function GET() {
             throw new Error('Failed to decrypt access token.');
         }
 
-        // 2. Make a single, efficient API call to get all pages and their linked Instagram accounts
         const url = `https://graph.facebook.com/me/accounts?fields=name,picture,instagram_business_account{id,username,profile_picture_url}&access_token=${accessToken}`;
         
         const response = await fetch(url);
         const data = await response.json();
 
+        // --- ❗️ CRUCIAL DEBUG LOG ❗️ ---
+        // This will show us the exact data Facebook is sending back.
+        console.log('--- [DEBUG] Raw response from Facebook Graph API ---:', JSON.stringify(data, null, 2));
+
         if (data.error) {
-            console.error("Facebook Graph API Error:", data.error);
+            console.error("--- [DEBUG] Facebook Graph API Error ---:", data.error);
             throw new Error(data.error.message);
         }
+        
+        const instagramAccounts = (data.data || [])
+            .filter(page => page.instagram_business_account)
+            .map(page => page.instagram_business_account);
 
-        // 3. Filter out pages that don't have an Instagram account linked
-        //    and map the data to the format the frontend expects.
-        const instagramAccounts = data.data
-            .filter(page => page.instagram_business_account) // Keep only pages that have an IG account
-            .map(page => page.instagram_business_account);   // Extract just the IG account details
+        console.log(`--- [DEBUG] Found ${instagramAccounts.length} linked Instagram accounts.`); // Added log
 
         return NextResponse.json(instagramAccounts, { status: 200 });
 
     } catch (error) {
-        console.error('Error fetching Instagram accounts:', error);
+        console.error('--- [DEBUG] Error in /api/social/instagram/accounts route ---:', error);
         return NextResponse.json({ message: `Failed to fetch accounts: ${error.message}` }, { status: 500 });
     }
 }
