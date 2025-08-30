@@ -6,14 +6,14 @@ export async function GET(req) {
     const clientId = process.env.FACEBOOK_CLIENT_ID;
     const redirectUri = `${process.env.NEXTAUTH_URL}/connect/callback/facebook`;
     
-    // --- IMPORTANT: ADDED NEW PERMISSIONS ---
+    // --- CORRECTED PERMISSION SCOPE ---
     const scope = [
         'public_profile',
         'email',
         'pages_show_list',      // Allows listing the user's pages
         'pages_read_engagement',// Allows reading page content and metrics
         'instagram_basic',      // Required for getting Instagram account info
-        'instagram_manage_posts'// Optional: if you plan to post to Instagram
+        'instagram_content_publish' // CORRECT PERMISSION for publishing to Instagram
     ].join(',');
 
     const state = 'some-unique-state-string'; // It's a good practice to generate a unique and secure state for each auth request
