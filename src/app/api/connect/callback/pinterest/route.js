@@ -1,3 +1,5 @@
+// src/app/api/connect/callback/pinterest/route.js
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from '@/lib/auth';
@@ -7,8 +9,11 @@ import axios from 'axios';
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
+    // Use the reliable NEXTAUTH_URL for all redirects
+    const baseUrl = process.env.NEXTAUTH_URL;
+
     if (!session?.user?.email) {
-        return NextResponse.redirect(new URL('/login', req.url));
+        return NextResponse.redirect(new URL('/login', baseUrl));
     }
 
     const { searchParams } = new URL(req.url);
@@ -17,7 +22,7 @@ export async function GET(req) {
 
     // Security check: ensure the 'state' matches the logged-in user
     if (!code || !state || state !== session.user.email) {
-        const errorUrl = new URL('/settings', req.url);
+        const errorUrl = new URL('/settings', baseUrl); // Use baseUrl
         errorUrl.searchParams.set('error', 'Pinterest connection failed: Invalid state.');
         return NextResponse.redirect(errorUrl);
     }
@@ -27,7 +32,7 @@ export async function GET(req) {
         const tokenResponse = await axios.post('https://api.pinterest.com/v5/oauth/token', new URLSearchParams({
             grant_type: 'authorization_code',
             code: code,
-            redirect_uri: `${process.env.NEXTAUTH_URL}/api/connect/callback/pinterest`,
+            redirect_uri: `${baseUrl}/api/connect/callback/pinterest`, // Use baseUrl
         }), {
             headers: {
                 'Authorization': `Basic ${Buffer.from(`${process.env.PINTEREST_CLIENT_ID}:${process.env.PINTEREST_CLIENT_SECRET}`).toString('base64')}`,
@@ -64,13 +69,13 @@ export async function GET(req) {
         }
 
         // 3. Redirect back to settings with a success message
-        const successUrl = new URL('/settings', req.url);
+        const successUrl = new URL('/settings', baseUrl); // Use baseUrl
         successUrl.searchParams.set('success', 'pinterest-connected');
         return NextResponse.redirect(successUrl);
 
     } catch (error) {
         console.error("Pinterest callback error:", error.response ? error.response.data : error.message);
-        const errorUrl = new URL('/settings', req.url);
+        const errorUrl = new URL('/settings', baseUrl); // Use baseUrl
         errorUrl.searchParams.set('error', 'Failed to get Pinterest tokens.');
         return NextResponse.redirect(errorUrl);
     }
