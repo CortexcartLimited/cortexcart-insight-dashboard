@@ -7,11 +7,9 @@ import { randomBytes } from 'crypto';
 export async function GET() {
     const clientId = process.env.FACEBOOK_CLIENT_ID;
     const redirectUri = `${process.env.NEXTAUTH_URL}/connect/callback/facebook`;
-
-    // 1. Generate a secure, random state
+    
     const state = randomBytes(16).toString('hex');
 
-    // 2. Store the state in a secure, httpOnly cookie
     cookies().set('facebook_oauth_state', state, {
         path: '/',
         secure: process.env.NODE_ENV === 'production',
@@ -20,13 +18,15 @@ export async function GET() {
         sameSite: 'lax',
     });
 
+    // --- FINAL PERMISSION SCOPE ---
     const scope = [
         'public_profile',
         'email',
         'pages_show_list',
         'pages_read_engagement',
         'instagram_basic',
-        'instagram_content_publish'
+        'instagram_content_publish',
+        'business_management' // Added this crucial permission
     ].join(',');
 
     const facebookAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&response_type=code`;
