@@ -1,8 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
-import FacebookProvider from "next-auth/providers/facebook";
-import PinterestProvider from "next-auth/providers/pinterest";
 import { db } from '@/lib/db';
 import axios from 'axios';
 import { encrypt } from '@/lib/crypto';
@@ -59,16 +57,6 @@ export const authOptions = {
             clientSecret: process.env.X_CLIENT_SECRET,
             version: "2.0",
         }),
-        FacebookProvider({
-            clientId: process.env.FACEBOOK_CLIENT_ID,
-            clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-            scope: 'email, public_profile',
-        }),
-         PinterestProvider({
-            clientId: process.env.PINTEREST_CLIENT_ID,
-            clientSecret: process.env.PINTEREST_CLIENT_SECRET,
-            scope: 'boards:read, pins:read, user_accounts:read',
-        }),
     ],
     cookies: {
         sessionToken: {
@@ -88,12 +76,6 @@ export const authOptions = {
     // Existing fallback for Twitter
     if (account.provider === 'twitter' && !email) {
         email = `${user.id}@users.twitter.com`;
-    }
-        if (account.provider === 'pinterest' && !email) {
-        // Pinterest doesn't provide an email, so we create a unique pseudo-email
-        email = `${user.id}@users.pinterest.com`;
-        // We also need to add this email back to the user object for the next steps
-        user.email = email;
     }
 
     if (!email) {
@@ -152,27 +134,6 @@ export const authOptions = {
                     }
                 }
 
-                // --- FIX 1: Isolate the entire Pinterest board fetching process ---
-                // If this fails, it will now log the error but will NOT crash the login process.
-                if (account.provider === 'pinterest') {
-                    try {
-                        const boardsResponse = await axios.get('https://api.pinterest.com/v5/boards', {
-                            headers: { 'Authorization': `Bearer ${account.access_token}` }
-                        });
-                        
-                        if (boardsResponse.data && boardsResponse.data.items) {
-                            for (const board of boardsResponse.data.items) {
-                                await db.query(
-                                    `INSERT INTO pinterest_boards (user_email, board_id, board_name)
-                                     VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE board_name = VALUES(board_name);`,
-                                    [token.email, board.id, board.name]
-                                );
-                            }
-                        }
-                    } catch (error) {
-                        console.error("[AUTH.JS] JWT WARNING: Could not fetch/save Pinterest boards during login.", error.response ? error.response.data : error.message);
-                    }
-                }
             }
             return token;
         },
@@ -183,16 +144,6 @@ export const authOptions = {
                 session.user.email = token.email;
                 session.user.name = token.name;
                 session.user.image = token.picture;
-            }
-
-            // --- FIX 2: Make fetching boards for the session resilient ---
-            // If the database connection fails here, it logs the error and provides an empty array, preventing a crash.
-            try {
-                const [boards] = await db.query('SELECT board_id, board_name FROM pinterest_boards WHERE user_email = ?', [token.email]);
-                session.user.pinterestBoards = boards || [];
-            } catch (error) {
-                console.error("[AUTH.JS] SESSION WARNING: Failed to attach Pinterest boards to session.", error);
-                session.user.pinterestBoards = []; // Default to an empty array on error
             }
 
             if (session.user?.email) {

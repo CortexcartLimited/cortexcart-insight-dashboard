@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import Layout from '@/app/components/Layout';
 import AlertBanner from '@/app/components/AlertBanner';
 import StatCard from '@/app/components/StatCard';
+import StatCard2 from '@/app/components/StatCard2';
 import ChartContainer from '@/app/components/ChartContainer';
 import SalesBarChart from '@/app/components/SalesBarChart';
 import RecentEventsTable from '@/app/components/RecentEventsTable';
@@ -18,7 +19,10 @@ import LiveVisitorCount from '@/app/components/LiveVisitorCount';
 import SkeletonCard from '@/app/components/SkeletonCard';
 import Ga4LineChart from '@/app/components/Ga4LineChart';
 import PerformanceScore from '@/app/components/PerformanceScore';
+import OnboardingModal from '@/app/components/OnboardingModal';
 import VisitorMap from '@/app/components/VisitorMap';
+import NewVsReturningChart from '@/app/components/NewVsReturningChart';
+import DemographicsCharts from '@/app/components/DemographicsCharts';
 
 const currencySymbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$' };
 
@@ -30,8 +34,8 @@ const DataSourceToggle = ({ dataSource, setDataSource }) => (
 );
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
-
+  const { data: session, status, update } = useSession();
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   // State for CortexCart data
   const [stats, setStats] = useState(null);
   const [chartApiData, setChartApiData] = useState([]);
@@ -46,6 +50,8 @@ export default function DashboardPage() {
   // State for GA4 data
   const [ga4Stats, setGa4Stats] = useState(null);
   const [ga4ChartData, setGa4ChartData] = useState([]);
+  const [ga4AudienceData, setGa4AudienceData] = useState(null);
+  const [ga4Demographics, setGa4Demographics] = useState(null);
 
   // General state
   const [liveVisitors, setLiveVisitors] = useState(0);
@@ -63,8 +69,16 @@ export default function DashboardPage() {
 
   const siteId = session?.user?.email;
 
-    
-    
+    useEffect(() => {
+        if (status === 'authenticated' && session?.user && !session.user.onboarding_completed) {
+            setIsOnboardingOpen(true);
+        }
+    }, [status, session]);
+
+    const handleOnboardingComplete = () => {
+        setIsOnboardingOpen(false);
+        update(); // This call will now work correctly
+    };
 
     // ✅ FIXED: Main data fetching logic is now correctly wrapped in useEffect
     useEffect(() => {
@@ -96,13 +110,15 @@ export default function DashboardPage() {
                         fetch(`/api/stats/top-referrers?siteId=${siteId}${dateParams}`),
                         fetch(`/api/site-settings?siteId=${siteId}`),
                         fetch(`/api/stats/device-types?siteId=${siteId}${dateParams}`),
+                       
+
                     ]);
 
                     for (const res of responses) {
                         if (!res.ok) throw new Error(`A data fetch failed: ${res.statusText}`);
                     }
                     
-                    const [statsData, chartData, eventsData, topPagesData, topReferrersData, settingsData, deviceTypesData] = await Promise.all(responses.map(res => res.json()));
+                    const [statsData, chartData, eventsData, topPagesData, topReferrersData, settingsData, deviceTypesData, audienceData, demographicsData] = await Promise.all(responses.map(res => res.json()));
 
                     setStats(statsData);
                     setChartApiData(chartData);
@@ -111,13 +127,18 @@ export default function DashboardPage() {
                     setTopReferrers(topReferrersData);
                     setSiteSettings(settingsData);
                     setDeviceData(deviceTypesData);
+                    setGa4AudienceData(audienceData);
+                    setGa4Demographics(demographicsData);
 
                 } catch (err) { setError(err.message); }
             } else { // Fetch from GA4
                 try {
                     const [statsRes, chartRes] = await Promise.all([
                         fetch(`/api/ga4-stats?siteId=${siteId}${dateParams}`),
-                        fetch(`/api/ga4-charts?siteId=${siteId}${dateParams}`)
+                        fetch(`/api/ga4-charts?siteId=${siteId}${dateParams}`),
+                        fetch(`/api/ga4-audience?siteId=${siteId}${dateParams}`),
+                        fetch(`/api/ga4-demographics?siteId=${siteId}${dateParams}`),
+
                     ]);
                     if (!statsRes.ok || !chartRes.ok) throw new Error('Failed to fetch GA4 data.');
                     const statsData = await statsRes.json();
@@ -180,7 +201,11 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-               
+                 <OnboardingModal 
+                isOpen={isOnboardingOpen} 
+                onComplete={handleOnboardingComplete} 
+                siteId={session?.user?.site_id}
+            />            
 
       <div className="space-y-4 mb-6 bg-grey-200">
         {alerts.map((alert) => (
@@ -235,21 +260,7 @@ export default function DashboardPage() {
                   <TopReferrersList referrers={topReferrers} />
                 </ChartContainer>
               </div>
-              <ChartContainer title="Page Speed Score (Mobile)">
-                {performanceError && <p className="text-center text-sm text-yellow-600 mb-2">{performanceError}</p>}
-                
-                {performanceData ? (
-                    <div className="h-64 flex items-center justify-center">
-                        <PerformanceScore {...performanceData} />
-                    </div>
-                ) : (
-                    <div className="h-64 flex items-center justify-center">
-                        <p className="text-center text-gray-500">
-                          {performanceError ? 'No cached score available.' : 'Loading score...'}
-                        </p>
-                    </div>
-                )}
-              </ChartContainer>
+           
             </div>
           ) : (
             <div className="space-y-8">
@@ -261,15 +272,66 @@ export default function DashboardPage() {
               </div>
               <ChartContainer title="Page Views & Conversions Over Time">
                 <Ga4LineChart data={ga4ChartData} />
+              
               </ChartContainer>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                 <StatCard title="Avg. Engagement Time" value={ga4Stats?.averageEngagementDuration ? `${(ga4Stats.averageEngagementDuration / 60).toFixed(2)} min` : '0 min'} icon="⏱️" />
                 {/* Placeholder for a potential line chart for engagement time if GA4 API supports historical engagement data */}
+               <StatCard2 title="What is Avg. Engagement Time" description="Average time a user spends actively engaged with your website." icon="🔢" />
+
+                <ChartContainer title="Page Speed Score (Mobile)" className="h-full">
+                  {performanceError && <p className="text-center text-sm text-yellow-600 mb-2">{performanceError}</p>}
+                  
+                  {performanceData ? (
+                      <div className="h-25 flex items-center justify-center">
+                          <PerformanceScore {...performanceData} />
+                          
+                                                </div>
+                  ) : (
+                      <div className="h-full flex items-center justify-center">
+                          <p className="text-center text-gray-500">
+                            {performanceError ? 'No cached score available.' : 'Loading score...'}
+                          </p>
+                          
+                      </div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-4 text-center">Score based on Google Lighthouse data.</p>
+
+                </ChartContainer>
+                
+      <ChartContainer title="Top Pages">
+          <TopPagesList pages={topPages} />
+              </ChartContainer>
+
               </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <ChartContainer title="New vs Returning Users">
+            <NewVsReturningChart data={ga4AudienceData?.newVsReturning} />
+        </ChartContainer>
+        <div className="space-y-6">
+            <StatCard 
+                title="Engagement Rate" 
+                value={`${ga4AudienceData?.engagementRate || 0}%`}
+                icon="📈"
+                description="The percentage of sessions that lasted longer than 10 seconds, had a conversion event, or had at least 2 pageviews."
+            />
+            <StatCard 
+                title="Engaged Sessions" 
+                value={ga4AudienceData?.engagedSessions?.toLocaleString() || 0}
+                icon="👍"
+                description="The number of sessions that were engaged."
+            />
+        </div>
+    </div>
+     <ChartContainer title="Audience Demographics">
+        <DemographicsCharts data={ga4Demographics} />
+    </ChartContainer>
             </div>
+            
+            
           )}
         </div>
-      )}
+      )} 
     </Layout>
   );
 }
