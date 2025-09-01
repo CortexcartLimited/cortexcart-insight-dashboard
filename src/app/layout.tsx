@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
     
-      <body className={`${inter.className} bg-gray-100 dark:bg-gray-900`}>
+      <body className={`${inter.className} bg-white dark:bg-gray-900`}>
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>

@@ -187,7 +187,8 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
     const [activePageId, setActivePageId] = useState(null); 
     const [facebookPages, setFacebookPages] = useState([]);
     const [instagramAccounts, setInstagramAccounts] = useState([]);
-
+    const [activeInstagramId, setActiveInstagramId] = useState(null);
+    
     useEffect(() => {
         const fetchPageData = async () => {
             if (connectionStatus.facebook) {

@@ -27,7 +27,7 @@ import DemographicsCharts from '@/app/components/DemographicsCharts';
 const currencySymbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$' };
 
 const DataSourceToggle = ({ dataSource, setDataSource }) => (
-  <div className="flex items-center p-1 bg-gray-200 rounded-lg">
+  <div className="flex items-center p-1 bg-gray-100 rounded-lg">
     <button onClick={() => setDataSource('cortexcart')} className={`px-4 py-1 text-sm font-medium rounded-md transition-colors ${dataSource === 'cortexcart' ? 'bg-white shadow' : 'text-gray-600'}`}>CortexCart</button>
     <button onClick={() => setDataSource('ga4')} className={`px-4 py-1 text-sm font-medium rounded-md transition-colors ${dataSource === 'ga4' ? 'bg-white shadow' : 'text-gray-600'}`}>Google Analytics</button>
   </div>

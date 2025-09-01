@@ -26,6 +26,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@shopify/cli": "^3.61.0",
     "@shopify/shopify-api": "^10.0.0",
+    "@tailwindcss/postcss": "^4.1.12",
     "axios": "^1.7.2",
     "base-64": "^1.0.0",
     "bcryptjs": "^2.4.3",
