@@ -130,6 +130,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadMessage, setUploadMessage] = useState('');
 
+
 useEffect(() => {
         // This logic runs ONLY when the selected platform changes.
         
@@ -1179,6 +1180,31 @@ export default function SocialMediaManagerPage() {
         }
     }, []);
     useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                // Fetch both sets of data in parallel
+                const [igRes, pinRes] = await Promise.all([
+                    fetch('/api/social/instagram/accounts'),
+                    fetch('/api/social/pinterest/boards') // We will create this API route next
+                ]);
+
+                if (igRes.ok) {
+                    setInstagramAccounts(await igRes.json());
+                }
+                if (pinRes.ok) {
+                    setPinterestBoards(await pinRes.json());
+                }
+            } catch (error) {
+                console.error("Failed to fetch social data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+    useEffect(() => {
         if (status === 'authenticated') {
         fetchOptimalTimes();
         }
@@ -1211,6 +1237,9 @@ export default function SocialMediaManagerPage() {
                     activeDragId={activeDragId}
                     setActiveDragId={setActiveDragId}
                     fetchScheduledPosts={fetchScheduledPosts} 
+                    instagramAccounts={instagramAccounts}
+                    pinterestBoards={pinterestBoards}
+                    loading={loading}
                     />
             )}
             {activeTab === 'Analytics' && <AnalyticsTabContent />}
@@ -1224,6 +1253,9 @@ export default function SocialMediaManagerPage() {
                     view={view}
                     setView={setView}
                     optimalTimes={optimalTimes}
+                    instagramAccounts={instagramAccounts}
+                    pinterestBoards={pinterestBoards}
+                    loading={loading}
     />
 )}
 

@@ -8,10 +8,10 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 // Setup the localizer by telling react-big-calendar that we use moment.js for dates
 const localizer = momentLocalizer(moment);
 
-export default function SchedulerTabContent() {
+export default function SchedulerTabContent({ instagramAccounts, pinterestBoards, loading }) {
     const [events, setEvents] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-
+    
     // Fetch scheduled posts from your backend
     useEffect(() => {
         const fetchScheduledPosts = async () => {

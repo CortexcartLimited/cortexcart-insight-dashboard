@@ -3,7 +3,7 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { NextResponse } from 'next-server';
+import { NextResponse } from 'next/server'; // CORRECTED IMPORT
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
