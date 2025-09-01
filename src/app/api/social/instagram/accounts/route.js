@@ -1,5 +1,3 @@
-// src/app/api/social/instagram/accounts/route.js
-
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
@@ -9,7 +7,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    console.log("\n--- [DEBUG] Fetching Instagram Accounts ---"); // Added log
+    console.log("\n--- [DEBUG] Fetching Instagram Accounts ---");
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
@@ -21,8 +19,8 @@ export async function GET() {
             [session.user.email, 'facebook']
         );
 
-         if (!connections.length || !connections[0].access_token_encrypted) {
-            return NextResponse.json([]); 
+        if (!connections.length || !connections[0].access_token_encrypted) {
+            return NextResponse.json([]);
         }
 
         const accessToken = decrypt(connections[0].access_token_encrypted);
@@ -31,12 +29,9 @@ export async function GET() {
         }
 
         const url = `https://graph.facebook.com/me/accounts?fields=name,picture,instagram_business_account{id,username,profile_picture_url}&access_token=${accessToken}`;
-        
         const response = await fetch(url);
         const data = await response.json();
-
-        // --- ❗️ CRUCIAL DEBUG LOG ❗️ ---
-        // This will show us the exact data Facebook is sending back.
+        
         console.log('--- [DEBUG] Raw response from Facebook Graph API ---:', JSON.stringify(data, null, 2));
 
         if (data.error) {
@@ -48,9 +43,8 @@ export async function GET() {
             .filter(page => page.instagram_business_account)
             .map(page => page.instagram_business_account);
 
-        console.log(`--- [DEBUG] Found ${instagramAccounts.length} linked Instagram accounts.`); // Added log
-
-        return NextResponse.json(instagramAccounts, { status: 200 });
+        console.log(`--- [DEBUG] Found ${instagramAccounts.length} linked Instagram accounts.`);
+        return NextResponse.json(instagramAccounts);
 
     } catch (error) {
         console.error('--- [DEBUG] Error in /api/social/instagram/accounts route ---:', error);
