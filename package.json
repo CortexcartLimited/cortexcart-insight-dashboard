@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node_modules/.bin/dotenv -e .env.local -- next dev",
-    "build": "node_modules/.bin/dotenv -e .env.production -- node --max-old-space-size=4096 node_modules/.bin/next build",
-    "start": "node_modules/.bin/dotenv -e .env.production -- next start -p 3000",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -66,9 +66,10 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
     "@types/leaflet": "^1.9.12",
-    "@types/node": "18.19.3",
+    "@types/node": "20.12.12",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
+    "autoprefixer": "^10.4.19",
     "dotenv-cli": "^7.4.2",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.3",

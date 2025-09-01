@@ -6,30 +6,33 @@ echo "🚀 Starting foolproof deployment..."
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-# 1. Fetch the latest code and reset the local branch to match it exactly.
-# This is safer than 'git pull' and avoids merge conflicts.
+# 1. Fetch the latest code from GitHub.
 echo "   - Syncing with GitHub..."
 git fetch origin
 git reset --hard origin/main
 
-# 2. Install dependencies
-echo "   - Installing/updating dependencies..."
+# 2. **NEW** - Remove old dependencies to ensure a clean slate.
+echo "   - Clearing old node_modules and package-lock.json..."
+rm -rf node_modules
+rm -f package-lock.json
+
+# 3. Install dependencies cleanly.
+echo "   - Installing dependencies from scratch..."
 npm install
 
-# 3. Generate the Prisma Client (This was a missing step)
+# 4. Generate the Prisma Client.
 echo "   - Generating Prisma database client..."
 npx prisma generate
 
-# 4. Clear any old cached build files
+# 5. Clear any old cached build files.
 echo "   - Clearing old application cache..."
 rm -rf .next
 
-# 5. Build the new, clean production application
+# 6. Build the new, clean production application.
 echo "   - Building the Next.js application..."
 npm run build
 
-# 6. Reload the application using PM2
-# 'pm2 reload' is a zero-downtime restart that correctly loads the new code.
+# 7. Reload the application using PM2.
 echo "   - Reloading the application with PM2..."
 pm2 reload ecosystem.config.js --env production
 
