@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     console.log("\n--- [DEBUG] Fetching Instagram Accounts ---"); // Added log
     const session = await getServerSession(authOptions);
@@ -19,6 +21,11 @@ export async function GET() {
             [session.user.email, 'facebook']
         );
 
+         if (!connections.length || !connections[0].access_token_encrypted) {
+            return NextResponse.json([]); 
+        }
+
+        const accessToken = decrypt(connections[0].access_token_encrypted);
         if (!connections.length) {
             throw new Error('Facebook account not connected.');
         }

@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     console.log("\n--- [DEBUG] Fetching Facebook Pages ---");
     const session = await getServerSession(authOptions);
@@ -18,6 +20,10 @@ export async function GET() {
             'SELECT access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = ?',
             [session.user.email, 'facebook']
         );
+
+        if (!connections.length || !connections[0].access_token_encrypted) {
+            return NextResponse.json([]); // Return empty array if no token
+        }
 
         if (!connections.length || !connections[0].access_token_encrypted) {
             //throw new Error('Facebook access token not found.');
