@@ -17,7 +17,7 @@ import RecentPostsCard from '@/app/components/RecentPostsCard';
 import EngagementByPlatformChart from '@/app/components/EngagementByPlatformChart';
 import PlatformPostsChart from '@/app/components/PlatformPostsChart';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
-import MailchimpTabContent from '@/app/components/social/MailchimpTabContent'; // Our new component
+import MailchimpTabContent from '@/app/components/social/MailchimpTabContent';
 import dynamic from 'next/dynamic';
 
 const PinterestIcon = (props) => (
@@ -106,8 +106,8 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
     );
 };
 
-const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setPostContent, selectedPlatform, setSelectedPlatform, }) => {
-    // FIX 1 & 2: Removed unused userImages and error state variables
+const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setPostContent, selectedPlatform, setSelectedPlatform, instagramAccounts, pinterestBoards, loading, ...props }) => {
+   
     const [topic, setTopic] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [scheduleDate, setScheduleDate] = useState(moment().add(1, 'day').format('YYYY-MM-DD'));
@@ -116,13 +116,9 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [postImages, setPostImages] = useState([]);
     const [postStatus, setPostStatus] = useState({ message: '', type: '' });
     const [error, setError] = useState('');
-    const { data: session } = useSession();
-    console.log("Current Session Data:", session);
-    const pinterestBoards = useMemo(() => session?.user?.pinterestBoards || [], [session?.user?.pinterestBoards]); 
-    const instagramAccounts = useMemo(() => session?.user?.instagramAccounts || [], [session?.user?.instagramAccounts]);
     const [selectedInstagramId, setSelectedInstagramId] = useState('');
     const [selectedBoardId, setSelectedBoardId] = useState('');
-    const [pinTitle, setPinTitle] = useState(''); // For the Pin's title
+    const [pinTitle, setPinTitle] = useState('');
     const [videoFile, setVideoFile] = useState(null);
     const [videoTitle, setVideoTitle] = useState('');
     const [privacyStatus, setPrivacyStatus] = useState('private');
@@ -130,20 +126,14 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadMessage, setUploadMessage] = useState('');
 
-
-useEffect(() => {
-        // This logic runs ONLY when the selected platform changes.
-        
-        if (selectedPlatform === 'pinterest' && pinterestBoards.length > 0) {
-            // If we are on the Pinterest tab and there are boards, select the first one.
-            setSelectedBoardId(pinterestBoards[0].board_id);
+ useEffect(() => {
+        if (selectedPlatform === 'pinterest' && pinterestBoards.length > 0 && !selectedBoardId) {
+            setSelectedBoardId(pinterestBoards[0].value); // Use .value from our API response
         }
-        
-        if (selectedPlatform === 'instagram' && instagramAccounts.length > 0) {
-            // If we are on the Instagram tab and there are accounts, select the first one.
-            setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
+        if (selectedPlatform === 'instagram' && instagramAccounts.length > 0 && !selectedInstagramId) {
+            setSelectedInstagramId(instagramAccounts[0].id); // Use .id from our API response
         }
-    }, [selectedPlatform, pinterestBoards, instagramAccounts]); // This dependency array prevents the loop.
+    }, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]);
 
     const currentPlatform = PLATFORMS[selectedPlatform];
 
@@ -1153,6 +1143,11 @@ export default function SocialMediaManagerPage() {
     // --- Calendar State ---
     const [calendarDate, setCalendarDate] = useState(new Date());
     const [view, setView] = useState(Views.MONTH);
+
+    const [instagramAccounts, setInstagramAccounts] = useState([]);
+    const [pinterestBoards, setPinterestBoards] = useState([]);
+    const [loading, setLoading] = useState(true);
+
 
     const fetchScheduledPosts = useCallback(async () => {
         try {
