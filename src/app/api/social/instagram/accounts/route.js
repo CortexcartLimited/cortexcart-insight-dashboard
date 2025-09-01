@@ -26,11 +26,6 @@ export async function GET() {
         }
 
         const accessToken = decrypt(connections[0].access_token_encrypted);
-        if (!connections.length) {
-            throw new Error('Facebook account not connected.');
-        }
-
-        const accessToken = decrypt(connections[0].access_token_encrypted);
         if (!accessToken) {
             throw new Error('Failed to decrypt access token.');
         }
