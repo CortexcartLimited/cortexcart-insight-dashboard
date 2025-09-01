@@ -6,7 +6,6 @@ import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
 
 export async function GET() {
     console.log("\n--- [DEBUG] Fetching Facebook Pages ---");
