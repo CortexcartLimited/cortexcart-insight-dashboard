@@ -27,7 +27,7 @@ const nextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https'
+        protocol: 'https',
         hostname: 'upload.wikimedia.org',
         pathname: '/**',
       },
