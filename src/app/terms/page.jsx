@@ -9,7 +9,7 @@ export default function TermsPage() {
                 <div className="mx-auto max-w-3xl text-base leading-7 text-gray-700">
                     <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Terms of Service</h1>
                     <p className="mt-6 text-xl leading-8">
-                        Welcome to CortexCart. These Terms of Service ("Terms") govern your use of our website, dashboard, and the services we offer. By accessing or using our Service, you agree to be bound by these Terms.
+                        Welcome to CortexCart. These Terms of Service (&quot;Terms&quot;) govern your use of our website, dashboard, and the services we offer. By accessing or using our Service, you agree to be bound by these Terms.
                     </p>
                     <div className="mt-10 max-w-2xl">
                         <h2 className="mt-16 text-2xl font-bold tracking-tight text-gray-900">1. Use of Our Service</h2>
@@ -19,7 +19,7 @@ export default function TermsPage() {
                         
                         <h2 className="mt-16 text-2xl font-bold tracking-tight text-gray-900">2. Beta Service</h2>
                         <p className="mt-6">
-                            CortexCart is currently in a beta phase. This means that the Service is provided "as is" and "as available" without any warranties. We may change, suspend, or discontinue the Service or any part of it at any time without notice. We are not liable for any modification, suspension, or discontinuance of the Service.
+                            CortexCart is currently in a beta phase. This means that the Service is provided&quot;as is&quot; and &quot;as available&quot; without any warranties. We may change, suspend, or discontinue the Service or any part of it at any time without notice. We are not liable for any modification, suspension, or discontinuance of the Service.
                         </p>
 
                         <h2 className="mt-16 text-2xl font-bold tracking-tight text-gray-900">3. Intellectual Property</h2>

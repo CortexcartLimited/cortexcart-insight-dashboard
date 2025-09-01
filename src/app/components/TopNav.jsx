@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { BellIcon, Cog6ToothIcon, ArrowRightEndOnRectangleIcon } from '@heroicons/react/24/outline';
 import NotificationsPanel from './NotificationsPanel';
+import Image from 'next/image';
+
 export default function TopNav() {
     const { data: session, status } = useSession();
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -85,7 +87,7 @@ export default function TopNav() {
 
             <div className="relative" ref={userDropdownRef}>
                 <button onClick={() => setUserDropdownOpen(!userDropdownOpen)} className="flex items-center space-x-2 rounded-full hover:bg-gray-100">
-                    <img className="h-8 w-8 rounded-full" src={session.user.image || `https://avatar.vercel.sh/${session.user.email}`} alt="User avatar" />
+                    <Image className="h-8 w-8 rounded-full" src={session.user.image || `https://avatar.vercel.sh/${session.user.email}`} alt="User avatar" />
                 </button>
                 {userDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-20">

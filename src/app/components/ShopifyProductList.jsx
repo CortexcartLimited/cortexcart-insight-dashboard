@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Box } from 'lucide-react';
+import Image from 'next/image';
 
 export default function ShopifyProductList() {
     const [products, setProducts] = useState([]);
@@ -55,7 +56,7 @@ export default function ShopifyProductList() {
                                 <li key={product.id} className="py-3 flex items-center justify-between">
                                     <div className="flex items-center space-x-4">
                                         {product.image?.src ? (
-                                            <img src={product.image.src} alt={product.title} className="h-12 w-12 rounded-md object-cover" />
+                                            <Image src={product.image.src} alt={product.title} className="h-12 w-12 rounded-md object-cover" />
                                         ) : (
                                             <div className="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center">
                                                 <Box className="h-6 w-6 text-gray-400" />

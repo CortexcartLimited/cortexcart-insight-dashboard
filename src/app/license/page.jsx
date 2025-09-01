@@ -107,7 +107,7 @@ export default function License() {
                                 <p className="text-sm text-slate-500 mt-2">Jonathan B Service owns all intellectual property rights. You are only licensing its use.</p>
                             </div>
                             <div className="summary-card bg-red-50 p-6 rounded-xl border border-red-200 hover:shadow-lg hover:border-red-300" data-target="full-liability-detail">
-                                <h3 className="font-semibold text-red-900">Use "As Is"</h3>
+                                <h3 className="font-semibold text-red-900">Use &quote;As Is&quote;</h3>
                                 <p className="text-sm text-red-700 mt-2">The software is provided without warranties. The licensor is not liable for damages from its use.</p>
                             </div>
                             <div className="summary-card bg-white p-6 rounded-xl border border-slate-200 hover:shadow-lg hover:border-slate-300" data-target="full-termination">
@@ -189,7 +189,7 @@ export default function License() {
                         </div>
                         <div id="full-restrict-5" class="full-text bg-slate-50 px-6 pb-6 rounded-b-xl border-t border-slate-200">
                              <h4 class="font-semibold text-slate-800 pt-4">Full Legal Text: Section 3e</h4>
-                             <blockquote class="mt-2 text-sm text-slate-600 italic border-l-2 border-slate-300 pl-4">Use the Software in any manner that could damage, disable, overburden, or impair the reputation of "CortexCart", "cortexcart.com", the "CortexCart Insight Dashboard", or "Jonathan B Service".</blockquote>
+                             <blockquote class="mt-2 text-sm text-slate-600 italic border-l-2 border-slate-300 pl-4">Use the Software in any manner that could damage, disable, overburden, or impair the reputation of &quote;CortexCart&quote;, &quote;cortexcart.com&quote;, the &quote;CortexCart Insight Dashboard&quote;, or &quote;Jonathan B Service&quote;.</blockquote>
                         </div>
                     </div>
                  </div>
@@ -206,7 +206,7 @@ export default function License() {
                         </div>
                         <div id="full-ip-detail" class="full-text bg-slate-50 px-6 pb-6 rounded-b-xl border-t border-slate-200">
                              <h4 class="font-semibold text-slate-800 pt-4">Full Legal Text: Section 4</h4>
-                             <blockquote class="mt-2 text-sm text-slate-600 italic border-l-2 border-slate-300 pl-4">You acknowledge that the Software and all intellectual property rights therein (including but not limited to copyright, patents, and trademarks) are the exclusive property of Jonathan B Service. This EULA does not grant you any ownership rights in the Software. All rights not expressly granted are reserved by the Licensor. The "CortexCart" name, logo, and the "CortexCart Insight Dashboard" name are trademarks of the Licensor.</blockquote>
+                             <blockquote class="mt-2 text-sm text-slate-600 italic border-l-2 border-slate-300 pl-4">You acknowledge that the Software and all intellectual property rights therein (including but not limited to copyright, patents, and trademarks) are the exclusive property of Jonathan B Service. This EULA does not grant you any ownership rights in the Software. All rights not expressly granted are reserved by the Licensor. The &quote;CortexCart&quote; name, logo, and the &quote;CortexCart Insight Dashboard&quote; name are trademarks of the Licensor.</blockquote>
                         </div>
                     </div>
                 </div>
@@ -214,16 +214,16 @@ export default function License() {
 
             <div class="mt-16 pt-8 border-t border-slate-200 scroll-mt-20" id="liability">
                 <h2 class="text-2xl font-bold text-slate-900">⚠️ Disclaimers & Limitation of Liability</h2>
-                <p class="mt-2 text-slate-600 max-w-3xl">This is a critical legal section outlining that the software is provided "as is" and setting limits on the licensor's liability in case of any issues.</p>
+                <p class="mt-2 text-slate-600 max-w-3xl">This is a critical legal section outlining that the software is provided &quote;as is&quote; and setting limits on the licensor&apos;s liability in case of any issues.</p>
                  <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="summary-card bg-amber-50 rounded-xl border border-amber-200" data-target="full-warranty">
                         <div class="p-6">
                            <h3 class="font-semibold text-amber-900">Disclaimer of Warranty</h3>
-                           <p class="mt-2 text-amber-800">The software is provided "AS IS" without any kind of warranty. You assume the entire risk related to its quality and performance.</p>
+                           <p class="mt-2 text-amber-800">The software is provided &quote;AS IS&quote; without any kind of warranty. You assume the entire risk related to its quality and performance.</p>
                         </div>
                         <div id="full-warranty" class="full-text bg-amber-100/50 px-6 pb-6 rounded-b-xl border-t border-amber-200">
                              <h4 class="font-semibold text-amber-900 pt-4">Full Legal Text: Section 6</h4>
-                             <blockquote class="mt-2 text-sm text-amber-800 italic border-l-2 border-amber-300 pl-4">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. THE LICENSOR DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU.</blockquote>
+                             <blockquote class="mt-2 text-sm text-amber-800 italic border-l-2 border-amber-300 pl-4">THE SOFTWARE IS PROVIDED &quote;AS IS&quote; WITHOUT WARRANTY OF ANY KIND. THE LICENSOR DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU.</blockquote>
                         </div>
                     </div>
                     <div class="summary-card bg-red-50 rounded-xl border border-red-200" data-target="full-liability-detail">
@@ -233,7 +233,7 @@ export default function License() {
                         </div>
                         <div id="full-liability-detail" class="full-text bg-red-100/50 px-6 pb-6 rounded-b-xl border-t border-red-200">
                              <h4 class="font-semibold text-red-900 pt-4">Full Legal Text: Section 7</h4>
-                             <blockquote class="mt-2 text-sm text-red-800 italic border-l-2 border-red-300 pl-4">IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN ANY CASE, THE LICENSOR'S ENTIRE LIABILITY UNDER ANY PROVISION OF THIS EULA SHALL BE LIMITED TO THE AMOUNT ACTUALLY PAID BY YOU FOR THE SOFTWARE.</blockquote>
+                             <blockquote class="mt-2 text-sm text-red-800 italic border-l-2 border-red-300 pl-4">IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN ANY CASE, THE LICENSOR&apos;S ENTIRE LIABILITY UNDER ANY PROVISION OF THIS EULA SHALL BE LIMITED TO THE AMOUNT ACTUALLY PAID BY YOU FOR THE SOFTWARE.</blockquote>
                         </div>
                     </div>
                  </div>
@@ -271,16 +271,16 @@ export default function License() {
                 <p class="mt-2 text-slate-600 max-w-3xl">This is the complete and legally binding agreement. The sections below are provided for full legal reference.</p>
                 <div class="mt-8 bg-white p-6 sm:p-8 rounded-xl border border-slate-200 prose prose-slate max-w-none">
                     <p class="font-semibold">IMPORTANT: PLEASE READ THIS END-USER LICENSE AGREEMENT CAREFULLY.</p>
-                    <p>This End-User License Agreement ("EULA") is a legal agreement between you (either an individual or a single entity) and <strong>Jonathan B Service</strong> ("the Licensor"), the sole owner of the intellectual property for the software application known as the <strong>CortexCart Insight Dashboard</strong> ("the Software").</p>
+                    <p>This End-User License Agreement (&quote;EULA&quote;) is a legal agreement between you (either an individual or a single entity) and <strong>Jonathan B Service</strong> (&quote;the Licensor&quote;), the sole owner of the intellectual property for the software application known as the <strong>CortexCart Insight Dashboard</strong> (&quote;the Software&quote;).</p>
                     <p>By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this EULA. If you do not agree to the terms of this EULA, do not install or use the Software.</p>
                     <p class="text-sm"><strong>DISCLAIMER:</strong> This EULA was generated by a large language model. The author of this EULA is not a solicitor or a lawyer and this document does not constitute legal advice. You should consult with a qualified legal professional to ensure this EULA meets your specific needs and is enforceable in your jurisdiction.</p>
 
                     <h3 id="full-definitions">1. Definitions</h3>
                     <ul>
-                        <li><strong>"Software"</strong> refers to the CortexCart Insight Dashboard application, including any associated media, printed materials, and "online" or electronic documentation.</li>
-                        <li><strong>"Licensor"</strong> refers to Jonathan B Service, the creator and intellectual property owner of the Software.</li>
-                        <li><strong>"CortexCart"</strong> refers to the brand associated with the Software. The website for the brand is cortexcart.com.</li>
-                        <li><strong>"You"</strong> or <strong>"Licensee"</strong> refers to the individual or entity that has acquired a license to use the Software.</li>
+                        <li><strong>&quote;Software&quote;</strong> refers to the CortexCart Insight Dashboard application, including any associated media, printed materials, and &quote;online&quote; or electronic documentation.</li>
+                        <li><strong>&quote;Licensor&quote;</strong> refers to Jonathan B Service, the creator and intellectual property owner of the Software.</li>
+                        <li><strong>&quote;CortexCart&quote;</strong> refers to the brand associated with the Software. The website for the brand is cortexcart.com.</li>
+                        <li><strong>&quote;You&quote;</strong> or <strong>&quote;Licensee&quote;</strong> refers to the individual or entity that has acquired a license to use the Software.</li>
                     </ul>
 
                     <h3 id="full-license">2. Grant of License</h3>
@@ -293,21 +293,21 @@ export default function License() {
                         <li><strong>Modify or Create Derivative Works:</strong> Modify, adapt, translate, or create derivative works based upon the Software.</li>
                         <li><strong>Reverse Engineer:</strong> Reverse engineer, decompile, disassemble, or otherwise attempt to discover the source code of the Software, except and only to the extent that such activity is expressly permitted by applicable law notwithstanding this limitation.</li>
                         <li><strong>Harmful Use:</strong> Use the Software in any way that is unlawful, fraudulent, or harmful, or in connection with any unlawful, fraudulent, or harmful purpose or activity. This includes, but is not limited to, using the Software to transmit any material that is defamatory, obscene, or offensive, or that infringes on the intellectual property rights of any third party.</li>
-                        <li><strong>Damage Reputation:</strong> Use the Software in any manner that could damage, disable, overburden, or impair the reputation of "CortexCart", "cortexcart.com", the "CortexCart Insight Dashboard", or "Jonathan B Service".</li>
+                        <li><strong>Damage Reputation:</strong> Use the Software in any manner that could damage, disable, overburden, or impair the reputation of &quote;CortexCart&quote;, &quote;cortexcart.com&quote;, the &quote;CortexCart Insight Dashboard&quote;, or &quote;Jonathan B Service&quote;.</li>
                     </ol>
                     <p>Any use of the Software in violation of these restrictions shall be considered a material breach of this EULA and may result in the immediate termination of your license.</p>
 
                     <h3 id="full-ip">4. Intellectual Property</h3>
-                    <p>You acknowledge that the Software and all intellectual property rights therein (including but not limited to copyright, patents, and trademarks) are the exclusive property of Jonathan B Service. This EULA does not grant you any ownership rights in the Software. All rights not expressly granted are reserved by the Licensor. The "CortexCart" name, logo, and the "CortexCart Insight Dashboard" name are trademarks of the Licensor.</p>
+                    <p>You acknowledge that the Software and all intellectual property rights therein (including but not limited to copyright, patents, and trademarks) are the exclusive property of Jonathan B Service. This EULA does not grant you any ownership rights in the Software. All rights not expressly granted are reserved by the Licensor. The &quote;CortexCart&quote; name, logo, and the &quote;CortexCart Insight Dashboard&quote; name are trademarks of the Licensor.</p>
 
                     <h3 id="full-termination">5. Termination</h3>
                     <p>This EULA is effective until terminated. Your rights under this license will terminate automatically without notice from the Licensor if you fail to comply with any term(s) of this EULA. Upon termination of the EULA, you shall cease all use of the Software and destroy all copies, full or partial, of the Software.</p>
 
                     <h3 id="full-warranty-main">6. Disclaimer of Warranty</h3>
-                    <p>THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. THE LICENSOR DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU.</p>
+                    <p>THE SOFTWARE IS PROVIDED &quote;AS IS&quote; WITHOUT WARRANTY OF ANY KIND. THE LICENSOR DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU.</p>
 
                     <h3 id="full-liability">7. Limitation of Liability</h3>
-                    <p>IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN ANY CASE, THE LICENSOR'S ENTIRE LIABILITY UNDER ANY PROVISION OF THIS EULA SHALL BE LIMITED TO THE AMOUNT ACTUALLY PAID BY YOU FOR THE SOFTWARE.</p>
+                    <p>IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN ANY CASE, THE LICENSOR&apos;S ENTIRE LIABILITY UNDER ANY PROVISION OF THIS EULA SHALL BE LIMITED TO THE AMOUNT ACTUALLY PAID BY YOU FOR THE SOFTWARE.</p>
 
                     <h3 id="full-legal-main">8. Governing Law and Jurisdiction</h3>
                     <p>This EULA shall be governed by and construed in accordance with the laws of England and Wales. Any disputes arising out of or in connection with this EULA shall be subject to the exclusive jurisdiction of the courts of England and Wales.</p>

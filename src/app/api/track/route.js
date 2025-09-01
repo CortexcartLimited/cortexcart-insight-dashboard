@@ -13,7 +13,7 @@ export async function POST(request) {
 
     // --- THIS IS THE FIX ---
     // We now use require() to load the library inside the function.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const UAParser = require('ua-parser-js');
     const ua = request.headers.get('user-agent');
     const parser = new UAParser(ua);
