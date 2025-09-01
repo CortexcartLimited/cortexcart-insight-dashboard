@@ -193,16 +193,18 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
         const fetchPageData = async () => {
             if (connectionStatus.facebook) {
                 try {
-                    const [pagesRes, igRes, activePageRes] = await Promise.all([
+                    const [pagesRes, igRes, activePageRes, activeIgRes] = await Promise.all([
                         fetch('/api/social/facebook/pages'),
                         fetch('/api/social/instagram/accounts'),
                         fetch('/api/social/facebook/active-page'),
                         fetch('/api/social/instagram/active-account')
+                        
                     ]);
 
                     if (pagesRes.ok) setFacebookPages(await pagesRes.json());
                     if (igRes.ok) setInstagramAccounts(await igRes.json());
                     if (activePageRes.ok) setActivePageId((await activePageRes.json()).active_facebook_page_id);
+                    if (activeIgRes.ok) setActiveInstagramId((await activeIgRes.json()).active_instagram_account_id);
                     if (activeIgRes.ok) setActiveInstagramId((await activeIgRes.json()).active_instagram_account_id);
                 } catch (err) { // Catch and display errors during data fetching
                     console.error("Failed to fetch connection data:", err);
