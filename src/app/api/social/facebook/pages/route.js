@@ -1,5 +1,5 @@
 // File: src/app/api/social/facebook/pages/route.js
-
+export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
@@ -20,7 +20,8 @@ export async function GET() {
         );
 
         if (!connections.length || !connections[0].access_token_encrypted) {
-            throw new Error('Facebook access token not found.');
+            //throw new Error('Facebook access token not found.');
+            return NextResponse.json([], { status: 200 });
         }
 
         const accessToken = decrypt(connections[0].access_token_encrypted);
