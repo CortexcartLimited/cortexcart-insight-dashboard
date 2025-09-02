@@ -1,80 +1,57 @@
-import { NextResponse } from 'next/server';
+import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { encrypt, decrypt } from '@/lib/crypto';
+import { NextResponse } from 'next/server';
 
-export async function GET(req) {
+export async function GET() {
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
+    // The client will automatically find the credentials from the environment variable
+    const analyticsDataClient = new BetaAnalyticsDataClient();
+
     try {
-        const [rows] = await db.query(
-            'SELECT property_id, credentials_encrypted FROM ga4_credentials WHERE user_email = ?',
+        const [connections] = await db.query(
+            'SELECT ga4_property_id FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
         );
+        const propertyId = connections[0]?.ga4_property_id;
 
-        if (rows.length === 0) {
-            return NextResponse.json({ propertyId: '', credentials: null });
+        if (!propertyId) {
+            throw new Error("Your GA4 Property ID has not been set. Please add it in the Settings > Integrations tab.");
         }
 
-        const { property_id, credentials_encrypted } = rows[0];
-        let credentials = null;
+        const [response] = await analyticsDataClient.runReport({
+            property: `properties/${propertyId}`,
+            dateRanges: [{ startDate: '28daysAgo', endDate: 'today' }],
+            metrics: [
+                { name: 'totalUsers' },
+                { name: 'screenPageViews' },
+                { name: 'sessions' },
+                { name: 'conversions' },
+            ],
+        });
 
-        if (credentials_encrypted) {
-            try {
-                // Safely attempt to decrypt and parse the credentials
-                const decryptedData = decrypt(credentials_encrypted);
-                if (decryptedData) {
-                    credentials = JSON.parse(decryptedData);
-                }
-            } catch (decryptionError) {
-                console.error('Failed to decrypt GA4 credentials for user:', session.user.email, decryptionError.message);
-                // If decryption fails, treat credentials as not set.
-                // This prevents the page from crashing due to corrupt data.
-                credentials = null;
-            }
+        const ga4Stats = {
+            users: 0,
+            pageviews: 0,
+            sessions: 0,
+            conversions: 0,
+        };
+
+        if (response.rows && response.rows.length > 0) {
+            ga4Stats.users = parseInt(response.rows[0].metricValues[0].value, 10);
+            ga4Stats.pageviews = parseInt(response.rows[0].metricValues[1].value, 10);
+            ga4Stats.sessions = parseInt(response.rows[0].metricValues[2].value, 10);
+            ga4Stats.conversions = parseInt(response.rows[0].metricValues[3].value, 10);
         }
 
-        return NextResponse.json({ propertyId: property_id, credentials });
+        return NextResponse.json(ga4Stats, { status: 200 });
     } catch (error) {
-        // This will catch database errors or other unexpected issues
-        console.error('Error fetching GA4 credentials:', error);
-        return NextResponse.json({ message: 'Error fetching GA4 credentials.' }, { status: 500 });
-    }
-}
-
-export async function POST(req) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    try {
-        const { propertyId, credentials } = await req.json();
-
-        if (!propertyId || !credentials) {
-            return NextResponse.json({ message: 'Property ID and credentials are required.' }, { status: 400 });
-        }
-
-        const credentialsString = JSON.stringify(credentials);
-        const credentials_encrypted = encrypt(credentialsString);
-
-        const query = `
-            INSERT INTO ga4_connections (user_email, property_id, credentials_encrypted)
-            VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-            property_id = VALUES(property_id),
-            credentials_encrypted = VALUES(credentials_encrypted);
-        `;
-
-        await db.query(query, [session.user.email, propertyId, credentials_encrypted]);
-
-        return NextResponse.json({ message: 'GA4 credentials updated successfully.' });
-    } catch (error) {
-        console.error('Error updating GA4 credentials:', error);
-        return NextResponse.json({ message: 'Error updating GA4 credentials.' }, { status: 500 });
+        console.error('Error fetching GA4 data:', error);
+        return NextResponse.json({ message: `Failed to fetch GA4 data: ${error.message}` }, { status: 500 });
     }
 }
