@@ -49,7 +49,7 @@ export async function GET(req) {
 
     try {
         const [rows] = await db.query(
-            'SELECT property_id, credentials_encrypted FROM ga4_credentials WHERE user_email = ?',
+            'SELECT property_id, credentials_encrypted FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
         );
 
