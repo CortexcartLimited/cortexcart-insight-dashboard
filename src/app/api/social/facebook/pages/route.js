@@ -16,7 +16,7 @@ export async function GET(req) {
     try {
         // 1. Get the User's Facebook Access Token
         const [connectRows] = await db.query(
-            'SELECT access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = ?',
+            'SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = ?',
             [session.user.email, 'facebook']
         );
 
