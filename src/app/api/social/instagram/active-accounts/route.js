@@ -13,7 +13,7 @@ export async function GET() {
 
     try {
         const [rows] = await db.query(
-            'SELECT active_instagram_account_id FROM users WHERE email = ?',
+            'SELECT active_instagram_account_id FROM social_connect WHERE email = ?',
             [session.user.email]
         );
 
