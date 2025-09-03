@@ -1,79 +1,63 @@
-// src/app/connect/callback/youtube/route.js
-
-import { google } from 'googleapis';
-import { NextResponse } from 'next/server';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next-server';
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
+import axios from 'axios';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(req) {
-    const url = new URL(req.url);
-    const code = url.searchParams.get('code');
-    const error = url.searchParams.get('error');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
+    const redirectUrl = new URL('/settings?tab=Platforms', appUrl);
+    
+    const { searchParams } = new URL(req.url);
+    const code = searchParams.get('code');
 
-    // Handle cases where the user denies access
-    if (error) {
-        console.error('YouTube Auth Error: User denied access.', error);
-        return NextResponse.redirect(new URL('/settings?error=youtube_access_denied', req.nextUrl.origin));
+    if (!code) {
+        redirectUrl.searchParams.set('connect_status', 'error');
+        redirectUrl.searchParams.set('message', 'invalid_callback_code');
+        return NextResponse.redirect(redirectUrl);
     }
     
-    if (!code) {
-        console.error('YouTube Auth Error: No authorization code provided.');
-        return NextResponse.redirect(new URL('/settings?error=youtube_auth_failed', req.nextUrl.origin));
-    }
-        console.log(`[Youtube Connect] NEXTAUTH_URL on server is: ${process.env.NEXTAUTH_URL}`);
-    const redirectUri = process.env.NODE_ENV === 'production'
-        ? `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`
-        : 'http://localhost:3000/api/connect/callback/youtube';
-        console.log(`[Youtube Connect] Generated Redirect URI: ${redirectUri}`);
-
-    const oAuth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        redirectUri
-    );
-
     try {
-        // --- Step 1: Exchange code for tokens ---
-        console.log("Attempting to get YouTube tokens with code:", code);
-        const { tokens } = await oAuth2Client.getToken(code);
-        oAuth2Client.setCredentials(tokens);
-        console.log("Successfully received YouTube tokens.");
-
-        // --- Step 2: Get user session ---
         const session = await getServerSession(authOptions);
-        if (!session || !session.user || !session.user.email) {
-            console.error("YouTube Auth Error: No active user session found.");
-            return NextResponse.redirect(new URL('/login?error=session_expired', req.nextUrl.origin));
+        if (!session || !session.user) {
+            redirectUrl.searchParams.set('connect_status', 'error');
+            redirectUrl.searchParams.set('message', 'authentication_required');
+            return NextResponse.redirect(redirectUrl);
         }
+
+        const params = new URLSearchParams();
+        params.append('client_id', process.env.YOUTUBE_CLIENT_ID);
+        params.append('client_secret', process.env.YOUTUBE_CLIENT_SECRET);
+        params.append('redirect_uri', `${appUrl}/connect/callback/youtube`);
+        params.append('grant_type', 'authorization_code');
+        params.append('code', code);
+
+        const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', params);
+        const { access_token, refresh_token } = tokenResponse.data;
+
+        const query = `
+            INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            access_token_encrypted = VALUES(access_token_encrypted),
+            refresh_token_encrypted = VALUES(refresh_token_encrypted);
+        `;
         
-        const userEmail = session.user.email;
-        const accessToken = tokens.access_token;
-        const refreshToken = tokens.refresh_token;
-        const expiryDate = new Date(tokens.expiry_date);
+        await db.query(query, [ 
+            session.user.email, 
+            'youtube', 
+            encrypt(access_token), 
+            refresh_token ? encrypt(refresh_token) : null 
+        ]);
 
-        // --- Step 3: Save tokens to the database ---
-        try {
-            console.log(`Saving YouTube tokens for user: ${userEmail}`);
-            await db.query(
-                `INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
-                 VALUES (?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE access_token_encrypted = VALUES(access_token_encrypted), refresh_token_encrypted = VALUES(refresh_token_encrypted), expires_at = VALUES(expires_at)`,
-                [userEmail, 'youtube', encrypt(accessToken), refreshToken ? encrypt(refreshToken) : null, expiryDate]
-            );
-            console.log("Successfully saved YouTube tokens to DB.");
-        } catch (dbError) {
-            console.error("CRITICAL: Failed to save YouTube tokens to database.", dbError);
-            return NextResponse.redirect(new URL('/settings?error=database_error', req.nextUrl.origin));
-        }
+        redirectUrl.searchParams.set('connect_status', 'success');
+        return NextResponse.redirect(redirectUrl);
 
-        // --- Step 4: Redirect on success ---
-        return NextResponse.redirect(new URL('/settings?success=youtube_connected', req.nextUrl.origin));
-
-    } catch (tokenError) {
-        // This will catch errors from oAuth2Client.getToken(code)
-        console.error("CRITICAL: Failed to exchange authorization code for YouTube tokens.", tokenError.response?.data || tokenError.message);
-        return NextResponse.redirect(new URL('/settings?error=youtube_token_exchange_failed', req.nextUrl.origin));
+    } catch (error) {
+        console.error("YouTube connection error:", error.response?.data || error.message);
+        redirectUrl.searchParams.set('connect_status', 'error');
+        redirectUrl.search_params.set('message', 'connection_failed');
+        return NextResponse.redirect(redirectUrl);
     }
 }

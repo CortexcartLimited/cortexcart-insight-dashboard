@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect, useCallback } from 'react';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import Layout from '@/app/components/Layout';
 import SettingsTabs from '@/app/components/SettingsTabs';
 import { CheckCircleIcon, ClipboardDocumentIcon } from '@heroicons/react/24/solid';
@@ -119,17 +119,6 @@ const GeneralTabContent = () => {
     );
 };
 
-const handlePinterestConnect = () => {
-        // Define the full scope that Pinterest requires
-        const pinterestScope = 'pins:read, boards:read, user_accounts:read';
-
-        // Pass the scope explicitly in the third argument of the signIn function
-        signIn('pinterest', 
-            { callbackUrl: '/settings' }, 
-            { scope: pinterestScope }
-        );
-    };
-
 // --- Integrations Settings Component ---
 const IntegrationsTabContent = () => {
     const [ga4PropertyId, setGa4PropertyId] = useState('');
@@ -182,17 +171,18 @@ const IntegrationsTabContent = () => {
     );
 };
 
+// --- Social Connections Component ---
 const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAlert }) => {
-    const searchParams = useSearchParams();
     const [activePageId, setActivePageId] = useState(null); 
     const [facebookPages, setFacebookPages] = useState([]);
     const [instagramAccounts, setInstagramAccounts] = useState([]);
+    const [activeInstagramId, setActiveInstagramId] = useState(null);
 
     useEffect(() => {
         const fetchPageData = async () => {
             if (connectionStatus.facebook) {
                 try {
-                    const [pagesRes, igRes, activePageRes] = await Promise.all([
+                    const [pagesRes, igRes, activePageRes, activeIgRes] = await Promise.all([
                         fetch('/api/social/facebook/pages'),
                         fetch('/api/social/instagram/accounts'),
                         fetch('/api/social/facebook/active-page'),
@@ -203,12 +193,11 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                     if (igRes.ok) setInstagramAccounts(await igRes.json());
                     if (activePageRes.ok) setActivePageId((await activePageRes.json()).active_facebook_page_id);
                     if (activeIgRes.ok) setActiveInstagramId((await activeIgRes.json()).active_instagram_account_id);
-                } catch (err) { // Catch and display errors during data fetching
+                } catch (err) {
                     console.error("Failed to fetch connection data:", err);
                     setAlert({ show: true, message: err.message, type: 'danger' });
                 }
             } else {
-                // If not connected, clear the data
                 setFacebookPages([]);
                 setInstagramAccounts([]);
                 setActiveInstagramId(null);
@@ -216,8 +205,7 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
             }
         };
         fetchPageData();
-        
-    }, [connectionStatus, setAlert, searchParams]); // This now correctly depends on the prop
+    }, [connectionStatus, setAlert]);
 
     const handleDisconnect = async (platform) => {
         if (!confirm(`Are you sure you want to disconnect your ${platform} account?`)) return;
@@ -235,22 +223,24 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
             setAlert({ show: true, message: err.message, type: 'danger' });
         }
     };
-const handleConnectInstagram = async (accountId) => {
-    setAlert({ show: false, message: '', type: 'info' });
-    try {
-        const res = await fetch('/api/social/instagram/connect-account', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accountId: accountId })
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Failed to connect Instagram account.');
-        setActiveInstagramId(accountId); // Update state on success
-        setAlert({ show: true, message: `Instagram account connected successfully!`, type: 'success' });
-    } catch (error) {
-        setAlert({ show: true, message: error.message, type: 'danger' });
-    }
-};
+
+    const handleConnectInstagram = async (accountId) => {
+        setAlert({ show: false, message: '', type: 'info' });
+        try {
+            const res = await fetch('/api/social/instagram/connect-account', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountId: accountId })
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to connect Instagram account.');
+            setActiveInstagramId(accountId);
+            setAlert({ show: true, message: `Instagram account connected successfully!`, type: 'success' });
+        } catch (error) {
+            setAlert({ show: true, message: error.message, type: 'danger' });
+        }
+    };
+    
     const handleConnectPage = async (pageId) => {
         setAlert({ show: false, message: '', type: 'info' });
         try {
@@ -270,6 +260,7 @@ const handleConnectInstagram = async (accountId) => {
 
     return (
         <div className="max-w-3xl space-y-4">
+            {/* Social Connections JSX... */}
             <div>
                 <h3 className="text-lg font-medium leading-6 text-gray-900">Social Connections</h3>
                 <p className="mt-1 text-sm text-gray-500">Connect your social media accounts to enable posting and analytics.</p>
@@ -319,38 +310,36 @@ const handleConnectInstagram = async (accountId) => {
                                 ) : (
                                     <p className="text-sm text-gray-500 mt-2">No pages found.</p>
                                 )}
-
                             </div>
                             <div className="mt-4 pt-4 border-t">
                                 <h4 className="text-base font-medium text-gray-800">Your Instagram Accounts</h4>
+                                {instagramAccounts.length > 0 ? (
                                 <ul className="mt-2 space-y-2">
-    {instagramAccounts.map(acc => (
-        <li key={acc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-            <div className="flex items-center">
-                {acc.profile_picture_url && <Image src={acc.profile_picture_url} alt={acc.username} className="h-8 w-8 rounded-full mr-3" width={32} height={32} />}
-                <span className="text-sm font-medium text-gray-700">@{acc.username}</span>
-            </div>
-            {/* THIS IS THE UPDATED LOGIC */}
-            {acc.id === activeInstagramId ? (
-                <span className="flex items-center text-sm font-medium text-green-600">
-                    <CheckCircleIcon className="h-5 w-5 mr-1.5" />
-                    Active
-                </span>
-            ) : (
-                <button onClick={() => handleConnectInstagram(acc.id)} className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100">
-                    Connect
-                </button>
-            )}
-        </li>
-    ))}
-</ul>
- ) : <p className="text-sm text-gray-500 mt-2">No Instagram Business accounts found. Please ensure you have connected your account on facebook business page</p>{'}'}
+                                    {instagramAccounts.map(acc => (
+                                        <li key={acc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                            <div className="flex items-center">
+                                                {acc.profile_picture_url && <Image src={acc.profile_picture_url} alt={acc.username} className="h-8 w-8 rounded-full mr-3" width={32} height={32} />}
+                                                <span className="text-sm font-medium text-gray-700">@{acc.username}</span>
+                                            </div>
+                                            {acc.id === activeInstagramId ? (
+                                                <span className="flex items-center text-sm font-medium text-green-600">
+                                                    <CheckCircleIcon className="h-5 w-5 mr-1.5" />
+                                                    Active
+                                                </span>
+                                            ) : (
+                                                <button onClick={() => handleConnectInstagram(acc.id)} className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100">
+                                                    Connect
+                                                </button>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                                ) : <p className="text-sm text-gray-500 mt-2">No Instagram Business accounts found. Please ensure you have connected your account on facebook business page.</p>}
                             </div>
                         </>
                     )}
                 </div>
-
-                <div className="mt-4 p-4 border border-gray-200 rounded-lg flex items-center justify-between">
+                 <div className="mt-4 p-4 border border-gray-200 rounded-lg flex items-center justify-between">
                     <div>
                         <p className="font-semibold">X (Twitter)</p>
                         <p className="text-sm text-gray-500">Connect your X account to allow posting and scheduling.</p>
@@ -394,17 +383,16 @@ const handleConnectInstagram = async (accountId) => {
                         <a href="/api/connect/pinterest" className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">Connect to Pinterest</a>
                     )}
                 </div>
+          
             </div>
         </div>
     );
 };
 
-// --- New Platforms Component ---
+// --- Platforms Component ---
 const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) => {
     const [shopifyStore, setShopifyStore] = useState('');
     
-
-     
     const handleDisconnect = async (platform) => {
         if (!confirm(`Are you sure you want to disconnect your ${platform} account?`)) return;
         try {
@@ -415,11 +403,9 @@ const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) =
             });
             if (!res.ok) throw new Error((await res.json()).message || `Could not disconnect ${platform}.`);
             await fetchConnections(); 
-            // This call to setAlert will now work correctly
             setAlert({ show: true, message: `${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`, type: 'success' });
         } catch (err) {
             console.error(`Could not disconnect ${platform}:`, err);
-            // This call to setAlert will also work correctly
             setAlert({ show: true, message: err.message, type: 'danger' });
         }
     };    
@@ -428,7 +414,6 @@ const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) =
             alert('Please enter your store name.');
             return;
         }
-        // ✅ FIXED: Use window.location.href for a full browser navigation
         window.location.href = `/api/connect/shopify?shop=${shopifyStore}`;
     };
 
@@ -455,7 +440,7 @@ const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) =
                         )}
                         </>
                 ) : ( 
-       <div className="mt-3 flex items-center gap-x-2">
+                    <div className="mt-3 flex items-center gap-x-2">
                         <div className="relative rounded-md shadow-sm">
                             <input
                                 type="text"
@@ -478,17 +463,16 @@ const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) =
                         >
                             Connect
                         </button>
-                    </div>                )}
+                    </div>                
+                )}
             </div>
- {/* --- THIS IS THE NEW MAILCHIMP Connection --- */}
              <div className="mt-4 p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="font-semibold">Mailchimp</p>
                         <p className="text-sm text-gray-500">Connect your Mailchimp account to sync audience and campaign data.</p>
                     </div>
-                    {/* This will show a "Connected" status or a "Connect" button */}
- {connectionStatus.mailchimp ? (
+                    {connectionStatus.mailchimp ? (
                         <div className="flex items-center gap-x-4">
                             <span className="flex items-center text-sm font-medium text-green-600">
                                 <CheckCircleIcon className="h-5 w-5 mr-1.5" />
@@ -511,20 +495,18 @@ const PlatformsTabContent = ({ connectionStatus, fetchConnections, setAlert }) =
                     )}
                 </div>
             </div>
-            {/* --- THIS IS THE NEW QuickBooks Connection --- */}
              <QuickBooksConnect />
         </div>
     );
 };
-// --- NEW, MORE ROBUST WIDGET SETTINGS COMPONENT ---
+
+// --- Widget Settings Component ---
 const WidgetSettingsTabContent = () => {
-    // We now manage the siteId and the snippet in local state
     const [siteId, setSiteId] = useState(null);
     const [mainSnippet, setMainSnippet] = useState('Loading your widget code...');
     const [isCopied, setIsCopied] = useState(false);
 
     useEffect(() => {
-        // This function runs when the component first loads
         const fetchSiteId = async () => {
             try {
                 const response = await fetch('/api/get-site-id');
@@ -532,20 +514,17 @@ const WidgetSettingsTabContent = () => {
                     throw new Error('Could not fetch Site ID.');
                 }
                 const data = await response.json();
-                setSiteId(data.siteId); // Store the fetched siteId in our state
+                setSiteId(data.siteId);
             } catch (error) {
                 console.error("Widget Error:", error);
                 setMainSnippet('There was an error loading your widget code. Please try refreshing the page.');
             }
         };
-
         fetchSiteId();
-    }, []); // The empty array means this runs only once on mount
+    }, []);
 
     useEffect(() => {
-        // This second effect runs ONLY when the siteId state changes
         if (siteId) {
-            // This is your trusted, working script
             const snippet = `<script>
 (function() {
     const SITE_ID = '${siteId}';
@@ -582,7 +561,7 @@ const WidgetSettingsTabContent = () => {
 <\/script>`.trim();
             setMainSnippet(snippet);
         }
-    }, [siteId]); // This depends on the siteId we fetched
+    }, [siteId]);
 
     const handleCopy = () => {
         if (!siteId || !mainSnippet) return;
@@ -610,6 +589,7 @@ const WidgetSettingsTabContent = () => {
         </div>
     );
 };
+
 // --- Billing Component ---
 const BillingTabContent = () => (
     <div className="max-w-3xl">
@@ -670,7 +650,9 @@ const DangerZoneTabContent = () => {
         </>
     );
 };
-    function SettingsPage() {
+    
+// --- Main Settings Page Component ---
+function SettingsPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState(tabs[0].name);
@@ -683,9 +665,6 @@ const DangerZoneTabContent = () => {
             const statusRes = await fetch('/api/social/connections/status', { cache: 'no-store' });
             if (!statusRes.ok) throw new Error('Could not fetch connection statuses.');
             const statuses = await statusRes.json();
-                       // LOG 1: What did the API return?
-            console.log('Fetched statuses from API:', statuses);
-
             setConnectionStatus(statuses);
         } catch (err) {
             console.error("Failed to fetch platform connection data:", err);
@@ -697,7 +676,6 @@ const DangerZoneTabContent = () => {
         fetchConnections();
     }, [fetchConnections]);
 
-    // Handle deep linking to a tab via URL hash
     useEffect(() => {
         const hash = window.location.hash.replace('#', '');
         if (hash) {
@@ -708,34 +686,22 @@ const DangerZoneTabContent = () => {
         }
     }, []);
 
-    // New useEffect to handle redirect from oauth
     useEffect(() => {
         const connectStatus = searchParams.get('connect_status');
-               // LOG 2: Is the redirect being detected?
-        console.log('Checking for redirect status...', { connectStatus });
-
         if (connectStatus) {
-            // If the URL has a status, show a message
             const message = connectStatus === 'success' 
                 ? 'Account connected successfully!' 
                 : searchParams.get('message')?.replace(/_/g, ' ') || 'An unknown error occurred.';
             setAlert({ show: true, message, type: connectStatus === 'success' ? 'success' : 'danger' });
-
-            // CRUCIAL: Re-fetch the connection statuses to update the UI
             fetchConnections();
         }
-
     }, [searchParams, fetchConnections]);
-
-
 
     useEffect(() => {
         if (status === 'unauthenticated') { 
             router.push('/'); 
         }
     }, [status, router]);
-   // LOG 3: What is the component rendering with?
-    console.log('Rendering SettingsPage with state:', connectionStatus);
 
     if (status === 'loading') { 
         return <Layout><div className="p-8">Loading...</div></Layout>; 
@@ -750,14 +716,12 @@ const DangerZoneTabContent = () => {
             <div className="mb-8">
                 <h2 className="text-3xl font-bold">Settings</h2>
                 <p className="mt-1 text-sm text-gray-500">Manage your site settings, integrations, and tracking.</p>
-        {alert.show && <AlertBanner title={alert.type === 'success' ? 'Success' : 'Error'} message={alert.message} type={alert.type} onClose={() => setAlert({ show: false, message: '', type: 'info' })} />}
-
+                {alert.show && <AlertBanner title={alert.type === 'success' ? 'Success' : 'Error'} message={alert.message} type={alert.type} onClose={() => setAlert({ show: false, message: '', type: 'info' })} />}
             </div>
  
             <SettingsTabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
  
             <div className="mt-8 bg-white p-8 rounded-lg">
-                {/* Now we pass the centralized state and functions down to the components */}
                 {activeTab === 'General' && <GeneralTabContent />}
                 {activeTab === 'Integrations' && <IntegrationsTabContent />}
                 {activeTab === 'Social Connections' && 
@@ -767,7 +731,7 @@ const DangerZoneTabContent = () => {
                         setAlert={setAlert}
                     />
                 }
-                {activeTab === 'Widget Settings' && <WidgetSettingsTabContent siteId={session?.user?.site_id} />}
+                {activeTab === 'Widget Settings' && <WidgetSettingsTabContent />}
                 {activeTab === 'Platforms' && 
                     <PlatformsTabContent 
                         connectionStatus={connectionStatus} 
@@ -781,6 +745,7 @@ const DangerZoneTabContent = () => {
         </Layout>
     );
 }
+
 export default function SettingsPageWrapper() {
     return (
         <Suspense fallback={<Layout><div className="p-8">Loading Page...</div></Layout>}>
