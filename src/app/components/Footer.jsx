@@ -4,8 +4,8 @@ export default function Footer() {
   const footerLinks = [
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
-    { name: 'Terms of Service', href: '/terms' },
-    { name: 'Privacy Policy', href: '/privacy' },
+    { name: 'Terms of Service', href: 'pages/terms' },
+    { name: 'Privacy Policy', href: 'pages/privacy' },
     { name: 'EULA License', href: '/license' },
   ];
 
