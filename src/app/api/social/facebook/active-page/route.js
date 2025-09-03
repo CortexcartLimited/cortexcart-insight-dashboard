@@ -3,24 +3,29 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-        const [connections] = await db.query(
-            'SELECT active_facebook_page_id FROM facebook_pages_connected WHERE user_email = ?',
-            [session.user.email]
+        // Corrected SQL Query
+        const [rows] = await db.query(
+            'SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = ?',
+            [session.user.email, 'facebook']
         );
 
-        // Return the active page ID, or null if none is set
-        const activePageId = connections[0]?.active_facebook_page_id || null;
-        return NextResponse.json({ active_facebook_page_id: activePageId });
+        if (rows.length === 0) {
+            return NextResponse.json({ active_facebook_page_id: null });
+        }
+
+        return NextResponse.json({ active_facebook_page_id: rows[0].active_facebook_page_id });
 
     } catch (error) {
         console.error('Error fetching active Facebook page:', error);
-        return NextResponse.json({ error: 'Failed to fetch active page.' }, { status: 500 });
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
