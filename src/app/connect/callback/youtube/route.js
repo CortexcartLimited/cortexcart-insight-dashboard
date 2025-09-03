@@ -1,4 +1,4 @@
-import { NextResponse } from 'next-server';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
 import axios from 'axios';
