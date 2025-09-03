@@ -14,6 +14,7 @@ export async function GET(req) {
     }
 
     try {
+        // 1. Get the User's Facebook Access Token
         const [connectRows] = await db.query(
             'SELECT access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = ?',
             [session.user.email, 'facebook']
@@ -28,24 +29,24 @@ export async function GET(req) {
              return NextResponse.json({ error: 'Invalid access token' }, { status: 400 });
         }
 
-        // ✅ FIX: Added 'picture' to the fields being requested from Facebook
+        // 2. Fetch the latest pages list from Facebook's API
         const response = await axios.get(`https://graph.facebook.com/me/accounts`, {
             params: {
                 access_token: accessToken,
-                fields: 'id,name,access_token,picture'
+                fields: 'id,name,access_token,picture' // Ensure we ask for the picture
             }
         });
 
-        const pages = response.data.data;
+        const pagesFromFacebook = response.data.data;
 
-        if (pages && pages.length > 0) {
-            // ✅ FIX: Correctly maps the picture URL and saves it to the database
-            const pageValues = pages.map(page => [
+        // 3. Save the latest page info into our database
+        if (pagesFromFacebook && pagesFromFacebook.length > 0) {
+            const pageValues = pagesFromFacebook.map(page => [
                 session.user.email, 
                 page.id, 
                 page.name, 
                 page.access_token,
-                page.picture?.data?.url || null // Safely access the picture URL
+                page.picture?.data?.url || null
             ]);
             
             const query = `
@@ -59,8 +60,13 @@ export async function GET(req) {
             await db.query(query, [pageValues]);
         }
         
-        // Return the pages we just fetched and saved
-        const [pageRows] = await db.query('SELECT page_id, name, profile_picture FROM facebook_pages WHERE user_email = ?', [session.user.email]);
+        // 4. ✅ FIX: Directly read from the database and send that as the response
+        // This guarantees that what's in the DB is what the frontend receives.
+        const [pageRows] = await db.query(
+            'SELECT page_id, name, profile_picture FROM facebook_pages WHERE user_email = ?', 
+            [session.user.email]
+        );
+
         return NextResponse.json(pageRows);
 
     } catch (error) {
