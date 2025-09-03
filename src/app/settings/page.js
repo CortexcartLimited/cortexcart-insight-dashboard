@@ -260,7 +260,7 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
 
     return (
         <div className="max-w-3xl space-y-4">
-            {/* Social Connections JSX... */}
+           
             <div>
                 <h3 className="text-lg font-medium leading-6 text-gray-900">Social Connections</h3>
                 <p className="mt-1 text-sm text-gray-500">Connect your social media accounts to enable posting and analytics.</p>
@@ -282,7 +282,7 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                             </a>
                         )}
                     </div>
-                    {connectionStatus.facebook && (
+                      {connectionStatus.facebook && (
                         <>
                             <div className="mt-4 pt-4 border-t">
                                 <h4 className="text-base font-medium text-gray-800">Your Facebook Pages</h4>
@@ -291,7 +291,8 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                                         {facebookPages.map(page => (
                                             <li key={page.page_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                                                 <div className="flex items-center">
-                                                    {page.picture?.data?.url && <Image src={page.picture.data.url} alt={page.name} className="h-8 w-8 rounded-full mr-3" width={32} height={32}/>}
+                                                    {/* ✅ FIX: Uses the now-correct 'profile_picture' field */}
+                                                    {page.profile_picture && <Image src={page.profile_picture} alt={page.name} className="h-8 w-8 rounded-full mr-3" width={32} height={32}/>}
                                                     <span className="text-sm font-medium text-gray-700">{page.name}</span>
                                                 </div>
                                                 {page.page_id === activePageId ? (
@@ -311,7 +312,7 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                                     <p className="text-sm text-gray-500 mt-2">No pages found.</p>
                                 )}
                             </div>
-                            <div className="mt-4 pt-4 border-t">
+                                <div className="mt-4 pt-4 border-t">
                                 <h4 className="text-base font-medium text-gray-800">Your Instagram Accounts</h4>
                                 {instagramAccounts.length > 0 ? (
                                 <ul className="mt-2 space-y-2">
