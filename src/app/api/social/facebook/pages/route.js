@@ -50,12 +50,12 @@ export async function GET(req) {
             ]);
             
             const query = `
-                INSERT INTO facebook_pages (user_email, page_id, name, access_token, profile_picture) 
+                INSERT INTO facebook_pages (user_email, page_id, page_name, page_access_token_encrypted, profile_url) 
                 VALUES ? 
                 ON DUPLICATE KEY UPDATE 
-                name = VALUES(name), 
-                access_token = VALUES(access_token), 
-                profile_picture = VALUES(profile_picture)
+                page_name = VALUES(page_name), 
+                page_access_token_encrypted = VALUES(page_access_token_encrypted), 
+                profile_url = VALUES(profile_url)
             `;
             await db.query(query, [pageValues]);
         }
@@ -63,7 +63,7 @@ export async function GET(req) {
         // 4. ✅ FIX: Directly read from the database and send that as the response
         // This guarantees that what's in the DB is what the frontend receives.
         const [pageRows] = await db.query(
-            'SELECT page_id, name, profile_picture FROM facebook_pages WHERE user_email = ?', 
+            'SELECT page_id, page_name, profile_url FROM facebook_pages WHERE user_email = ?', 
             [session.user.email]
         );
 
