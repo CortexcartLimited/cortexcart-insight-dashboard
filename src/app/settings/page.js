@@ -196,7 +196,7 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                         fetch('/api/social/facebook/pages'),
                         fetch('/api/social/instagram/accounts'),
                         fetch('/api/social/facebook/active-page'),
-                        fetch('/api/social/instagram/active-account')
+                        fetch('/api/social/instagram/active-accounts')
                     ]);
 
                     if (pagesRes.ok) setFacebookPages(await pagesRes.json());
