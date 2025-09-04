@@ -13,9 +13,9 @@ export async function GET(req) {
 
     try {
         // Corrected SQL Query
-        const [rows] = await db.query(
-            'SELECT active_facebook_page_id FROM facebook_pages_connected WHERE user_email = ? AND platform = ?',
-            [session.user.email, 'facebook']
+          const [rows] = await db.query(
+            'SELECT active_facebook_page_id FROM facebook_pages_connected WHERE user_email = ?',
+            [session.user.email]
         );
 
         if (rows.length === 0) {
