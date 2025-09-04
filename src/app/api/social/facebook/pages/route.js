@@ -55,7 +55,7 @@ export async function GET(req) {
                 ON DUPLICATE KEY UPDATE 
                 page_name = VALUES(page_name), 
                 page_access_token_encrypted = VALUES(page_access_token_encrypted), 
-                picture_url = VALUES(profile_url)
+                picture_url = VALUES(picture_url)
             `;
             await db.query(query, [pageValues]);
         }
