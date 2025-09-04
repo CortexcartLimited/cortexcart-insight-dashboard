@@ -286,15 +286,15 @@ export default function HomePageClient({ content, plans, recentPost }: HomePageC
             <footer className="bg-gray-800 text-white py-8">
                  <div className="container mx-auto px-6 text-center">
                      <div className="mt-4">
-                        <Link href="/about"><span className="px-3 hover:underline cursor-pointer">About</span></Link>
+                        <Link href="pages/about"><span className="px-3 hover:underline cursor-pointer">About</span></Link>
                         <span className="text-gray-500">|</span>
-                        <Link href="/contact"><span className="px-3 hover:underline cursor-pointer">Contact</span></Link>
+                        <Link href="pages/contact"><span className="px-3 hover:underline cursor-pointer">Contact</span></Link>
                         <span className="text-gray-500">|</span>
-     			 <Link href="/terms"><span className="px-3 hover:underline cursor-pointer">Terms of Service</span></Link>
+     			 <Link href="pages/terms"><span className="px-3 hover:underline cursor-pointer">Terms of Service</span></Link>
                         <span className="text-gray-500">|</span>
-                        <Link href="/privacy"><span className="px-3 hover:underline cursor-pointer">Privacy Policy</span></Link>    
+                        <Link href="pages/privacy"><span className="px-3 hover:underline cursor-pointer">Privacy Policy</span></Link>    
 		        <span className="text-gray-500">|</span>
-                        <Link href="/data-protection"><span className="px-3 hover:underline cursor-pointer">Data Protection</span></Link>                   
+                        <Link href="pages/data-protection"><span className="px-3 hover:underline cursor-pointer">Data Protection</span></Link>                   
                     <span className="text-gray-500">|</span>
                         <Link href="/license"><span className="px-3 hover:underline cursor-pointer">EULA License</span></Link>    
                     </div>

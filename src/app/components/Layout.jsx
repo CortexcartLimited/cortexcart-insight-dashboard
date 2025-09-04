@@ -109,11 +109,11 @@ const TopNav = () => {
 // --- Sub-component: Footer ---
 const Footer = () => {
     const footerLinks = [
-       { name: 'About', href: '/about' }, 
-       { name: 'Contact', href: '/contact' },
-       { name: 'Terms of Service', href: '/terms' }, 
-       { name: 'Privacy Policy', href: '/privacy' },
-       { name: 'Data Protection', href: '/data-protection' },
+       { name: 'About', href: 'about' }, 
+       { name: 'Contact', href: 'contact' },
+       { name: 'Terms of Service', href: 'terms' }, 
+       { name: 'Privacy Policy', href: 'privacy' },
+       { name: 'Data Protection', href: 'data-protection/' },
     ];
     // --- NEW: Social media links array ---
   const socialLinks = [
