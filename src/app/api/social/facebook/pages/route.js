@@ -44,9 +44,9 @@ export async function GET(req) {
             const pageValues = pagesFromFacebook.map(page => [
                 session.user.email, 
                 page.id, 
-                page.name, 
+                page.page_name, 
                 page.access_token,
-                page.picture?.data?.url || null
+                page.picture_url?.data?.url || null
             ]);
             
             const query = `
