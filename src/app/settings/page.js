@@ -292,8 +292,8 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                                             <li key={page.page_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                                                 <div className="flex items-center">
                                                     {/* ✅ FIX: Uses the now-correct 'profile_picture' field */}
-                                                    {page.profile_picture && <Image src={page.profile_picture} alt={page.name} className="h-8 w-8 rounded-full mr-3" width={32} height={32}/>}
-                                                    <span className="text-sm font-medium text-gray-700">{page.name}</span>
+                                                    {page.picture_url && <Image src={page.picture_url} alt={page.page_name} className="h-8 w-8 rounded-full mr-3" width={32} height={32}/>}
+                                                    <span className="text-sm font-medium text-gray-700">{page.page_name}</span>
                                                 </div>
                                                 {page.page_id === activePageId ? (
                                                     <span className="flex items-center text-sm font-medium text-green-600">
