@@ -1,9 +1,13 @@
+// src/app/api/social/pinterest/boards/route.js
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import axios from 'axios';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -12,27 +16,16 @@ export async function GET(req) {
     }
 
     try {
-        const [rows] = await db.query(
+        const [connectRows] = await db.query(
             'SELECT access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = ?',
             [session.user.email, 'pinterest']
         );
 
-        if (rows.length === 0 || !rows[0].access_token_encrypted) {
-            return NextResponse.json({ boards: [] });
+        if (connectRows.length === 0) {
+            return NextResponse.json([]);
         }
 
-        let accessToken;
-        try {
-            const decryptedToken = decrypt(rows[0].access_token_encrypted);
-            if (!decryptedToken) {
-                throw new Error("Decrypted token is null or empty.");
-            }
-            accessToken = decryptedToken;
-        } catch (e) {
-            console.error("Failed to decrypt Pinterest token for user:", session.user.email, e.message);
-            // If token is corrupt, we can't fetch boards. Return empty array gracefully.
-            return NextResponse.json({ boards: [] });
-        }
+        const accessToken = decrypt(connectRows[0].access_token_encrypted);
 
         const response = await axios.get('https://api.pinterest.com/v5/boards', {
             headers: {
@@ -40,8 +33,15 @@ export async function GET(req) {
             }
         });
 
-        const boards = response.data.items;
-        return NextResponse.json({ boards });
+        const boardsFromApi = response.data.items || [];
+
+        // ✅ FIX: Map the board data to the format expected by the frontend
+        const formattedBoards = boardsFromApi.map(board => ({
+            board_id: board.id,
+            board_name: board.name
+        }));
+
+        return NextResponse.json(formattedBoards);
 
     } catch (error) {
         console.error('Error fetching Pinterest boards:', error.response ? error.response.data : error.message);
