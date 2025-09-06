@@ -126,25 +126,27 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadMessage, setUploadMessage] = useState('');
 
- useEffect(() => {
-        if (selectedPlatform === 'pinterest' && pinterestBoards.length > 0 && !selectedBoardId) {
-            setSelectedBoardId(pinterestBoards[0].value); // Use .value from our API response
+    useEffect(() => {
+        // Set default selection when data becomes available
+        if (selectedPlatform === 'pinterest' && pinterestBoards && pinterestBoards.length > 0 && !selectedBoardId) {
+            setSelectedBoardId(pinterestBoards[0].board_id);
         }
-        if (selectedPlatform === 'instagram' && instagramAccounts.length > 0 && !selectedInstagramId) {
-            setSelectedInstagramId(instagramAccounts[0].id); // Use .id from our API response
+        if (selectedPlatform === 'instagram' && instagramAccounts && instagramAccounts.length > 0 && !selectedInstagramId) {
+            setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
         }
     }, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]);
 
     const currentPlatform = PLATFORMS[selectedPlatform];
 
     const handleSubmit = () => {
-    if (selectedPlatform === 'youtube') {
-        handleUploadToYouTube();
-    } else {
-        handlePostNow();
-    }
-};
-const handleUploadToYouTube = async () => {
+        if (selectedPlatform === 'youtube') {
+            handleUploadToYouTube();
+        } else {
+            handlePostNow();
+        }
+    };
+
+    const handleUploadToYouTube = async () => {
         if (!videoFile || !videoTitle) {
             setPostStatus({ message: 'A video file and title are required.', type: 'error' });
             return;
@@ -168,11 +170,9 @@ const handleUploadToYouTube = async () => {
                 formData.append('thumbnail', blob, 'thumbnail.jpg');
             }
 
-            // This Promise wraps the XMLHttpRequest to handle the upload
             const result = await new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
 
-                // Listen for progress events
                 xhr.upload.addEventListener('progress', (event) => {
                     if (event.lengthComputable) {
                         const percentComplete = (event.loaded / event.total) * 100;
@@ -181,7 +181,6 @@ const handleUploadToYouTube = async () => {
                     }
                 });
 
-                // Handle successful upload
                 xhr.onload = () => {
                     setUploadMessage('Processing video and setting thumbnail...');
                     if (xhr.status >= 200 && xhr.status < 300) {
@@ -191,7 +190,6 @@ const handleUploadToYouTube = async () => {
                     }
                 };
 
-                // Handle errors
                 xhr.onerror = () => {
                     reject(new Error('Upload failed. Please check your network connection.'));
                 };
@@ -245,65 +243,67 @@ const handleUploadToYouTube = async () => {
             setIsGenerating(false);
         }
     };
-      const handlePostNow = async () => {
-    if (!postContent) return;
 
-    setIsPosting(true);
-    setPostStatus({ message: '', type: '' });
+    const handlePostNow = async () => {
+        if (!postContent) return;
 
-    let apiEndpoint = currentPlatform.apiEndpoint;
-    let requestBody = {};
+        setIsPosting(true);
+        setPostStatus({ message: '', type: '' });
 
-    if (selectedPlatform === 'pinterest') {
-        if (!selectedBoardId || !postImages[0]?.image_url || !pinTitle) {
-            setPostStatus({ message: 'A board, image, and title are required for Pinterest.', type: 'error' });
+        let apiEndpoint = currentPlatform.apiEndpoint;
+        let requestBody = {};
+
+        if (selectedPlatform === 'pinterest') {
+            if (!selectedBoardId || !postImages[0]?.image_url || !pinTitle) {
+                setPostStatus({ message: 'A board, image, and title are required for Pinterest.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
+            requestBody = {
+                boardId: selectedBoardId,
+                imageUrl: postImages[0].image_url,
+                title: pinTitle,
+                description: postContent
+            };
+        } else if (selectedPlatform === 'instagram') {
+            if (!postImages[0]?.image_url || !selectedInstagramId) {
+                setPostStatus({ message: 'An image and a selected Instagram account are required.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
+            requestBody = {
+                instagramUserId: selectedInstagramId,
+                imageUrl: postImages[0].image_url,
+                caption: postContent,
+            }
+        } else {
+            requestBody = {
+                platform: selectedPlatform,
+                content: postContent,
+                imageUrl: postImages[0]?.image_url,
+            };
+        }
+
+        try {
+            const res = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'An unknown error occurred');
+            
+            setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
+            setPostContent('');
+            setPostImages([]);
+        } catch (err) {
+            setPostStatus({ message: err.message, type: 'error' });
+        } finally {
             setIsPosting(false);
-            return;
         }
-        requestBody = {
-            boardId: selectedBoardId,
-            imageUrl: postImages[0].image_url,
-            title: pinTitle,
-            description: postContent // The main text area is used for the description
-        };
-    } else if (selectedPlatform === 'instagram') {
-        if (!postImages[0]?.image_url || !selectedInstagramId) {
-            setPostStatus({ message: 'An image and a selected Instagram account are required.', type: 'error' });
-            setIsPosting(false);
-            return;
-        }
-        requestBody = {
-            instagramUserId: selectedInstagramId,
-            imageUrl: postImages[0].image_url,
-            caption: postContent, // Use 'caption'
-        }
-    } else {
-        requestBody = {
-            platform: selectedPlatform,
-            content: postContent, // Use 'content'
-            imageUrl: postImages[0]?.image_url,
-        };
+    };
 
-    }
-    try {
-        const res = await fetch(apiEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-        });
-
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'An unknown error occurred');
-        
-        setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
-        setPostContent('');
-        setPostImages([]);
-    } catch (err) {
-        setPostStatus({ message: err.message, type: 'error' });
-    } finally {
-        setIsPosting(false);
-    }
-};
     const handleSchedulePost = async (e) => {
         e.preventDefault();
         setError('');
@@ -330,259 +330,187 @@ const handleUploadToYouTube = async () => {
             onPostScheduled();
         } catch (err) { setError(err.message); }
     };
+
     const isOverLimit = postContent.length > currentPlatform.maxLength;
 
     return (
         <>
-          <UploadProgressModal 
+            <UploadProgressModal 
                 isOpen={isUploading} 
                 progress={uploadProgress} 
                 message={uploadMessage} 
             />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <div className="flex items-center border-b pb-4 overflow-x-auto whitespace-nowrap">
-                            {Object.values(PLATFORMS).map(platform => {
-                                const Icon = platform.icon;
-                                return (
-                                    <button key={platform.name} onClick={() => setSelectedPlatform(platform.name.toLowerCase().split(' ')[0])} className={`flex items-center px-4 py-2 text-sm font-medium rounded-md mr-2 ${selectedPlatform === platform.name.toLowerCase().split(' ')[0] ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-                                        {Icon && <Icon className="h-5 w-5 mr-2" />} {platform.name}
-                                    </button>
-                                    
-                                );
-                            })}
-                        </div>
-                            {selectedPlatform === 'youtube' && (
-    <div className="mt-4 space-y-4 p-4 border bg-gray-50 rounded-lg">
-        {/* File Input */}
-        <div>
-            <label htmlFor="video-file" className="block text-sm font-medium text-gray-700">
-                Select Video File
-            </label>
-            <input
-                type="file"
-                id="video-file"
-                accept="video/*"
-                onChange={(e) => setVideoFile(e.target.files[0])} // You'll need a state for this
-                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-        </div>
-        
-        {/* Title Input */}
-        <div>
-            <label htmlFor="video-title" className="block text-sm font-medium text-gray-700">
-                Video Title <span className="text-red-500">*</span>
-            </label>
-            <input
-                type="text"
-                id="video-title"
-                value={videoTitle} // You'll need a state for this
-                onChange={(e) => setVideoTitle(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-        </div>
-
-         {/* Privacy Status */}
-        <div>
-            <label htmlFor="privacy-status" className="block text-sm font-medium text-gray-700">
-                Privacy
-            </label>
-            <select 
-                id="privacy-status" 
-                value={privacyStatus} // You'll need a state for this
-                onChange={(e) => setPrivacyStatus(e.target.value)}
-                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm"
-            >
-                <option value="private">Private</option>
-                <option value="unlisted">Unlisted</option>
-                <option value="public">Public</option>
-            </select>
-        </div>
-    </div>
-)}
-{selectedPlatform === 'pinterest' && (
-    <div className="mt-4 space-y-4">
-        {/* Board Selector */}
-        <div>
-            <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">
-                Choose a board:
-            </label>
-             <select
-                id="board-select"
-                value={selectedBoardId}
-                onChange={(e) => setSelectedBoardId(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 ... rounded-md"
-            >
-                {pinterestBoards.map((board) => (
-                    <option key={board.board_id} value={board.board_id}>
-                        {board.board_name}
-                    </option>
-                ))}
-            </select>
-        </div>
-        {/* Title Input */}
-        <div>
-            <label htmlFor="pin-title" className="block text-sm font-medium text-gray-700">
-                Pin Title:
-            </label>
-            <input
-                type="text"
-                id="pin-title"
-                value={pinTitle}
-                onChange={(e) => setPinTitle(e.target.value)}
-                placeholder="Add a title"
-                className="mt-1 block w-full ... rounded-md"
-                required
-            />
-        </div>
-    </div>
-)}
-                        {/* NEW: Instagram Account Selector */}
-{selectedPlatform === 'instagram' && (
-    <div className="mt-4">
-        <label htmlFor="ig-account-select" className="block text-sm font-medium text-gray-700">
-            Post to Instagram Account:
-        </label>
-        <select
-            id="ig-account-select"
-            value={selectedInstagramId}
-            onChange={(e) => setSelectedInstagramId(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-        >
-            {instagramAccounts.length === 0 ? (
-                <option>No Instagram accounts connected.</option>
-            ) : (
-                instagramAccounts.map((acc) => (
-                    <option key={acc.instagram_user_id} value={acc.instagram_user_id}>
-                        {acc.username}
-                    </option>
-                ))
-            )}
-        </select>
-    </div>
-)}
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-gap-8" style={{ minHeight: '250px' }}>
-                        
-                     <div className="w-full h-full border-2 border-dashed rounded-lg bg-gray-50 flex items-center justify-center relative overflow-hidden">
-    {postImages.length > 0 ? (
-        <>
-            <Image
-                src={postImages[0].image_url}
-                alt="Staged post preview"
-                layout="fill"
-                className="object-cover"
-            />
-            {/* --- REVISED BUTTON CODE --- */}
-            <button
-                onClick={() => handleRemoveImage(postImages[0].id)}
-                title="Remove image"
-                className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/50 text-white transition-colors hover:bg-red-600"
-            >
-                <XCircleIcon className="h-5 w-5" />
-            </button>
-        </>
-    ) : (
-        <p className="text-sm text-gray-400">Your social image or video thumbnail will appear here</p>
-    )}
-</div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <div className="flex items-center border-b pb-4 overflow-x-auto whitespace-nowrap">
+                        {Object.values(PLATFORMS).map(platform => {
+                            const Icon = platform.icon;
+                            return (
+                                <button key={platform.name} onClick={() => setSelectedPlatform(platform.name.toLowerCase().split(' ')[0])} className={`flex items-center px-4 py-2 text-sm font-medium rounded-md mr-2 ${selectedPlatform === platform.name.toLowerCase().split(' ')[0] ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                                    {Icon && <Icon className="h-5 w-5 mr-2" />} {platform.name}
+                                </button>
+                            );
+                        })}
                     </div>
-                 
-                        <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder={currentPlatform.placeholder} className="mt-4 w-full h-64 p-4 border border-gray-200 rounded-md"/>
-                        <div className="mt-4 flex justify-between items-center">
-                            <span className={`text-sm font-medium ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>{postContent.length}/{currentPlatform.maxLength}</span>
-                            <div className="flex items-center gap-x-2">
-                                <button className="flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm bg-white text-gray-700 border-gray-300 hover:bg-gray-50"><ClipboardDocumentIcon className="h-5 w-5 mr-2" />Copy</button>
-                                <button 
-                                onClick={handleSubmit}
-                                disabled={isPosting || !postContent || isOverLimit}
-                                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300">
+                    {selectedPlatform === 'youtube' && (
+                        <div className="mt-4 space-y-4 p-4 border bg-gray-50 rounded-lg">
+                            <div>
+                                <label htmlFor="video-file" className="block text-sm font-medium text-gray-700">Select Video File</label>
+                                <input type="file" id="video-file" accept="video/*" onChange={(e) => setVideoFile(e.target.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                            </div>
+                            <div>
+                                <label htmlFor="video-title" className="block text-sm font-medium text-gray-700">Video Title <span className="text-red-500">*</span></label>
+                                <input type="text" id="video-title" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+                            </div>
+                            <div>
+                                <label htmlFor="privacy-status" className="block text-sm font-medium text-gray-700">Privacy</label>
+                                <select id="privacy-status" value={privacyStatus} onChange={(e) => setPrivacyStatus(e.target.value)} className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm">
+                                    <option value="private">Private</option>
+                                    <option value="unlisted">Unlisted</option>
+                                    <option value="public">Public</option>
+                                </select>
+                            </div>
+                        </div>
+                    )}
+                    {selectedPlatform === 'pinterest' && (
+                        <div className="mt-4 space-y-4">
+                            <div>
+                                <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">Choose a board:</label>
+                                {/* ✅ FIX: Robust Pinterest board selector */}
+                                <select
+                                    id="board-select"
+                                    value={selectedBoardId}
+                                    onChange={(e) => setSelectedBoardId(e.target.value)}
+                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                    disabled={loading || !pinterestBoards || pinterestBoards.length === 0}
+                                >
+                                    {loading ? (
+                                        <option>Loading boards...</option>
+                                    ) : !Array.isArray(pinterestBoards) || pinterestBoards.length === 0 ? (
+                                        <option>No boards found or not connected</option>
+                                    ) : (
+                                        pinterestBoards.map((board) => (
+                                            <option key={board.board_id} value={board.board_id}>
+                                                {board.board_name}
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="pin-title" className="block text-sm font-medium text-gray-700">Pin Title:</label>
+                                <input type="text" id="pin-title" value={pinTitle} onChange={(e) => setPinTitle(e.target.value)} placeholder="Add a title" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required />
+                            </div>
+                        </div>
+                    )}
+                    {selectedPlatform === 'instagram' && (
+                        <div className="mt-4">
+                            <label htmlFor="ig-account-select" className="block text-sm font-medium text-gray-700">Post to Instagram Account:</label>
+                            <select
+                                id="ig-account-select"
+                                value={selectedInstagramId}
+                                onChange={(e) => setSelectedInstagramId(e.target.value)}
+                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                            >
+                                {instagramAccounts.length === 0 ? (
+                                    <option>No Instagram accounts connected.</option>
+                                ) : (
+                                    instagramAccounts.map((acc) => (
+                                        <option key={acc.instagram_user_id} value={acc.instagram_user_id}>
+                                            {acc.username}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                        </div>
+                    )}
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-gap-8" style={{ minHeight: '250px' }}>
+                        <div className="w-full h-full border-2 border-dashed rounded-lg bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                            {postImages.length > 0 ? (
+                                <>
+                                    <Image src={postImages[0].image_url} alt="Staged post preview" layout="fill" className="object-cover" />
+                                    <button onClick={() => handleRemoveImage(postImages[0].id)} title="Remove image" className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/50 text-white transition-colors hover:bg-red-600">
+                                        <XCircleIcon className="h-5 w-5" />
+                                    </button>
+                                </>
+                            ) : (
+                                <p className="text-sm text-gray-400">Your social image or video thumbnail will appear here</p>
+                            )}
+                        </div>
+                    </div>
+                    <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder={currentPlatform.placeholder} className="mt-4 w-full h-64 p-4 border border-gray-200 rounded-md"/>
+                    <div className="mt-4 flex justify-between items-center">
+                        <span className={`text-sm font-medium ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>{postContent.length}/{currentPlatform.maxLength}</span>
+                        <div className="flex items-center gap-x-2">
+                            <button className="flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm bg-white text-gray-700 border-gray-300 hover:bg-gray-50"><ClipboardDocumentIcon className="h-5 w-5 mr-2" />Copy</button>
+                            <button onClick={handleSubmit} disabled={isPosting || !postContent || isOverLimit} className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300">
                                 <PaperAirplaneIcon className="h-5 w-5 mr-2" />
                                 {isPosting ? 'Posting...' : 'Post Now'}
                             </button>
-                            </div>
                         </div>
+                    </div>
                     {postStatus.message && (
                         <div className={`mt-4 text-sm p-2 rounded-md text-center ${postStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                             {postStatus.message}
                         </div>
                     )}
-                        <form onSubmit={handleSchedulePost} className="mt-6 border-t pt-4">
-                            <h4 className="text-lg font-semibold text-gray-800 mb-4">Schedule Post</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="scheduleDate" className="block text-sm font-medium text-gray-700">Date</label>
-                                    <input
-                                        type="date"
-                                        id="scheduleDate"
-                                        name="scheduleDate"
-                                        onChange={(e) => setScheduleDate(e.target.value)}
-                                        value={scheduleDate}
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="scheduleTime" className="block text-sm font-medium text-gray-700">Time</label>
-                                    <input
-                                        type="time"
-                                        id="scheduleTime"
-                                        name="scheduleTime"
-                                        value={scheduleTime}
-                                        onChange={(e) => setScheduleTime(e.target.value)}
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    />
-                                </div>
+                    <form onSubmit={handleSchedulePost} className="mt-6 border-t pt-4">
+                        <h4 className="text-lg font-semibold text-gray-800 mb-4">Schedule Post</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="scheduleDate" className="block text-sm font-medium text-gray-700">Date</label>
+                                <input type="date" id="scheduleDate" name="scheduleDate" onChange={(e) => setScheduleDate(e.target.value)} value={scheduleDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
                             </div>
-                            <div className="mt-6">
-                                <button type="submit" disabled={!postContent || isOverLimit || !scheduleDate || !scheduleTime} className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400">
-                                    <CalendarIcon className="h-5 w-5 mr-2" />Schedule Post
-                                </button>
+                            <div>
+                                <label htmlFor="scheduleTime" className="block text-sm font-medium text-gray-700">Time</label>
+                                <input type="time" id="scheduleTime" name="scheduleTime" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
                             </div>
-                        </form>
-                    </div>
-                    <div className="lg:col-span-1 space-y-8">
-                        <div className="bg-white p-6 rounded-lg shadow-md space-y-4 border border-gray-200">
-                            <h3 className="font-semibold text-lg">AI Assistant</h3>
-                            <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g., 'New Summer T-Shirt Sale'" className="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"/>
-                     <button onClick={handleGeneratePost} disabled={isGenerating || !topic.trim()} className="w-full flex items-center justify-center px-4 py-2 border rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400">
-                        <SparklesIcon className="h-5 w-5 mr-2" />
-                        {isGenerating ? 'Generating...' : 'Generate with AI'}
-                    </button>
-                    {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-
-                         </div>
-                        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                            <h3 className="font-semibold text-lg mb-4">Upcoming Posts</h3>
-                            <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {scheduledPosts.length > 0 ? scheduledPosts.slice(0, 5).map(post => {
-                            const platform = PLATFORMS[post.resource.platform];
-                            const Icon = platform?.icon;
-                            return (
-                                <div key={post.id} className={`p-3 bg-gray-50 rounded-lg border-l-4`} style={{ borderColor: platform?.color || '#9CA3AF' }}>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            {Icon && <Icon className="h-4 w-4 text-gray-600" />}
-                                            <span className="font-semibold text-sm text-gray-800">{platform?.name}</span>
-                                        </div>
-                                        <span className="text-xs text-blue-600 font-medium">{moment(post.start).format('MMM D, h:mm a')}</span>
-                                    </div>
-                                    <p className="text-sm text-gray-600 truncate mt-1">{post.title.split(': ')[1]}</p>
-                                </div>
-                            );
-                        }) : (
-                            <p className="text-sm text-center text-gray-500 py-4">No posts scheduled.</p>
-                        )}
-
                         </div>
+                        <div className="mt-6">
+                            <button type="submit" disabled={!postContent || isOverLimit || !scheduleDate || !scheduleTime} className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400">
+                                <CalendarIcon className="h-5 w-5 mr-2" />Schedule Post
+                            </button>
                         </div>
-                <ImageManager onImageAdd={handleImageAdded} />
-
-                    </div>
+                    </form>
                 </div>
-              
-           
+                <div className="lg:col-span-1 space-y-8">
+                    <div className="bg-white p-6 rounded-lg shadow-md space-y-4 border border-gray-200">
+                        <h3 className="font-semibold text-lg">AI Assistant</h3>
+                        <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g., 'New Summer T-Shirt Sale'" className="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"/>
+                        <button onClick={handleGeneratePost} disabled={isGenerating || !topic.trim()} className="w-full flex items-center justify-center px-4 py-2 border rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400">
+                            <SparklesIcon className="h-5 w-5 mr-2" />
+                            {isGenerating ? 'Generating...' : 'Generate with AI'}
+                        </button>
+                        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="font-semibold text-lg mb-4">Upcoming Posts</h3>
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {scheduledPosts.length > 0 ? scheduledPosts.slice(0, 5).map(post => {
+                                const platform = PLATFORMS[post.resource.platform];
+                                const Icon = platform?.icon;
+                                return (
+                                    <div key={post.id} className={`p-3 bg-gray-50 rounded-lg border-l-4`} style={{ borderColor: platform?.color || '#9CA3AF' }}>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                {Icon && <Icon className="h-4 w-4 text-gray-600" />}
+                                                <span className="font-semibold text-sm text-gray-800">{platform?.name}</span>
+                                            </div>
+                                            <span className="text-xs text-blue-600 font-medium">{moment(post.start).format('MMM D, h:mm a')}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 truncate mt-1">{post.title.split(': ')[1]}</p>
+                                    </div>
+                                );
+                            }) : (
+                                <p className="text-sm text-center text-gray-500 py-4">No posts scheduled.</p>
+                            )}
+                        </div>
+                    </div>
+                    <ImageManager onImageAdd={handleImageAdded} />
+                </div>
+            </div>
         </>
     );
-   
 };
 
 const AnalyticsTabContent = () => {
