@@ -1,8 +1,10 @@
+// src/app/api/social/facebook/pages/route.js
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { decrypt } from '@/lib/crypto';
+import { decrypt, encrypt } from '@/lib/crypto'; // Make sure to import encrypt
 import axios from 'axios';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +35,7 @@ export async function GET(req) {
         const response = await axios.get(`https://graph.facebook.com/me/accounts`, {
             params: {
                 access_token: accessToken,
-                fields: 'id,name,access_token,picture' // Ensure we ask for the picture
+                fields: 'id,name,access_token,picture{url}' // Updated to get picture URL directly
             }
         });
 
@@ -41,29 +43,34 @@ export async function GET(req) {
 
         // 3. Save the latest page info into our database
         if (pagesFromFacebook && pagesFromFacebook.length > 0) {
-            const pageValues = pagesFromFacebook.map(page => [
+            // Filter out Instagram accounts by checking for the presence of a 'name' field
+            const facebookPages = pagesFromFacebook.filter(page => page.name);
+
+            const pageValues = facebookPages.map(page => [
                 session.user.email, 
                 page.id, 
-                page.page_name, 
-                page.access_token,
-                page.picture_url?.data?.url || null
+                page.name, // FIX: Use 'name' instead of 'page_name'
+                encrypt(page.access_token), // Encrypt the page access token
+                page.picture?.data?.url || null // FIX: Use 'picture.data.url'
             ]);
             
-            const query = `
-                INSERT INTO facebook_pages (user_email, page_id, page_name, page_access_token_encrypted, picture_url) 
-                VALUES ? 
-                ON DUPLICATE KEY UPDATE 
-                page_name = VALUES(page_name), 
-                page_access_token_encrypted = VALUES(page_access_token_encrypted), 
-                picture_url = VALUES(picture_url)
-            `;
-            await db.query(query, [pageValues]);
+            if (pageValues.length > 0) {
+                const query = `
+                    INSERT INTO facebook_pages (user_email, page_id, page_name, page_access_token_encrypted, picture_url) 
+                    VALUES ? 
+                    ON DUPLICATE KEY UPDATE 
+                    page_name = VALUES(page_name), 
+                    page_access_token_encrypted = VALUES(page_access_token_encrypted), 
+                    picture_url = VALUES(picture_url)
+                `;
+                await db.query(query, [pageValues]);
+            }
         }
         
         // 4. ✅ FIX: Directly read from the database and send that as the response
         // This guarantees that what's in the DB is what the frontend receives.
         const [pageRows] = await db.query(
-            'SELECT page_id, page_name, profile_url FROM facebook_pages WHERE user_email = ?', 
+            'SELECT page_id, page_name, picture_url FROM facebook_pages WHERE user_email = ?', 
             [session.user.email]
         );
 
