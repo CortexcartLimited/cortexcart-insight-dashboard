@@ -401,25 +401,33 @@ const handleUploadToYouTube = async () => {
     </div>
 )}
 {selectedPlatform === 'pinterest' && (
-    <div className="mt-4 space-y-4">
-        {/* Board Selector */}
         <div>
-            <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">
-                Choose a board:
-            </label>
-             <select
-                id="board-select"
-                value={selectedBoardId}
-                onChange={(e) => setSelectedBoardId(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 ... rounded-md"
-            >
-                {pinterestBoards.map((board) => (
+        <label htmlFor="pinterest-board" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Select a Board
+        </label>
+        <select
+            id="pinterest-board"
+            name="pinterest-board"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            value={selectedBoard}
+            onChange={(e) => setSelectedBoard(e.target.value)}
+            disabled={loadingBoards || pinterestBoards.length === 0}
+        >
+            {loadingBoards ? (
+                <option>Loading boards...</option>
+            ) : pinterestBoards.length === 0 ? (
+                <option>No boards found or not connected</option>
+            ) : (
+                // ✅ FIX: Use the corrected field names
+                pinterestBoards.map((board) => (
                     <option key={board.board_id} value={board.board_id}>
                         {board.board_name}
                     </option>
-                ))}
-            </select>
-        </div>
+                ))
+            )}
+        </select>
+    </div>
+)}
         {/* Title Input */}
         <div>
             <label htmlFor="pin-title" className="block text-sm font-medium text-gray-700">
