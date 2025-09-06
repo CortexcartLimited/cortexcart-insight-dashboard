@@ -304,7 +304,6 @@ const handleUploadToYouTube = async () => {
         setIsPosting(false);
     }
 };
-
     const handleSchedulePost = async (e) => {
         e.preventDefault();
         setError('');
@@ -401,6 +400,7 @@ const handleUploadToYouTube = async () => {
         </div>
     </div>
 )}
+
 {selectedPlatform === 'pinterest' && (
         <div>
         <label htmlFor="pinterest-board" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1173,42 +1173,6 @@ export default function SocialMediaManagerPage() {
         } catch (error) { console.error("Failed to fetch posts:", error); }
     }, []);
 
-useEffect(() => {
-    const fetchPinterestBoards = async () => {
-        // ✅ FIX: Add robust fetching and error handling
-        setLoadingBoards(true);
-        try {
-            const response = await fetch('/api/social/pinterest/boards');
-            
-            if (!response.ok) {
-                // Handle API errors (e.g., 500 status)
-                console.error("Failed to fetch Pinterest boards");
-                setPinterestBoards([]); // Set to empty array to prevent crash
-                return;
-            }
-
-            const data = await response.json();
-
-            // Ensure the data is an array before setting it
-            if (Array.isArray(data)) {
-                setPinterestBoards(data);
-            } else {
-                console.error("Received unexpected data format for Pinterest boards:", data);
-                setPinterestBoards([]); // Default to empty array
-            }
-        } catch (error) {
-            console.error("Error fetching Pinterest boards:", error);
-            setPinterestBoards([]); // Set to empty on any other error
-        } finally {
-            setLoadingBoards(false);
-        }
-    };
-
-    if (activeTab === 'pinterest') {
-        fetchPinterestBoards();
-    }
-}, [activeTab]);
-
     const fetchOptimalTimes = useCallback(async () => {
         try {
             const res = await fetch('/api/social/optimal-times');
@@ -1250,7 +1214,38 @@ useEffect(() => {
         }
         fetchScheduledPosts();
     }, [status, fetchScheduledPosts, fetchOptimalTimes]);
-    
+    useEffect(() => {
+        const fetchPinterestBoards = async () => {
+            setLoadingBoards(true);
+            try {
+                const response = await fetch('/api/social/pinterest/boards');
+                if (!response.ok) {
+                    console.error("Failed to fetch Pinterest boards");
+                    setPinterestBoards([]);
+                    return;
+                }
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    setPinterestBoards(data);
+                    if (data.length > 0) {
+                        setSelectedBoard(data[0].board_id);
+                    }
+                } else {
+                    setPinterestBoards([]);
+                }
+            } catch (error) {
+                console.error("Error fetching Pinterest boards:", error);
+                setPinterestBoards([]);
+            } finally {
+                setLoadingBoards(false);
+            }
+        };
+
+        if (activeTab === 'pinterest') {
+            fetchPinterestBoards();
+        }
+    }, [activeTab]);
+
     if (status === 'loading') return <Layout><p>Loading...</p></Layout>;
 
     return (
