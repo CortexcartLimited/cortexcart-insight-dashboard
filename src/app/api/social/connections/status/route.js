@@ -15,11 +15,13 @@ export async function GET(req) {
     }
 
     try {
+        // 1. Get all direct connections
         const [rows] = await db.query(
             'SELECT platform, shopify_shop_name FROM social_connect WHERE user_email = ?',
             [session.user.email]
         );
 
+        // 2. Format the connections into a status object
         const connectedPlatforms = rows.reduce((acc, row) => {
             if (row.platform === 'shopify') {
                 acc.shopify = { isConnected: true, shopName: row.shopify_shop_name };
@@ -29,11 +31,15 @@ export async function GET(req) {
             return acc;
         }, {});
         
+        // 3. Check for Instagram connection via Facebook
         if (connectedPlatforms.facebook) {
+            // ✅ FIX: Removed the non-existent 'is_active' column from the query
             const [instagramRows] = await db.query(
-                'SELECT COUNT(*) as count FROM instagram_accounts WHERE user_email = ? AND is_active = TRUE',
+                'SELECT COUNT(*) as count FROM instagram_accounts WHERE user_email = ?',
                 [session.user.email]
             );
+
+            // If any Instagram accounts exist, mark Instagram as connected
             if (instagramRows[0].count > 0) {
                 connectedPlatforms.instagram = true;
             }
@@ -53,9 +59,10 @@ export async function DELETE(req) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    let platform = '';
     try {
-        // ✅ FIX: Read the platform from the JSON body of the request
-        const { platform } = await req.json();
+        const body = await req.json();
+        platform = body.platform;
 
         if (!platform) {
             return NextResponse.json({ message: 'Platform not specified.' }, { status: 400 });
@@ -66,7 +73,7 @@ export async function DELETE(req) {
             [session.user.email, platform]
         );
 
-        // Also clear any related cookies if necessary (e.g., for Pinterest)
+        // Clear any related cookies if necessary
         if (platform === 'pinterest') {
             cookies().delete('pinterest_oauth_state');
             cookies().delete('pinterest_oauth_code_verifier');
@@ -76,6 +83,6 @@ export async function DELETE(req) {
 
     } catch (error) {
         console.error(`Failed to disconnect ${platform}:`, error);
-        return NextResponse.json({ message: `Failed to disconnect ${platform}.` }, { status: 500 });
+        return NextResponse.json({ message: `Failed to disconnect ${platform || 'platform'}.` }, { status: 500 });
     }
 }
