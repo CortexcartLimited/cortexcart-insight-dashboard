@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import Layout from '@/app/components/Layout';
 import { ShieldAlert, Download } from 'lucide-react';
-import { ArrowLeftCircle } from 'lucide-react';
-import Link from 'next/link';
 
 const DangerZonePage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -13,7 +11,6 @@ const DangerZonePage = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState('');
 
-  // START: Updated Download Handler
   const handleDownloadData = async () => {
     setIsDownloading(true);
     setError('');
@@ -23,11 +20,9 @@ const DangerZonePage = () => {
       if (!response.ok) {
         let errorMessage = `A server error occurred: ${response.status}`;
         try {
-          // Try to get a more specific message from the API response
           const errorData = await response.json();
           errorMessage = errorData.message || JSON.stringify(errorData);
         } catch (e) {
-          // If the response isn't JSON, use the raw text
           errorMessage = await response.text();
         }
         throw new Error(errorMessage);
@@ -44,13 +39,21 @@ const DangerZonePage = () => {
       window.URL.revokeObjectURL(url);
 
     } catch (err) {
-      console.error("Download Error Details:", err); // Logs the full error to the console
-      setError(`Download failed: ${err.message}`);
+      console.error("Download Error Details:", err);
+      
+      // START: FIX FOR THE TYPE ERROR
+      // We check if 'err' is an actual Error object before accessing '.message'
+      if (err instanceof Error) {
+        setError(`Download failed: ${err.message}`);
+      } else {
+        setError(`An unexpected error occurred.`);
+      }
+      // END: FIX FOR THE TYPE ERROR
+
     } finally {
       setIsDownloading(false);
     }
   };
-  // END: Updated Download Handler
 
   const handleAccountDelete = async () => {
     setIsDeleting(true);
@@ -63,15 +66,9 @@ const DangerZonePage = () => {
     }
   };
 
-  // ... rest of the component JSX remains the same
   return (
     <Layout>
-       <div className="flex justify-between items-center mb-4">
       <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Danger Zone</h2>
-         <Link href="/account" className="flex items-center text-blue-500 hover:text-blue-600 font-bold py-2 px-4 rounded-lg transition duration-300">
-          <ArrowLeftCircle className="h-5 w-5 mr-2" /> Back to Account Page
-        </Link>
-        </div>
       <p className="text-gray-600 dark:text-gray-300 mb-6">
         Manage critical, irreversible actions related to your account.
       </p>
