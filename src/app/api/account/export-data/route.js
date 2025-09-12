@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import db from "@/lib/db";
+import {db} from "@/lib/db";
 import { NextResponse } from "next/server";
 
 // We define a single handler function for the logic
