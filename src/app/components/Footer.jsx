@@ -5,7 +5,7 @@ export default function Footer() {
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
     { name: 'Terms of Service', href: 'pages/terms' },
-    { name: 'Privacy Policy', href: 'pages/privacy' },
+    { name: 'Privacy Policy', href: 'https://cortexcart.com/pages/privacy' },
     { name: 'EULA License', href: '/license' },
   ];
 

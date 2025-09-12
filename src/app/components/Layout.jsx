@@ -185,7 +185,7 @@ const Footer = () => {
           ))}
         </div>
                 <p className="mt-6 text-center text-xs text-gray-400">
-                    &copy; 2025 CortexCart v{process.env.NEXT_PUBLIC_APP_VERSION} Beta. All rights reserved.
+                    &copy; 2025 CortexCart v{process.env.NEXT_PUBLIC_APP_VERSION}. All rights reserved. </p><p className="mt-6 text-center text-xs text-gray-400">Cortexcart Limited is a registered company in Northern Ireland, UK. company number: NI73656
                 </p>
             </div>
         </footer>

@@ -292,7 +292,7 @@ export default function HomePageClient({ content, plans, recentPost }: HomePageC
                         <span className="text-gray-500">|</span>
      			 <Link href="pages/terms"><span className="px-3 hover:underline cursor-pointer">Terms of Service</span></Link>
                         <span className="text-gray-500">|</span>
-                        <Link href="pages/privacy"><span className="px-3 hover:underline cursor-pointer">Privacy Policy</span></Link>    
+                        <Link href="https://cortexcart.com/pages/privacy"><span className="px-3 hover:underline cursor-pointer">Privacy Policy</span></Link>    
 		        <span className="text-gray-500">|</span>
                         <Link href="pages/data-protection"><span className="px-3 hover:underline cursor-pointer">Data Protection</span></Link>                   
                     <span className="text-gray-500">|</span>

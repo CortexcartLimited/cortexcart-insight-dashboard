@@ -11,13 +11,13 @@ import QuickBooksConnect from '@/app/components/QuickBooksConnect';
 import Image from 'next/image';
 
 const tabs = [
-    { name: 'General', href: '#' },
-    { name: 'Integrations', href: '#' },
+    //{ name: 'General', href: '#' },
+    { name: 'Integrations (GA4)', href: '#' },
     { name: 'Social Connections', href: '#' },
     { name: 'Platforms', href: '#' },
-    { name: 'Widget Settings', href: '#' },
-    { name: 'Billing', href: '#' },
-    { name: 'Danger Zone', href: '#' },
+    { name: 'Widget Code', href: '#' },
+    //{ name: 'Billing', href: '#' },
+    //{ name: 'Danger Zone', href: '#' },
 ];
 
 // --- General Settings Component ---
@@ -715,8 +715,8 @@ function SettingsPage() {
     return (
         <Layout>
             <div className="mb-8">
-                <h2 className="text-3xl font-bold">Settings</h2>
-                <p className="mt-1 text-sm text-gray-500">Manage your site settings, integrations, and tracking.</p>
+                <h2 className="text-3xl font-bold">Settings, Integrations & Platforms</h2>
+                <p className="mt-1 text-sm text-gray-500">Manage your site integrations, Platforms and tracking.</p>
                 {alert.show && <AlertBanner title={alert.type === 'success' ? 'Success' : 'Error'} message={alert.message} type={alert.type} onClose={() => setAlert({ show: false, message: '', type: 'info' })} />}
             </div>
  
@@ -724,7 +724,7 @@ function SettingsPage() {
  
             <div className="mt-8 bg-white p-8 rounded-lg">
                 {activeTab === 'General' && <GeneralTabContent />}
-                {activeTab === 'Integrations' && <IntegrationsTabContent />}
+                {activeTab === 'Integrations (GA4)' && <IntegrationsTabContent />}
                 {activeTab === 'Social Connections' && 
                     <SocialConnectionsTabContent 
                         connectionStatus={connectionStatus} 
@@ -732,7 +732,7 @@ function SettingsPage() {
                         setAlert={setAlert}
                     />
                 }
-                {activeTab === 'Widget Settings' && <WidgetSettingsTabContent />}
+                {activeTab === 'Widget Code' && <WidgetSettingsTabContent />}
                 {activeTab === 'Platforms' && 
                     <PlatformsTabContent 
                         connectionStatus={connectionStatus} 
