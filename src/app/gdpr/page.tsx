@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Layout from '@/app/components/Layout';
-import { BookUser, FileText, ShieldCheck, Mail, ArrowLeftCircle } from 'lucide-react';
-import Link from 'next/link';
+import { BookUser, FileText, ShieldCheck, Mail } from 'lucide-react';
 
 const GDPRPage = () => {
   const { data: session } = useSession();
@@ -15,6 +14,8 @@ const GDPRPage = () => {
 
   // Pre-fill the form with the logged-in user's details
   useEffect(() => {
+    // START: FIX FOR THE TYPE ERROR
+    // We check if session and session.user exist before trying to access them
     if (session?.user) {
       setFormData(prev => ({
         ...prev,
@@ -22,6 +23,7 @@ const GDPRPage = () => {
         email: session.user.email || '',
       }));
     }
+    // END: FIX FOR THE TYPE ERROR
   }, [session]);
 
   const handleInputChange = (e) => {
@@ -54,7 +56,11 @@ const GDPRPage = () => {
       }, 3000); // Close modal after 3 seconds
 
     } catch (error) {
-      setFormMessage({ text: error.message, type: 'error' });
+        if (error instanceof Error) {
+            setFormMessage({ text: error.message, type: 'error' });
+        } else {
+            setFormMessage({ text: 'An unexpected error occurred.', type: 'error'});
+        }
     } finally {
       setIsSubmitting(false);
     }
@@ -66,9 +72,6 @@ const GDPRPage = () => {
         <div className="flex items-center mb-4">
           <ShieldCheck className="h-8 w-8 text-blue-500 mr-4 flex-shrink-0" />
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Your Data Protection Rights (GDPR)</h2>
-                 <Link href="/account" className="flex items-center text-blue-500 hover:text-blue-600 font-bold py-2 px-4 rounded-lg transition duration-300">
-          <ArrowLeftCircle className="h-5 w-5 mr-2" /> Back to Account Page
-        </Link>
         </div>
         <p className="text-gray-600 dark:text-gray-300 mb-8">
           Under the General Data Protection Regulation (GDPR) in the UK and EU, you have rights over your personal data. We are committed to upholding these rights. Below is a summary of your entitlements and how you can exercise them.
