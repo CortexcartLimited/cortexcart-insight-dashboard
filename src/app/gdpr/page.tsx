@@ -1,23 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-// useSession and useEffect are no longer needed for this simplified version
+import { useState, ChangeEvent } from 'react'; // Import ChangeEvent for typing
 import Layout from '@/app/components/Layout';
 import { BookUser, FileText, ShieldCheck, Mail } from 'lucide-react';
 
 const GDPRPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // The form will now start with empty fields
   const [formData, setFormData] = useState({ name: '', email: '', request: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formMessage, setFormMessage] = useState({ text: '', type: '' });
 
-  const handleInputChange = (e) => {
+  // START: FIX FOR THE TYPE ERROR
+  // We add the type 'ChangeEvent<...>' to the event parameter 'e'.
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // END: FIX FOR THE TYPE ERROR
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setFormMessage({ text: '', type: '' });
@@ -35,7 +36,7 @@ const GDPRPage = () => {
       }
       
       setFormMessage({ text: result.message, type: 'success' });
-      setFormData({ name: '', email: '', request: '' }); // Clear all fields
+      setFormData({ name: '', email: '', request: '' });
       setTimeout(() => {
           setIsModalOpen(false);
           setFormMessage({ text: '', type: '' });
