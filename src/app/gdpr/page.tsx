@@ -1,30 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useState } from 'react';
+// useSession and useEffect are no longer needed for this simplified version
 import Layout from '@/app/components/Layout';
 import { BookUser, FileText, ShieldCheck, Mail } from 'lucide-react';
 
 const GDPRPage = () => {
-  const { data: session } = useSession();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // The form will now start with empty fields
   const [formData, setFormData] = useState({ name: '', email: '', request: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formMessage, setFormMessage] = useState({ text: '', type: '' });
-
-  // Pre-fill the form with the logged-in user's details
-  useEffect(() => {
-    // START: FIX FOR THE TYPE ERROR
-    // We check if session and session.user exist before trying to access them
-    if (session?.user) {
-      setFormData(prev => ({
-        ...prev,
-        name: session.user.name || '',
-        email: session.user.email || '',
-      }));
-    }
-    // END: FIX FOR THE TYPE ERROR
-  }, [session]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -49,11 +35,11 @@ const GDPRPage = () => {
       }
       
       setFormMessage({ text: result.message, type: 'success' });
-      setFormData(prev => ({ ...prev, request: '' })); // Clear the request field
+      setFormData({ name: '', email: '', request: '' }); // Clear all fields
       setTimeout(() => {
           setIsModalOpen(false);
           setFormMessage({ text: '', type: '' });
-      }, 3000); // Close modal after 3 seconds
+      }, 3000);
 
     } catch (error) {
         if (error instanceof Error) {
