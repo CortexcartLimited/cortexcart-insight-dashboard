@@ -6,8 +6,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Crown, Zap } from 'lucide-react';
 
+// START: FIX FOR THE TYPE ERROR
+// 1. Define a type that describes the shape of our plan data
+type PlanData = {
+  planName: string;
+  status: string;
+  renewalDate: string | null;
+};
+// END: FIX FOR THE TYPE ERROR
+
 const MyPlanPage = () => {
-  const [planData, setPlanData] = useState(null);
+  // 2. Tell useState that our state will be 'PlanData' or 'null'
+  const [planData, setPlanData] = useState<PlanData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +34,6 @@ const MyPlanPage = () => {
         const data = await res.json();
         setPlanData(data);
       } catch (err) {
-        // FIX: Check if err is an Error object before accessing .message
         if (err instanceof Error) {
           setError(err.message);
         } else {
@@ -37,7 +46,6 @@ const MyPlanPage = () => {
     fetchPlan();
   }, []);
 
-  // Redirects user to the Stripe Customer Portal with improved error handling
   const handleManageSubscription = async () => {
     setIsRedirecting(true);
     setError('');
