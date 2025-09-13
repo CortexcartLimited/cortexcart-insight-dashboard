@@ -24,7 +24,12 @@ const MyPlanPage = () => {
         const data = await res.json();
         setPlanData(data);
       } catch (err) {
-        setError(err.message);
+        // FIX: Check if err is an Error object before accessing .message
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unexpected error occurred.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -32,20 +37,28 @@ const MyPlanPage = () => {
     fetchPlan();
   }, []);
 
-  // Redirects user to the Stripe Customer Portal
+  // Redirects user to the Stripe Customer Portal with improved error handling
   const handleManageSubscription = async () => {
     setIsRedirecting(true);
-    const res = await fetch('/api/stripe/create-portal-session');
-    if (res.ok) {
+    setError('');
+    try {
+        const res = await fetch('/api/stripe/create-portal-session');
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || 'Could not open the billing portal.');
+        }
         const { url } = await res.json();
         router.push(url);
-    } else {
-        setError('Could not open the billing portal. Please try again.');
+    } catch (err) {
+        if (err instanceof Error) {
+            setError(err.message);
+        } else {
+            setError('An unexpected error occurred.');
+        }
         setIsRedirecting(false);
     }
   };
 
-  // Renders a loading skeleton
   if (isLoading) {
     return (
       <Layout>
