@@ -7,7 +7,7 @@ const StripePricingTable = () => {
   const { data: session, status } = useSession();
 
   // 1. Get these values from your Stripe Dashboard
-  const PRICING_TABLE_ID = 'prctbl_1S6SiyF6XLY4flzwTVKRY8CN'; // Replace with your Pricing Table ID
+  const PRICING_TABLE_ID = 'prctbl_1S6r3LF6XLY4flzw2vZp4OW6'; // Replace with your Pricing Table ID
   const PUBLISHABLE_KEY = 'pk_live_WYJzenOkJZzqDr0BmsGnlddg'; // Replace with your Publishable Key
 
   // Show a loading state while we get the user's session
