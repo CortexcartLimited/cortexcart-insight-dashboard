@@ -16,12 +16,23 @@ export async function GET(request) {
         return new Response('Shop name is required', { status: 400 });
     }
     
-    const state = randomBytes(16).toString('hex');
+    // FIX 1: Use the server-side environment variable for the API Key
+    const apiKey = process.env.SHOPIFY_API_KEY;
 
+    // Add a check to make sure the key was actually found on the server
+    if (!apiKey) {
+        console.error("CRITICAL: SHOPIFY_API_KEY environment variable is not set on the server!");
+        return new Response('Server configuration error: Missing API Key.', { status: 500 });
+    }
+
+    // FIX 2: Trim whitespace from the shop name to prevent invalid URLs
+    const trimmedShop = shop.trim();
+    
+    const state = randomBytes(16).toString('hex');
     const scopes = 'read_products,read_analytics';
     const redirectUri = `${process.env.NEXTAUTH_URL}/api/connect/shopify/callback`;
     
-    const authUrl = `https:///${shop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_SHOPIFY_API_KEY}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+    const authUrl = `https://${trimmedShop}.myshopify.com/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
 
     const response = NextResponse.redirect(authUrl);
     
