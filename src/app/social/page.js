@@ -213,7 +213,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     };
     
     const handleImageAdded = (newImage) => {
-        setPostImages([{ image_url: newImage.url, file: newImage.file }]);
+       setPostImages([newImage]);
     };
 
     const handleRemoveImage = () => {
