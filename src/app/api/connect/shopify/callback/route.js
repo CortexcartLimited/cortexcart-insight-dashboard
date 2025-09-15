@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
 import axios from 'axios';
+import { cookies } from 'next/headers'; // Import cookies
 
 export async function GET(request) {
     const session = await getServerSession(authOptions);
@@ -11,20 +12,32 @@ export async function GET(request) {
         return NextResponse.redirect(new URL('/login?error=unauthenticated', request.url));
     }
 
+    // FIX 1: Use the correct NEXTAUTH_URL for all redirects
+    const settingsUrl = new URL('/settings#platforms', process.env.NEXTAUTH_URL);
+
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const shop = searchParams.get('shop');
+    const state = searchParams.get('state');
     
-    const redirectUrl = new URL('/settings?tab=Platforms', request.url);
+    // FIX 2: Add crucial state validation for security
+    const savedState = cookies().get('shopify_oauth_state')?.value;
+    if (!state || state !== savedState) {
+        settingsUrl.searchParams.set('connect_status', 'error');
+        settingsUrl.searchParams.set('message', 'invalid_security_token');
+        return NextResponse.redirect(settingsUrl);
+    }
+    
+    // Clean up the state cookie
+    cookies().delete('shopify_oauth_state');
 
     if (!code || !shop) {
-        redirectUrl.searchParams.set('connect_status', 'error');
-        redirectUrl.searchParams.set('message', 'invalid_callback');
-        return NextResponse.redirect(redirectUrl);
+        settingsUrl.searchParams.set('connect_status', 'error');
+        settingsUrl.searchParams.set('message', 'invalid_callback_parameters');
+        return NextResponse.redirect(settingsUrl);
     }
 
     try {
-        // Exchange the temporary code for a permanent access token
         const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
             client_id: process.env.SHOPIFY_API_KEY,
             client_secret: process.env.SHOPIFY_API_SECRET,
@@ -33,7 +46,6 @@ export async function GET(request) {
 
         const accessToken = tokenResponse.data.access_token;
 
-        // Save the encrypted token and shop name to the database
         const query = `
             INSERT INTO social_connect (user_email, platform, access_token_encrypted, shopify_shop_name)
             VALUES (?, ?, ?, ?)
@@ -43,13 +55,13 @@ export async function GET(request) {
         `;
         await db.query(query, [session.user.email, 'shopify', encrypt(accessToken), shop]);
         
-        redirectUrl.searchParams.set('connect_status', 'success');
-        return NextResponse.redirect(redirectUrl);
+        settingsUrl.searchParams.set('connect_status', 'success');
+        return NextResponse.redirect(settingsUrl);
 
     } catch (error) {
         console.error("Shopify callback error:", error.response?.data || error.message);
-        redirectUrl.searchParams.set('connect_status', 'error');
-        redirectUrl.searchParams.set('message', 'shopify_connection_failed');
-        return NextResponse.redirect(redirectUrl);
+        settingsUrl.searchParams.set('connect_status', 'error');
+        settingsUrl.searchParams.set('message', 'shopify_connection_failed');
+        return NextResponse.redirect(settingsUrl);
     }
 }
