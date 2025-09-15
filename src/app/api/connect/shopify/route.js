@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
-// FIX: Changed from 2024-07 to 2024-04
 import { restResources } from '@shopify/shopify-api/rest/admin/2024-04';
 import '@shopify/shopify-api/adapters/node';
 
 const shopify = shopifyApi({
     apiKey: process.env.SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: process.env.SHOPIFY_SCOPES.split(','),
+    // FIX: Add a fallback to prevent crashing if the env var is missing
+    scopes: (process.env.SHOPIFY_SCOPES || '').split(','),
     hostName: process.env.HOST.replace(/^https?:\/\//, ""),
     apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: false,
@@ -15,6 +15,7 @@ const shopify = shopifyApi({
     sessionStorage: new Shopify.Session.MemorySessionStorage(),
 });
 
+// ... rest of the file remains the same
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const shop = searchParams.get('shop')?.trim();
