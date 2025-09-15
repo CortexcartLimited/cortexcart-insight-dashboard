@@ -19,7 +19,7 @@ export async function POST(req) {
 
         // Update the users table to set the active Instagram account
         await db.query(
-            'UPDATE users SET active_instagram_account_id = ? WHERE email = ?',
+            'UPDATE social_connect SET active_instagram_account_id = ? WHERE email = ?',
             [accountId, session.user.email]
         );
 
