@@ -1,73 +1,82 @@
-// src/app/api/social/facebook/create-post/route.js
-
 import { NextResponse } from 'next/server';
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import axios from 'axios';
+import { Buffer } from 'buffer';
+import fs from 'fs';
+import path from 'path';
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.email) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { content, imageUrl } = await req.json(); // imageUrl is relative (e.g., /uploads/image.jpg)
-    const userEmail = session.user.email;
-
     try {
-        const [pageRows] = await db.query(
-            'SELECT page_id, page_name, page_access_token_encrypted FROM facebook_pages WHERE user_email = ? ORDER BY id DESC LIMIT 1',
-            [userEmail]
+        const formData = await req.formData();
+        const content = formData.get('content');
+        const imageFile = formData.get('image'); // Assuming the key is 'image'
+
+        const [userRows] = await db.query(
+            `SELECT sc.page_id, sc.page_access_token_encrypted 
+             FROM social_connect sc
+             JOIN users u ON sc.user_email = u.email
+             WHERE u.email = ? AND sc.platform = 'facebook' AND sc.page_id IS NOT NULL`,
+            [session.user.email]
         );
 
-        if (pageRows.length === 0) {
-            return NextResponse.json({ error: 'No Facebook Page connected.' }, { status: 404 });
+        if (userRows.length === 0 || !userRows[0].page_id || !userRows[0].page_access_token_encrypted) {
+            return NextResponse.json({ error: 'Facebook Page not connected or configured.' }, { status: 400 });
         }
+
+        const pageId = userRows[0].page_id;
+        const pageAccessToken = decrypt(userRows[0].page_access_token_encrypted);
         
-        const activePage = pageRows[0];
-        const pageAccessToken = decrypt(activePage.page_access_token_encrypted);
-        const pageId = activePage.page_id;
-
-        const endpoint = imageUrl 
-            ? `https://graph.facebook.com/${pageId}/photos` 
-            : `https://graph.facebook.com/${pageId}/feed`;
-
-        const requestBody = {
-            access_token: pageAccessToken,
-            message: content,
-            caption: content,
-        };
-
-        // --- THE FIX: Convert the relative imageUrl to an absolute URL ---
-        if (imageUrl) {
-            // This combines your site's base URL with the relative image path
-            const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
-            requestBody.url = absoluteImageUrl;
+        let response;
+        if (imageFile) {
+            // Logic for photo post
+            const imageUrl = `${process.env.NEXTAUTH_URL}/uploads/${imageFile.name}`;
+            response = await axios.post(`https://graph.facebook.com/${pageId}/photos`, {
+                url: imageUrl,
+                caption: content,
+                access_token: pageAccessToken,
+            });
+        } else {
+            // Logic for text-only post
+            response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+                message: content,
+                access_token: pageAccessToken,
+            });
         }
 
-        const response = await axios.post(endpoint, requestBody);
+        // Add post to our database
+        await db.query(
+            'INSERT INTO posts (user_email, platform, post_id, content, created_at, status) VALUES (?, ?, ?, ?, NOW(), ?)',
+            [session.user.email, 'facebook', response.data.id, content, 'posted']
+        );
 
-        if (response.status !== 200) {
-            throw new Error(`Facebook API responded with status ${response.status}`);
-        }
-
-        return NextResponse.json({ success: true, postId: response.data.id });
+        return NextResponse.json({ success: true, postId: response.data.id }, { status: 200 });
 
     } catch (error) {
-        console.error("Error in create-post function:", error.response ? error.response.data.error : error.message);
-        
-        const fbError = error.response?.data?.error;
-        if (fbError) {
-            if (fbError.code === 190) {
-                 return NextResponse.json({
-                    error: "Your Facebook connection has expired. Please go to your settings and reconnect your account."
-                }, { status: 401 });
-            }
-            return NextResponse.json({ error: `Facebook Error: ${fbError.message}` }, { status: 500 });
+        // --- IMPROVED LOGGING ---
+        console.error("CRITICAL Error posting to Facebook:");
+        if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            console.error("Error Data:", JSON.stringify(error.response.data, null, 2));
+            console.error("Error Status:", error.response.status);
+            console.error("Error Headers:", error.response.headers);
+        } else if (error.request) {
+            // The request was made but no response was received
+            console.error("Error Request:", error.request);
+        } else {
+            // Something happened in setting up the request that triggered an Error
+            console.error('Error Message:', error.message);
         }
         
-        return NextResponse.json({ error: `An unexpected server error occurred: ${error.message}` }, { status: 500 });
+        const errorDetails = error.response ? error.response.data.error.message : 'An unknown error occurred.';
+        return NextResponse.json({ error: 'Failed to post to Facebook.', details: errorDetails }, { status: 500 });
     }
 }
