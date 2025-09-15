@@ -1,37 +1,45 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { randomBytes } from 'crypto';
+import { Shopify, LATEST_API_VERSION } from '@shopify/shopify-api';
+import '@shopify/shopify-api/adapters/node';
+
+// Initialize the Shopify API client
+const shopify = Shopify.Context.initialize({
+    API_KEY: process.env.SHOPIFY_API_KEY,
+    API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
+    SCOPES: process.env.SHOPIFY_SCOPES.split(','),
+    HOST_NAME: process.env.HOST.replace(/^https?:\/\//, ""), // Removes http/https protocol
+    API_VERSION: LATEST_API_VERSION,
+    IS_EMBEDDED_APP: false,
+    SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
+});
 
 export async function GET(request) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-        return new Response('Not authenticated', { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
-    const shop = searchParams.get('shop');
+    // Trim whitespace from the shop parameter to prevent errors
+    const shop = searchParams.get('shop')?.trim();
 
     if (!shop) {
-        return new Response('Shop name is required', { status: 400 });
+        return NextResponse.json({ error: 'Missing or invalid shop parameter' }, { status: 400 });
     }
-    
-    const state = randomBytes(16).toString('hex');
 
-    const scopes = 'read_products,read_analytics';
-    const redirectUri = `${process.env.NEXTAUTH_URL}/api/connect/shopify/callback`;
-    
-    const authUrl = `https:///${shop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_SHOPIFY_API_KEY}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+    try {
+        // This is the old, incorrect method. We remove it.
+        // const authRoute = await Shopify.Auth.beginAuth(...);
+        
+        // This is the new, correct method using the initialized context
+        const authUrl = await shopify.Auth.beginAuth({
+            shop: shop,
+            callbackPath: '/api/connect/shopify/callback',
+            isOnline: false, // Use false for offline access tokens
+            req: request,
+            res: new NextResponse(), // A dummy response object
+        });
 
-    const response = NextResponse.redirect(authUrl);
-    
-    response.cookies.set('shopify_oauth_state', state, {
-        path: '/',
-        httpOnly: true,
-        maxAge: 600, // 10 minutes
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-    });
+        // Redirect the user to the Shopify authorization screen
+        return NextResponse.redirect(authUrl);
 
-    return response;
+    } catch (error) {
+        console.error('Error beginning Shopify auth:', error);
+        return NextResponse.json({ error: 'Failed to initiate Shopify authentication.' }, { status: 500 });
+    }
 }
