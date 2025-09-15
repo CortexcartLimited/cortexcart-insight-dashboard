@@ -213,7 +213,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     };
     
     const handleImageAdded = (newImage) => {
-       setPostImages([newImage]);
+        setPostImages([newImage]);
     };
 
     const handleRemoveImage = () => {
@@ -244,58 +244,66 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
 
-   const handlePostNow = async () => {
-    if (!postContent) return;
+    const handlePostNow = async () => {
+        if (!postContent) return;
 
-    setIsPosting(true);
-    setPostStatus({ message: '', type: '' });
+        setIsPosting(true);
+        setPostStatus({ message: '', type: '' });
 
-    const currentPlatform = PLATFORMS[selectedPlatform];
-    const apiEndpoint = currentPlatform.apiEndpoint;
+        let apiEndpoint = currentPlatform.apiEndpoint;
+        let requestBody = {};
 
-    try {
-        let res;
-
-        // Check if there is an image to upload
-        if (postImages.length > 0 && postImages[0].file) {
-            const formData = new FormData();
-            formData.append('content', postContent);
-            formData.append('image', postImages[0].file); // Append the actual file
-
-            // When using FormData, let the browser set the Content-Type header
-            res = await fetch(apiEndpoint, {
-                method: 'POST',
-                body: formData,
-            });
-
+        if (selectedPlatform === 'pinterest') {
+            if (!selectedBoardId || !postImages[0]?.image_url || !pinTitle) {
+                setPostStatus({ message: 'A board, image, and title are required for Pinterest.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
+            requestBody = {
+                boardId: selectedBoardId,
+                imageUrl: postImages[0].image_url,
+                title: pinTitle,
+                description: postContent
+            };
+        } else if (selectedPlatform === 'instagram') {
+            if (!postImages[0]?.image_url || !selectedInstagramId) {
+                setPostStatus({ message: 'An image and a selected Instagram account are required.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
+            requestBody = {
+                instagramUserId: selectedInstagramId,
+                imageUrl: postImages[0].image_url,
+                caption: postContent,
+            }
         } else {
-            // Fallback to JSON for text-only posts
-            const requestBody = {
+            requestBody = {
                 platform: selectedPlatform,
                 content: postContent,
-                imageUrl: null,
+                imageUrl: postImages[0]?.image_url,
             };
+        }
 
-            res = await fetch(apiEndpoint, {
+        try {
+            const res = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
             });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'An unknown error occurred');
+            
+            setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
+            setPostContent('');
+            setPostImages([]);
+        } catch (err) {
+            setPostStatus({ message: err.message, type: 'error' });
+        } finally {
+            setIsPosting(false);
         }
+    };
 
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'An unknown error occurred');
-        
-        setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
-        setPostContent('');
-        setPostImages([]); // Clear the image after posting
-
-    } catch (err) {
-        setPostStatus({ message: err.message, type: 'error' });
-    } finally {
-        setIsPosting(false);
-    }
-};
     const handleSchedulePost = async (e) => {
         e.preventDefault();
         setError('');
