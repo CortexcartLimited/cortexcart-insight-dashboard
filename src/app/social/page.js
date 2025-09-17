@@ -212,7 +212,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
     
- const handleImageAdded = (newImage) => {
+const handleImageAdded = (newImage) => {
     // This function receives an object like { image_url: '...', file: File_Object }
     // from the ImageManager and saves it to the postImages state.
     if (newImage && newImage.file) {
