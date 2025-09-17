@@ -106,14 +106,20 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
     );
 };
 
-const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setPostContent, selectedPlatform, setSelectedPlatform, instagramAccounts, pinterestBoards, loading, ...props }) => {
+const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts, pinterestBoards, loading }) => {
    
     const [topic, setTopic] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [scheduleDate, setScheduleDate] = useState(moment().add(1, 'day').format('YYYY-MM-DD'));
     const [scheduleTime, setScheduleTime] = useState('10:00');
     const [isPosting, setIsPosting] = useState(false);
-    const [postImages, setPostImages] = useState([]);
+    
+    // --- STATE MANAGEMENT FIX ---
+    // We manage these states directly inside the component
+    const [postContent, setPostContent] = useState('');
+    const [postImages, setPostImages] = useState([]); 
+    const [selectedPlatform, setSelectedPlatform] = useState('x');
+
     const [postStatus, setPostStatus] = useState({ message: '', type: '' });
     const [error, setError] = useState('');
     const [selectedInstagramId, setSelectedInstagramId] = useState('');
@@ -127,7 +133,6 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [uploadMessage, setUploadMessage] = useState('');
 
     useEffect(() => {
-        // Set default selection when data becomes available
         if (selectedPlatform === 'pinterest' && pinterestBoards && pinterestBoards.length > 0 && !selectedBoardId) {
             setSelectedBoardId(pinterestBoards[0].board_id);
         }
@@ -137,6 +142,79 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     }, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]);
 
     const currentPlatform = PLATFORMS[selectedPlatform];
+
+    // ✅ FIX #1: THE CORRECT handleImageAdded FUNCTION
+    const handleImageAdded = (newImage) => {
+        console.log("Composer: Received image from ImageManager:", newImage);
+        if (newImage && newImage.file) {
+            setPostImages([{ image_url: newImage.image_url, file: newImage.file }]);
+        } else if (newImage && newImage.image_url) {
+            setPostImages([{ image_url: newImage.image_url, file: null }]);
+        }
+    };
+    
+    const handleRemoveImage = () => {
+        setPostImages([]);
+    };
+
+    // ✅ FIX #2: THE CORRECT handlePostNow FUNCTION
+    const handlePostNow = async () => {
+        setIsPosting(true);
+        setPostStatus({ message: '', type: '' });
+
+        const currentPlatform = PLATFORMS[selectedPlatform];
+        const apiEndpoint = currentPlatform.apiEndpoint;
+        const imageFile = postImages[0]?.file; 
+
+        console.log('--- Submitting Post ---');
+        console.log('Image File Object:', imageFile);
+        console.log('Is a file present?', !!imageFile);
+        console.log('---------------------');
+
+        try {
+            let response;
+
+            if (imageFile) {
+                console.log('Sending as FormData (for image upload).');
+                const formData = new FormData();
+                formData.append('content', postContent);
+                formData.append('image', imageFile);
+
+                response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    body: formData,
+                });
+            } else {
+                console.log('Sending as JSON (text-only post).');
+                if (!postContent) throw new Error('Content is required for a text-only post.');
+                
+                const requestBody = {
+                    content: postContent,
+                    imageUrl: postImages[0]?.image_url || null,
+                };
+
+                response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody),
+                });
+            }
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.details || result.error || 'An unknown server error occurred.');
+            }
+
+            setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
+            setPostContent('');
+            setPostImages([]);
+
+        } catch (err) {
+            setPostStatus({ message: `Failed to post: ${err.message}`, type: 'error' });
+        } finally {
+            setIsPosting(false);
+        }
+    };
 
     const handleSubmit = () => {
         if (selectedPlatform === 'youtube') {
