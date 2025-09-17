@@ -36,6 +36,7 @@
     "d3-scale": "^4.0.2",
     "disqus-react": "^1.1.5",
     "dotenv": "^16.4.5",
+    "form-data": "^4.0.4",
     "formidable": "^3.5.1",
     "googleapis": "^137.1.0",
     "heatmap.js": "^2.0.5",

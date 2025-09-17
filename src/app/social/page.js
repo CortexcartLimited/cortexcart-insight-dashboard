@@ -245,64 +245,66 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     };
 
     const handlePostNow = async () => {
-        if (!postContent) return;
+    if (!postContent && selectedPlatform !== 'facebook') return; // Allow empty content for photo posts on some platforms
 
-        setIsPosting(true);
-        setPostStatus({ message: '', type: '' });
+    setIsPosting(true);
+    setPostStatus({ message: '', type: '' });
 
-        let apiEndpoint = currentPlatform.apiEndpoint;
-        let requestBody = {};
+    const currentPlatform = PLATFORMS[selectedPlatform];
+    const apiEndpoint = currentPlatform.apiEndpoint;
 
-        if (selectedPlatform === 'pinterest') {
-            if (!selectedBoardId || !postImages[0]?.image_url || !pinTitle) {
-                setPostStatus({ message: 'A board, image, and title are required for Pinterest.', type: 'error' });
-                setIsPosting(false);
-                return;
-            }
-            requestBody = {
-                boardId: selectedBoardId,
-                imageUrl: postImages[0].image_url,
-                title: pinTitle,
-                description: postContent
-            };
-        } else if (selectedPlatform === 'instagram') {
-            if (!postImages[0]?.image_url || !selectedInstagramId) {
-                setPostStatus({ message: 'An image and a selected Instagram account are required.', type: 'error' });
-                setIsPosting(false);
-                return;
-            }
-            requestBody = {
-                instagramUserId: selectedInstagramId,
-                imageUrl: postImages[0].image_url,
-                caption: postContent,
-            }
+    try {
+        let res;
+        const imageFile = postImages[0]?.file; // Get the file object
+
+        // Use FormData if an image file is present
+        if (imageFile) {
+            const formData = new FormData();
+            formData.append('content', postContent);
+            formData.append('image', imageFile); // Append the actual file object
+
+            // IMPORTANT: Do NOT set the 'Content-Type' header yourself.
+            // The browser will automatically set it to 'multipart/form-data'
+            // with the correct boundary when you use FormData.
+            res = await fetch(apiEndpoint, {
+                method: 'POST',
+                body: formData,
+            });
         } else {
-            requestBody = {
-                platform: selectedPlatform,
+            // For text-only posts, send as JSON
+            const requestBody = {
                 content: postContent,
-                imageUrl: postImages[0]?.image_url,
+                // Ensure other platform-specific data is included if needed
             };
-        }
 
-        try {
-            const res = await fetch(apiEndpoint, {
+            if (selectedPlatform === 'pinterest') {
+                 setPostStatus({ message: 'An image is required for Pinterest.', type: 'error' });
+                 setIsPosting(false);
+                 return;
+            }
+
+            res = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
             });
-
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error || 'An unknown error occurred');
-            
-            setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
-            setPostContent('');
-            setPostImages([]);
-        } catch (err) {
-            setPostStatus({ message: err.message, type: 'error' });
-        } finally {
-            setIsPosting(false);
         }
-    };
+
+        const result = await res.json();
+        if (!res.ok) {
+            // Use the error message from the backend response
+            throw new Error(result.error || 'An unknown error occurred');
+        }
+
+        setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
+        setPostContent('');
+        setPostImages([]); // Clear image after posting
+    } catch (err) {
+        setPostStatus({ message: `Failed to post to ${currentPlatform.name}: ${err.message}`, type: 'error' });
+    } finally {
+        setIsPosting(false);
+    }
+};
 
     const handleSchedulePost = async (e) => {
         e.preventDefault();
