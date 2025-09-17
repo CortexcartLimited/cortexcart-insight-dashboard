@@ -245,7 +245,11 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     };
 
     const handlePostNow = async () => {
-    if (!postContent && selectedPlatform !== 'facebook') return; // Allow empty content for photo posts on some platforms
+    // Check for content unless it's a platform that allows image-only posts
+    if (!postContent && !(selectedPlatform === 'facebook' && postImages.length > 0)) {
+        setPostStatus({ message: 'Post content is required.', type: 'error' });
+        return;
+    }
 
     setIsPosting(true);
     setPostStatus({ message: '', type: '' });
@@ -255,29 +259,31 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
 
     try {
         let res;
-        const imageFile = postImages[0]?.file; // Get the file object
+        // Get the file object from our updated ImageManager state
+        const imageFile = postImages[0]?.file; 
 
-        // Use FormData if an image file is present
+        // Use FormData if an image file is present for upload
         if (imageFile) {
             const formData = new FormData();
             formData.append('content', postContent);
             formData.append('image', imageFile); // Append the actual file object
 
-            // IMPORTANT: Do NOT set the 'Content-Type' header yourself.
-            // The browser will automatically set it to 'multipart/form-data'
-            // with the correct boundary when you use FormData.
+            // IMPORTANT: When using FormData with fetch, you must NOT set the
+            // 'Content-Type' header yourself. The browser does it automatically.
             res = await fetch(apiEndpoint, {
                 method: 'POST',
                 body: formData,
             });
         } else {
-            // For text-only posts, send as JSON
+            // For posts without a new file upload (text-only or using an existing URL), send as JSON
             const requestBody = {
                 content: postContent,
-                // Ensure other platform-specific data is included if needed
+                // The backend can handle either an image file or an image URL
+                imageUrl: postImages[0]?.image_url, 
             };
-
-            if (selectedPlatform === 'pinterest') {
+            
+            // Pinterest requires an image. We can add a check here.
+            if (selectedPlatform === 'pinterest' && !requestBody.imageUrl) {
                  setPostStatus({ message: 'An image is required for Pinterest.', type: 'error' });
                  setIsPosting(false);
                  return;
@@ -292,15 +298,16 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
 
         const result = await res.json();
         if (!res.ok) {
-            // Use the error message from the backend response
-            throw new Error(result.error || 'An unknown error occurred');
+            // Display the specific error message from the backend
+            throw new Error(result.details || result.error || 'An unknown error occurred');
         }
 
         setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
         setPostContent('');
         setPostImages([]); // Clear image after posting
+        
     } catch (err) {
-        setPostStatus({ message: `Failed to post to ${currentPlatform.name}: ${err.message}`, type: 'error' });
+        setPostStatus({ message: `Failed to post: ${err.message}`, type: 'error' });
     } finally {
         setIsPosting(false);
     }
