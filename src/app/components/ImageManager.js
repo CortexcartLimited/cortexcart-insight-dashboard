@@ -3,16 +3,40 @@
 import { useState, useEffect, useCallback } from 'react';
 import { XCircleIcon, TrashIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
 
-// This sub-component remains the same
+// This sub-component is for displaying a single image
 function DisplayImage({ image, onDelete, onSelect }) {
-    // ... (No changes needed in this part)
+    const [imageError, setImageError] = useState(false);
+    const handleError = () => setImageError(true);
+    const handleDeleteClick = (e) => {
+        e.stopPropagation(); 
+        onDelete(image.id);
+    };
+
+    return (
+        <div 
+            onClick={() => onSelect(image)}
+            className="relative group aspect-square bg-gray-200 rounded-md overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+            aria-label="Select this image"
+        >
+            {imageError ? (
+                <div className="flex items-center justify-center h-full w-full bg-red-100 text-red-600"><XCircleIcon className="h-8 w-8" /></div>
+            ) : (
+                <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image.image_url} alt={image.filename || 'User image'} className="w-full h-full object-cover" onError={handleError} />
+                    <button onClick={handleDeleteClick} className="absolute bottom-1 right-1 bg-gray-900/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10" aria-label="Delete image">
+                        <TrashIcon className="h-4 w-4" />
+                    </button>
+                </>
+            )}
+        </div>
+    );
 }
 
 export default function ImageManager({ onImageAdd }) {
     const [images, setImages] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
 
@@ -33,19 +57,35 @@ export default function ImageManager({ onImageAdd }) {
         fetchImages();
     }, [fetchImages]);
 
-    // --- FIX #1: Modify onImageAdd to include the file object ---
-    // When a user selects a file from their computer, we'll immediately
-    // pass it to the parent component for posting.
     const handleFileSelected = (event) => {
         const file = event.target.files[0];
         if (file) {
-            setSelectedFile(file); // Set the file for uploading to the manager
+            setSelectedFile(file);
             if (onImageAdd) {
-                // Create a temporary local URL for the preview image
                 const localImageUrl = URL.createObjectURL(file);
-                // Pass an object containing both the preview URL and the raw file
                 onImageAdd({ image_url: localImageUrl, file: file });
             }
+        }
+    };
+    
+    // ✅ THIS WAS THE MISSING FUNCTION
+    const handleDeleteImage = async (imageId) => {
+        if (!confirm('Are you sure you want to permanently delete this image?')) {
+            return;
+        }
+        setError('');
+        try {
+            const response = await fetch(`/api/images/${imageId}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.message || 'Failed to delete image.');
+            }
+            // Refresh images after delete
+            await fetchImages();
+        } catch (err) {
+            setError(err.message);
         }
     };
 
@@ -68,10 +108,9 @@ export default function ImageManager({ onImageAdd }) {
                 throw new Error(result.message || 'File upload failed.');
             }
 
-            // After uploading, refresh the list of images
             await fetchImages();
-            
             setSelectedFile(null);
+            
             const fileInput = document.getElementById('file-upload');
             if (fileInput) fileInput.value = '';
 
@@ -82,29 +121,22 @@ export default function ImageManager({ onImageAdd }) {
         }
     };
     
-    // --- FIX #2: Ensure selecting an existing image doesn't break things ---
-    // When selecting an image that's already uploaded, we pass the URL but
-    // explicitly set the file to null.
     const handleSelectExistingImage = (image) => {
         if (onImageAdd) {
             onImageAdd({ image_url: image.image_url, file: null });
         }
     };
 
-
-    // ... (rest of the component)
-
     return (
         <div className="p-6 bg-white shadow-md rounded-lg mt-8 border border-gray-200">
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Image Manager</h3>
             <div className="space-y-4 mb-4">
-                 {/* ... (form for adding by URL remains the same) ... */}
+                {/* Input for adding image by URL (functionality removed for brevity, can be added back) */}
                   <div className="flex items-center gap-2">
                     <input
                         id="file-upload"
                         type="file"
                         accept="image/png, image/jpeg, image/gif, image/webp"
-                        // Use the new handler here
                         onChange={handleFileSelected}
                         className="flex-grow w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     />
@@ -126,7 +158,6 @@ export default function ImageManager({ onImageAdd }) {
                             key={image.id} 
                             image={image} 
                             onDelete={handleDeleteImage} 
-                            // Use the new handler for selecting existing images
                             onSelect={handleSelectExistingImage} 
                         />
                     ))}
