@@ -212,9 +212,16 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
     
-    const handleImageAdded = (newImage) => {
-        setPostImages([newImage]);
-    };
+  const handleImageAdded = (newImage) => {
+    // This function receives an object like { image_url: '...', file: File_Object }
+    // from the ImageManager and saves it to the postImages state.
+    if (newImage && newImage.file) {
+        setPostImages([{ image_url: newImage.image_url, file: newImage.file }]);
+    } else if (newImage && newImage.image_url) {
+        // Handle selecting an existing image that doesn't have a file object
+        setPostImages([{ image_url: newImage.image_url, file: null }]);
+    }
+};
 
     const handleRemoveImage = () => {
         setPostImages([]);
@@ -244,68 +251,63 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
 
-    const handlePostNow = async () => {
-    // Check for content unless it's a platform that allows image-only posts
-    if (!postContent && !(selectedPlatform === 'facebook' && postImages.length > 0)) {
-        setPostStatus({ message: 'Post content is required.', type: 'error' });
-        return;
-    }
-
+  const handlePostNow = async () => {
     setIsPosting(true);
     setPostStatus({ message: '', type: '' });
 
     const currentPlatform = PLATFORMS[selectedPlatform];
     const apiEndpoint = currentPlatform.apiEndpoint;
+    const imageFile = postImages[0]?.file; // Get the raw file object from state
+
+    // For debugging: Let's see what we are about to send.
+    console.log("Preparing to post. Image file present:", !!imageFile);
 
     try {
-        let res;
-        // Get the file object from our updated ImageManager state
-        const imageFile = postImages[0]?.file; 
+        let response;
 
-        // Use FormData if an image file is present for upload
+        // If an image file exists, ALWAYS use FormData.
         if (imageFile) {
             const formData = new FormData();
             formData.append('content', postContent);
-            formData.append('image', imageFile); // Append the actual file object
+            formData.append('image', imageFile);
 
-            // IMPORTANT: When using FormData with fetch, you must NOT set the
-            // 'Content-Type' header yourself. The browser does it automatically.
-            res = await fetch(apiEndpoint, {
+            // The browser automatically sets the correct 'Content-Type' for FormData.
+            // Manually setting it will cause errors.
+            response = await fetch(apiEndpoint, {
                 method: 'POST',
                 body: formData,
             });
+
         } else {
-            // For posts without a new file upload (text-only or using an existing URL), send as JSON
+            // If NO file, send a JSON request for text-only posts.
+            if (!postContent) {
+                setPostStatus({ message: 'Post content is required.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
             const requestBody = {
                 content: postContent,
-                // The backend can handle either an image file or an image URL
-                imageUrl: postImages[0]?.image_url, 
+                imageUrl: postImages[0]?.image_url || null,
             };
-            
-            // Pinterest requires an image. We can add a check here.
-            if (selectedPlatform === 'pinterest' && !requestBody.imageUrl) {
-                 setPostStatus({ message: 'An image is required for Pinterest.', type: 'error' });
-                 setIsPosting(false);
-                 return;
-            }
 
-            res = await fetch(apiEndpoint, {
+            response = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
             });
         }
 
-        const result = await res.json();
-        if (!res.ok) {
-            // Display the specific error message from the backend
-            throw new Error(result.details || result.error || 'An unknown error occurred');
+        const result = await response.json();
+
+        if (!response.ok) {
+            // Throw the detailed error message from the backend.
+            throw new Error(result.details || result.error || 'An unknown error occurred.');
         }
 
-        setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
+        setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
         setPostContent('');
-        setPostImages([]); // Clear image after posting
-        
+        setPostImages([]);
+
     } catch (err) {
         setPostStatus({ message: `Failed to post: ${err.message}`, type: 'error' });
     } finally {
