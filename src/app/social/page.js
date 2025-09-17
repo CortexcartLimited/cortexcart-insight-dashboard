@@ -143,7 +143,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
 
     const currentPlatform = PLATFORMS[selectedPlatform];
 
-    // ✅ FIX #1: THE CORRECT handleImageAdded FUNCTION
+   
     const handleImageAdded = (newImage) => {
         console.log("Composer: Received image from ImageManager:", newImage);
         if (newImage && newImage.file) {
@@ -290,16 +290,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
         }
     };
     
-const handleImageAdded = (newImage) => {
-    // This function receives an object like { image_url: '...', file: File_Object }
-    // from the ImageManager and saves it to the postImages state.
-    if (newImage && newImage.file) {
-        setPostImages([{ image_url: newImage.image_url, file: newImage.file }]);
-    } else if (newImage && newImage.image_url) {
-        // Handle selecting an existing image that doesn't have a file object
-        setPostImages([{ image_url: newImage.image_url, file: null }]);
-    }
-};
+
     const handleRemoveImage = () => {
         setPostImages([]);
     };
