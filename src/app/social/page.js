@@ -289,11 +289,6 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
             setIsUploading(false);
         }
     };
-    
-
-    const handleRemoveImage = () => {
-        setPostImages([]);
-    };
 
     const handleGeneratePost = async () => {
         if (!topic.trim()) return;
