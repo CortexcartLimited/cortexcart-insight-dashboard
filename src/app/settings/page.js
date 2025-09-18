@@ -209,22 +209,41 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
         fetchPageData();
     }, [connectionStatus, setAlert]);
 
-    const handleDisconnect = async (platform) => {
-        if (!confirm(`Are you sure you want to disconnect your ${platform} account?`)) return;
-        try {
-            const res = await fetch('/api/social/connections/status', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ platform }),
-            });
-            if (!res.ok) throw new Error((await res.json()).message || `Could not disconnect ${platform}.`);
-            await fetchConnections(); 
-            setAlert({ show: true, message: `${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`, type: 'success' });
-        } catch (err) {
-            console.error(`Could not disconnect ${platform}:`, err);
-            setAlert({ show: true, message: err.message, type: 'danger' });
+const [platformToDisconnect, setPlatformToDisconnect] = useState(null);
+const [confirmationText, setConfirmationText] = useState('');
+
+const openDisconnectModal = (platform) => {
+    setPlatformToDisconnect(platform);
+};
+
+const closeDisconnectModal = () => {
+    setPlatformToDisconnect(null);
+    setConfirmationText('');
+};
+const handleDisconnect = async (platform) => {
+    // Check if the confirmation text is correct
+    if (confirmationText.toLowerCase() !== 'disconnect') {
+        setDisconnectError('Please type "disconnect" to confirm.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/social/disconnect/${platform}`, {
+            method: 'POST',
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || `Failed to disconnect ${platform}.`);
         }
-    };
+        
+        // Refresh the connection statuses after disconnecting
+        fetchStatuses();
+        closeDisconnectModal();
+
+    } catch (err) {
+        setDisconnectError(err.message);
+    }
+};
 
     const handleConnectInstagram = async (accountId) => {
         setAlert({ show: false, message: '', type: 'info' });
@@ -386,9 +405,35 @@ const SocialConnectionsTabContent = ({ connectionStatus, fetchConnections, setAl
                         <a href="/api/connect/pinterest" className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">Connect to Pinterest</a>
                     )}
                 </div>
-          
+          {platformToDisconnect && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="bg-white p-6 rounded-lg shadow-xl">
+            <h3 className="text-lg font-bold">Disconnect {platformToDisconnect}?</h3>
+            <p className="text-sm text-gray-600 mt-2">
+                Are you sure? To confirm, please type "disconnect" in the box below.
+            </p>
+            <input 
+                type="text"
+                value={confirmationText}
+                onChange={(e) => setConfirmationText(e.target.value)}
+                className="mt-4 w-full p-2 border rounded"
+                // We remove the pattern and handle validation in our function
+            />
+            {disconnectError && <p className="text-xs text-red-600 mt-1">{disconnectError}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+                <button onClick={closeDisconnectModal} className="px-4 py-2 bg-gray-200 rounded">
+                    Cancel
+                </button>
+                <button onClick={() => handleDisconnect(platformToDisconnect)} className="px-4 py-2 bg-red-600 text-white rounded">
+                    Confirm
+                </button>
             </div>
         </div>
+    </div>
+)}
+            </div>
+        </div>
+        
     );
 };
 
