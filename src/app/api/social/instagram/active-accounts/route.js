@@ -1,31 +1,34 @@
+// src/app/api/social/instagram/active-accounts/route.js
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(req) {
+export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session?.user?.email) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-        // Corrected SQL Query
-        const [rows] = await db.query(
-            'SELECT active_instagram_account_id FROM social_connect WHERE user_email = ? AND platform = ?',
-            [session.user.email, 'facebook'] // Instagram ID is stored in the 'facebook' row
+        const { accountId } = await req.json();
+        if (!accountId) {
+            return NextResponse.json({ error: 'Account ID is required.' }, { status: 400 });
+        }
+
+        // This query now correctly uses 'user_email' to update the 'social_connect' table.
+        await db.query(
+            `UPDATE social_connect 
+             SET active_instagram_account_id = ? 
+             WHERE user_email = ? AND platform = 'instagram'`,
+            [accountId, session.user.email]
         );
 
-        if (rows.length === 0) {
-            return NextResponse.json({ active_instagram_account_id: null });
-        }
-        
-        return NextResponse.json({ active_instagram_account_id: rows[0].active_instagram_account_id });
+        return NextResponse.json({ success: true, message: 'Active Instagram account updated.' });
 
     } catch (error) {
-        console.error('Error fetching active Instagram account:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error("Error setting active Instagram account:", error);
+        return NextResponse.json({ error: 'Failed to update active account.' }, { status: 500 });
     }
 }
