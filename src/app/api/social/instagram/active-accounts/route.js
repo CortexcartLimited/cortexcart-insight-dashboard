@@ -17,7 +17,7 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Account ID is required.' }, { status: 400 });
         }
 
-        // This query now correctly uses 'user_email' to update the 'social_connect' table.
+        // This query now correctly updates the 'social_connect' table.
         await db.query(
             `UPDATE social_connect 
              SET active_instagram_account_id = ? 

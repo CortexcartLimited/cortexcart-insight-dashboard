@@ -21,8 +21,8 @@ export async function POST(req) {
     try {
         const encryptedPageAccessToken = encrypt(pageAccessToken);
 
-        // This is the only query we need. It updates the single, authoritative
-        // connection record in the 'social_connect' table using the correct column 'user_email'.
+        // This query correctly updates the single 'social_connect' record
+        // to set the active page ID.
         await db.query(
             `UPDATE social_connect 
              SET 
