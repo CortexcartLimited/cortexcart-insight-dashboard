@@ -163,7 +163,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
 
     const currentPlatform = PLATFORMS[selectedPlatform];
     const apiEndpoint = currentPlatform.apiEndpoint;
-    const imageFile = postImages[0]?.file; // This will now contain the raw file data
+    const imageFile = postImages[0]?.file; // This will contain the raw file data
 
     try {
         let response;
@@ -194,7 +194,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
         setPostImages([]);
 
     } catch (err) {
-        setPostStatus({ message: `Failed to post: ${err.message}`, type: 'error' });
+        setPostStatus({ message: `${err.message}`, type: 'error' });
     } finally {
         setIsPosting(false);
     }

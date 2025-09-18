@@ -15,13 +15,19 @@ export async function POST(req) {
     }
 
     try {
+        // Correctly query for the user's active page credentials
         const [pageRows] = await db.query(
-            'SELECT page_id, page_access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = "facebook" AND active_facebook_page_id IS NOT NULL',
+            `SELECT page_id, page_access_token_encrypted 
+             FROM social_connect 
+             WHERE user_email = ? AND platform = 'facebook' AND active_facebook_page_id IS NOT NULL`,
             [session.user.email]
         );
 
         if (pageRows.length === 0) {
-            return NextResponse.json({ error: 'No active Facebook Page connected.' }, { status: 404 });
+            return NextResponse.json({ 
+                error: 'Failed to post to Facebook.', 
+                details: 'No active Facebook Page connected.' 
+            }, { status: 404 });
         }
         
         const pageAccessToken = decrypt(pageRows[0].page_access_token_encrypted);
@@ -30,7 +36,7 @@ export async function POST(req) {
         let response;
         const contentType = req.headers.get('content-type') || '';
 
-        // Check if the request is for a file upload
+        // Handle file uploads
         if (contentType.includes('multipart/form-data')) {
             const incomingFormData = await req.formData();
             const content = incomingFormData.get('content');
@@ -40,7 +46,6 @@ export async function POST(req) {
                 return NextResponse.json({ error: 'Image file is missing.' }, { status: 400 });
             }
 
-            // Re-package the file data for the Facebook Graph API
             const form = new FormData();
             form.append('caption', content);
             form.append('access_token', pageAccessToken);
