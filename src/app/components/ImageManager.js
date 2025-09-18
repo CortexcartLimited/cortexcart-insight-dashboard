@@ -57,16 +57,6 @@ export default function ImageManager({ onImageAdd }) {
         fetchImages();
     }, [fetchImages]);
 
-    const handleFileSelected = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            setSelectedFile(file);
-            if (onImageAdd) {
-                const localImageUrl = URL.createObjectURL(file);
-                onImageAdd({ image_url: localImageUrl, file: file });
-            }
-        }
-    };
     
     // ✅ THIS WAS THE MISSING FUNCTION
     const handleDeleteImage = async (imageId) => {
