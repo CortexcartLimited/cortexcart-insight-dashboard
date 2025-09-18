@@ -15,7 +15,6 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
-    const state = JSON.parse(searchParams.get('state') || '{}');
 
     if (!code) {
         return NextResponse.redirect(new URL('/settings?error=facebook_auth_failed', req.url));
@@ -24,6 +23,8 @@ export async function GET(req) {
     try {
         // 1. Exchange the code for a long-lived access token
         const tokenUrl = `https://graph.facebook.com/v19.0/oauth/access_token`;
+        
+        // Use URLSearchParams to correctly format the request body
         const tokenParams = new URLSearchParams({
             client_id: process.env.FACEBOOK_CLIENT_ID,
             redirect_uri: `${process.env.NEXTAUTH_URL}/connect/callback/facebook`,
@@ -31,7 +32,8 @@ export async function GET(req) {
             code: code,
         });
 
-        const tokenResponse = await axios.get(`${tokenUrl}?${tokenParams.toString()}`);
+        // Use a POST request which is more standard for this type of exchange
+        const tokenResponse = await axios.post(tokenUrl, tokenParams);
         const { access_token } = tokenResponse.data;
 
         if (!access_token) {
@@ -44,7 +46,6 @@ export async function GET(req) {
         const platform = 'facebook';
 
         // 3. Save the connection to our single source of truth: 'social_connect'
-        // This query either creates a new Facebook connection or updates an existing one.
         await db.query(
             `INSERT INTO social_connect (user_email, platform, access_token_encrypted, created_at, updated_at)
              VALUES (?, ?, ?, NOW(), NOW())
@@ -60,6 +61,7 @@ export async function GET(req) {
         return NextResponse.redirect(successUrl);
 
     } catch (error) {
+        // Log the detailed error from Facebook's response if available
         console.error('Error during Facebook OAuth callback:', error.response ? error.response.data : error.message);
         const errorUrl = new URL('/settings', req.url);
         errorUrl.searchParams.set('error', 'facebook_connection_error');
