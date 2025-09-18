@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { encrypt } from '@/lib/crypto'; // Make sure to import encrypt
+import { encrypt } from '@/lib/crypto';
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -14,21 +14,15 @@ export async function POST(req) {
 
     const { pageId, pageName, pageAccessToken } = await req.json();
 
-    if (!pageId || !pageName || !pageAccessToken) {
-        return NextResponse.json({ error: 'Missing page details.' }, { status: 400 });
+    if (!pageId || !pageAccessToken) {
+        return NextResponse.json({ error: 'Missing page ID or Access Token.' }, { status: 400 });
     }
 
     try {
-        // Encrypt the page access token before storing it
         const encryptedPageAccessToken = encrypt(pageAccessToken);
 
-        // First, clear any previously active page for this user
-        await db.query(
-            `UPDATE social_connect SET active_facebook_page_id = NULL WHERE user_email = ? AND platform = 'facebook'`,
-            [session.user.email]
-        );
-
-        // Now, update the connection with the new page details AND set it as active
+        // This is now the ONLY query we need. It updates the single, authoritative
+        // connection record in the 'social_connect' table.
         await db.query(
             `UPDATE social_connect 
              SET 
@@ -39,10 +33,10 @@ export async function POST(req) {
             [pageId, encryptedPageAccessToken, pageId, session.user.email]
         );
 
-        return NextResponse.json({ success: true, message: `Successfully connected to page: ${pageName}` });
+        return NextResponse.json({ success: true, message: `Active page set to: ${pageName}` });
 
     } catch (error) {
-        console.error("Error connecting Facebook page:", error);
-        return NextResponse.json({ error: 'Failed to connect Facebook page.' }, { status: 500 });
+        console.error("Error in connect-page API:", error);
+        return NextResponse.json({ error: 'Failed to set active Facebook page.' }, { status: 500 });
     }
 }
