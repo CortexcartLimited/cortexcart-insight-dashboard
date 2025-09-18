@@ -15,7 +15,7 @@ export async function POST(req) {
     }
 
     try {
-        // This query now reliably finds the single active page from 'social_connect'.
+        // Correctly query for the user's active page credentials
         const [pageRows] = await db.query(
             `SELECT page_id, page_access_token_encrypted 
              FROM social_connect 
@@ -26,32 +26,44 @@ export async function POST(req) {
         if (pageRows.length === 0) {
             return NextResponse.json({ 
                 error: 'Failed to post to Facebook.', 
-                details: 'No active Facebook Page connected. Please select one in your settings.' 
+                details: 'No active Facebook Page connected.' 
             }, { status: 404 });
         }
         
         const pageAccessToken = decrypt(pageRows[0].page_access_token_encrypted);
         const pageId = pageRows[0].page_id;
         
-        // ... (The rest of your posting logic remains the same)
-        // This part correctly handles both file uploads and text-only posts.
         let response;
         const contentType = req.headers.get('content-type') || '';
 
+        // Handle file uploads
         if (contentType.includes('multipart/form-data')) {
             const incomingFormData = await req.formData();
             const content = incomingFormData.get('content');
             const imageFile = incomingFormData.get('image');
             
+            if (!imageFile) {
+                return NextResponse.json({ error: 'Image file is missing.' }, { status: 400 });
+            }
+
             const form = new FormData();
             form.append('caption', content);
             form.append('access_token', pageAccessToken);
+            
             const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
-            form.append('source', imageBuffer, { filename: imageFile.name, contentType: imageFile.type });
+            form.append('source', imageBuffer, {
+                filename: imageFile.name,
+                contentType: imageFile.type,
+            });
 
-            response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/photos`, form, { headers: form.getHeaders() });
+            response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/photos`, form, {
+                headers: form.getHeaders(),
+            });
+
         } else {
-            const { content } = await req.json();
+            // Handle text-only posts
+            const body = await req.json();
+            const { content } = body;
             response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
                 message: content,
                 access_token: pageAccessToken,
