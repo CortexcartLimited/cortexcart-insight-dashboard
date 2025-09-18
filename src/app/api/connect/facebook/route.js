@@ -1,35 +1,38 @@
 // src/app/api/connect/facebook/route.js
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { randomBytes } from 'crypto';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from '@/lib/auth';
+import { db } from '@/lib/db';
 
-export async function GET() {
-    const clientId = process.env.FACEBOOK_CLIENT_ID;
-    const redirectUri = `${process.env.NEXTAUTH_URL}/connect/callback/facebook`;
-    
-    const state = randomBytes(16).toString('hex');
+export async function GET(req) {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        return NextResponse.redirect(new URL('/login', req.url));
+    }
 
-    cookies().set('facebook_oauth_state', state, {
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 60 * 10, // 10 minutes
-        sameSite: 'lax',
+    // This dynamically creates the correct callback URL for development or production.
+    const redirectUri = process.env.NODE_ENV === 'production'
+        ? `${process.env.NEXTAUTH_URL}/connect/callback/facebook`
+        : 'http://localhost:3000/connect/callback/facebook';
+
+    const scopes = [
+        'email',
+        'public_profile',
+        'pages_show_list',
+        'read_insights',
+        'pages_read_engagement',
+        'pages_manage_posts',
+        'instagram_basic',
+        'instagram_manage_insights',
+    ];
+
+    const state = JSON.stringify({
+        user_email: session.user.email,
+        // Add any other state parameters you need here
     });
 
-    // --- FINAL PERMISSION SCOPE ---
-    const scope = [
-        'public_profile',
-        'email',
-        'pages_show_list',
-        'pages_read_engagement',
-        'instagram_basic',
-        'instagram_content_publish',
-        'business_management' // Added this crucial permission
-    ].join(',');
-
-    const facebookAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&response_type=code`;
-
-    return NextResponse.redirect(facebookAuthUrl);
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${process.env.FACEBOOK_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&scope=${scopes.join(',')}&response_type=code`;
+    
+    return NextResponse.redirect(authUrl);
 }
