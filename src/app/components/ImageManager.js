@@ -121,6 +121,18 @@ export default function ImageManager({ onImageAdd }) {
         }
     };
     
+const handleFileSelected = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        setSelectedFile(file); // Keep for uploading to the manager
+        if (onImageAdd) {
+            // Create a temporary URL for the preview and pass the raw file up
+            const localImageUrl = URL.createObjectURL(file);
+            onImageAdd({ image_url: localImageUrl, file: file });
+        }
+    }
+};
+
     const handleSelectExistingImage = (image) => {
         if (onImageAdd) {
             onImageAdd({ image_url: image.image_url, file: null });
@@ -134,12 +146,12 @@ export default function ImageManager({ onImageAdd }) {
                 {/* Input for adding image by URL (functionality removed for brevity, can be added back) */}
                   <div className="flex items-center gap-2">
                     <input
-                        id="file-upload"
-                        type="file"
-                        accept="image/png, image/jpeg, image/gif, image/webp"
-                        onChange={handleFileSelected}
-                        className="flex-grow w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
+    id="file-upload"
+    type="file"
+    accept="image/png, image/jpeg, image/gif, image/webp"
+    onChange={handleFileSelected} // Use the new handler here
+    className="..."
+/>
                     <button 
                         onClick={handleFileUpload}
                         disabled={!selectedFile || isUploading}

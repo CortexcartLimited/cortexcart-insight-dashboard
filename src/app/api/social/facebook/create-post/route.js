@@ -1,10 +1,12 @@
+// src/app/api/social/facebook/create-post/route.js
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import axios from 'axios';
-import FormData from 'form-data'; // Import FormData
+import FormData from 'form-data';
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -13,32 +15,36 @@ export async function POST(req) {
     }
 
     try {
-        const incomingFormData = await req.formData();
-        const content = incomingFormData.get('content');
-        const imageFile = incomingFormData.get('image'); 
-
-        const [userRows] = await db.query(
-            `SELECT sc.page_id, sc.page_access_token_encrypted 
-             FROM social_connect sc
-             WHERE sc.user_email = ? AND sc.platform = 'facebook' AND sc.active_facebook_page_id IS NOT NULL`,
+        const [pageRows] = await db.query(
+            'SELECT page_id, page_access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = "facebook" AND active_facebook_page_id IS NOT NULL',
             [session.user.email]
         );
 
-        if (userRows.length === 0 || !userRows[0].page_id || !userRows[0].page_access_token_encrypted) {
-            return NextResponse.json({ error: 'Active Facebook Page not connected or configured.' }, { status: 400 });
+        if (pageRows.length === 0) {
+            return NextResponse.json({ error: 'No active Facebook Page connected.' }, { status: 404 });
         }
-
-        const pageId = userRows[0].page_id;
-        const pageAccessToken = decrypt(userRows[0].page_access_token_encrypted);
+        
+        const pageAccessToken = decrypt(pageRows[0].page_access_token_encrypted);
+        const pageId = pageRows[0].page_id;
         
         let response;
-        if (imageFile && imageFile.size > 0) {
-            // --- FIX for Image Post ---
+        const contentType = req.headers.get('content-type') || '';
+
+        // Check if the request is for a file upload
+        if (contentType.includes('multipart/form-data')) {
+            const incomingFormData = await req.formData();
+            const content = incomingFormData.get('content');
+            const imageFile = incomingFormData.get('image');
+            
+            if (!imageFile) {
+                return NextResponse.json({ error: 'Image file is missing.' }, { status: 400 });
+            }
+
+            // Re-package the file data for the Facebook Graph API
             const form = new FormData();
             form.append('caption', content);
             form.append('access_token', pageAccessToken);
             
-            // Convert the file to a buffer and append it
             const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
             form.append('source', imageBuffer, {
                 filename: imageFile.name,
@@ -50,7 +56,9 @@ export async function POST(req) {
             });
 
         } else {
-            // Logic for text-only post
+            // Handle text-only posts
+            const body = await req.json();
+            const { content } = body;
             response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
                 message: content,
                 access_token: pageAccessToken,
@@ -61,14 +69,8 @@ export async function POST(req) {
         return NextResponse.json({ success: true, postId }, { status: 200 });
 
     } catch (error) {
-        console.error("CRITICAL Error posting to Facebook:");
-        if (error.response) {
-            console.error("Error Data:", JSON.stringify(error.response.data, null, 2));
-        } else {
-            console.error('Error Message:', error.message);
-        }
-        
-        const errorDetails = error.response ? error.response.data.error.message : 'An unknown error occurred.';
+        console.error("CRITICAL Error posting to Facebook:", error.response?.data?.error || error.message);
+        const errorDetails = error.response?.data?.error?.message || 'An unknown server error occurred.';
         return NextResponse.json({ error: 'Failed to post to Facebook.', details: errorDetails }, { status: 500 });
     }
 }

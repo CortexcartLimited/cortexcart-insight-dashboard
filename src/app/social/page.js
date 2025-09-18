@@ -157,33 +157,30 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
         setPostImages([]);
     };
 
-    const handlePostNow = async () => {
+   const handlePostNow = async () => {
     setIsPosting(true);
     setPostStatus({ message: '', type: '' });
 
     const currentPlatform = PLATFORMS[selectedPlatform];
     const apiEndpoint = currentPlatform.apiEndpoint;
-    const imageFile = postImages[0]?.file;
+    const imageFile = postImages[0]?.file; // This will now contain the raw file data
 
     try {
         let response;
 
-        // For Facebook, if an image file exists, ALWAYS use FormData.
-        if (selectedPlatform === 'facebook' && imageFile) {
+        // If a raw file object exists, we MUST send as FormData
+        if (imageFile) {
             const formData = new FormData();
             formData.append('content', postContent);
             formData.append('image', imageFile);
             response = await fetch(apiEndpoint, { method: 'POST', body: formData });
         } else {
-            // For all other platforms (like X) or text-only Facebook posts, send JSON.
-            const requestBody = {
-                content: postContent,
-                imageUrl: postImages[0]?.image_url || null, // For platforms that support image URLs
-            };
+            // Otherwise, send as JSON (for text-only posts)
+            const body = { content: postContent, imageUrl: postImages[0]?.image_url || null };
             response = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify(body),
             });
         }
 
