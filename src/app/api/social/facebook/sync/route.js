@@ -30,11 +30,11 @@ export async function POST() {
         }
 
         // Get active page and token (remains the same)
-        const [sites] = await connection.query('SELECT active_facebook_page_id FROM facebook_pages_connected WHERE user_email = ?', [userEmail]);
+        const [sites] = await connection.query('SELECT active_facebook_page_id FROM social_connect WHERE user_email = ?', [userEmail]);
         const pageId = sites[0]?.active_facebook_page_id;
         if (!pageId) throw new Error('No active Facebook Page has been set.');
 
-        const [pages] = await connection.query('SELECT page_access_token_encrypted FROM facebook_pages WHERE page_id = ? AND user_email = ?', [pageId, userEmail]);
+        const [pages] = await connection.query('SELECT page_access_token_encrypted FROM social_connect WHERE page_id = ? AND user_email = ?', [pageId, userEmail]);
         if (!pages.length) throw new Error('Access token for the active page was not found.');
         
         const pageAccessToken = decrypt(pages[0].page_access_token_encrypted);
