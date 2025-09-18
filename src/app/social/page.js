@@ -45,7 +45,7 @@ const PLATFORMS = {
         placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags", // FIX: Escaped apostrophe
         disabled: false,
         color: '#000000',
-        apiEndpoint: '/api/social/post' 
+        apiEndpoint: '/api/social/x/create-post' 
     },
     facebook: {
         name: 'Facebook',
@@ -157,64 +157,51 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
         setPostImages([]);
     };
 
-    // ✅ FIX #2: THE CORRECT handlePostNow FUNCTION
     const handlePostNow = async () => {
-        setIsPosting(true);
-        setPostStatus({ message: '', type: '' });
+    setIsPosting(true);
+    setPostStatus({ message: '', type: '' });
 
-        const currentPlatform = PLATFORMS[selectedPlatform];
-        const apiEndpoint = currentPlatform.apiEndpoint;
-        const imageFile = postImages[0]?.file; 
+    const currentPlatform = PLATFORMS[selectedPlatform];
+    const apiEndpoint = currentPlatform.apiEndpoint;
+    const imageFile = postImages[0]?.file;
 
-        console.log('--- Submitting Post ---');
-        console.log('Image File Object:', imageFile);
-        console.log('Is a file present?', !!imageFile);
-        console.log('---------------------');
+    try {
+        let response;
 
-        try {
-            let response;
-
-            if (imageFile) {
-                console.log('Sending as FormData (for image upload).');
-                const formData = new FormData();
-                formData.append('content', postContent);
-                formData.append('image', imageFile);
-
-                response = await fetch(apiEndpoint, {
-                    method: 'POST',
-                    body: formData,
-                });
-            } else {
-                console.log('Sending as JSON (text-only post).');
-                if (!postContent) throw new Error('Content is required for a text-only post.');
-                
-                const requestBody = {
-                    content: postContent,
-                    imageUrl: postImages[0]?.image_url || null,
-                };
-
-                response = await fetch(apiEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody),
-                });
-            }
-
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.details || result.error || 'An unknown server error occurred.');
-            }
-
-            setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
-            setPostContent('');
-            setPostImages([]);
-
-        } catch (err) {
-            setPostStatus({ message: `Failed to post: ${err.message}`, type: 'error' });
-        } finally {
-            setIsPosting(false);
+        // For Facebook, if an image file exists, ALWAYS use FormData.
+        if (selectedPlatform === 'facebook' && imageFile) {
+            const formData = new FormData();
+            formData.append('content', postContent);
+            formData.append('image', imageFile);
+            response = await fetch(apiEndpoint, { method: 'POST', body: formData });
+        } else {
+            // For all other platforms (like X) or text-only Facebook posts, send JSON.
+            const requestBody = {
+                content: postContent,
+                imageUrl: postImages[0]?.image_url || null, // For platforms that support image URLs
+            };
+            response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
         }
-    };
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.details || result.error || 'An unknown error occurred.');
+        }
+
+        setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
+        setPostContent('');
+        setPostImages([]);
+
+    } catch (err) {
+        setPostStatus({ message: `Failed to post: ${err.message}`, type: 'error' });
+    } finally {
+        setIsPosting(false);
+    }
+};
 
     const handleSubmit = () => {
         if (selectedPlatform === 'youtube') {

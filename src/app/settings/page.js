@@ -4,11 +4,13 @@ import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Layout from '@/app/components/Layout';
 import SettingsTabs from '@/app/components/SettingsTabs';
-import { CheckCircleIcon, ClipboardDocumentIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, ClipboardDocumentIcon, Cog } from '@heroicons/react/24/solid';
 import AlertBanner from '@/app/components/AlertBanner';
 import { useRouter, useSearchParams } from "next/navigation";
 import QuickBooksConnect from '@/app/components/QuickBooksConnect';
 import Image from 'next/image';
+import Link from 'next/link';
+
 
 const tabs = [
     //{ name: 'General', href: '#' },
@@ -698,28 +700,17 @@ function SettingsPage() {
         }
     }, [searchParams, fetchConnections]);
 
-    useEffect(() => {
-        if (status === 'unauthenticated') { 
-            router.push('/'); 
-        }
-    }, [status, router]);
-
-    if (status === 'loading') { 
-        return <Layout><div className="p-8">Loading...</div></Layout>; 
-    }
-    
-    if (status === 'unauthenticated' || !session) {
-        return null;
-    }
-
-    return (
-        <Layout>
-            <div className="mb-8">
-                <h2 className="text-3xl font-bold">Settings, Integrations & Platforms</h2>
-                <p className="mt-1 text-sm text-gray-500">Manage your site integrations, Platforms and tracking.</p>
-                {alert.show && <AlertBanner title={alert.type === 'success' ? 'Success' : 'Error'} message={alert.message} type={alert.type} onClose={() => setAlert({ show: false, message: '', type: 'info' })} />}
-            </div>
+ return (
+ <Layout>
+ <div className="mb-8">
+ <h2 className="text-3xl font-bold">Settings, Integrations & Platforms</h2>
+ <p className="mt-1 text-sm text-gray-500">Manage your site integrations, Platforms and tracking.</p>
+ {alert.show && <AlertBanner title={alert.type === 'success' ? 'Success' : 'Error'} message={alert.message} type={alert.type} onClose={() => setAlert({ show: false, message: '', type: 'info' })} />}
+ </div>
  
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+ </div>
+       
             <SettingsTabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
  
             <div className="mt-8 bg-white p-8 rounded-lg">
