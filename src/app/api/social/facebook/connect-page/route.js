@@ -1,31 +1,48 @@
+// src/app/api/social/facebook/connect-page/route.js
+
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { encrypt } from '@/lib/crypto'; // Make sure to import encrypt
 
-export async function POST(request) {
+export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { pageId } = await request.json();
-    if (!pageId) {
-        return NextResponse.json({ error: 'Page ID is required.' }, { status: 400 });
+    const { pageId, pageName, pageAccessToken } = await req.json();
+
+    if (!pageId || !pageName || !pageAccessToken) {
+        return NextResponse.json({ error: 'Missing page details.' }, { status: 400 });
     }
 
     try {
-        // This query now saves the choice to your new table
-        const query = `
-            INSERT INTO facebook_pages_connected (user_email, active_facebook_page_id)
-            VALUES (?, ?)
-            ON DUPLICATE KEY UPDATE active_facebook_page_id = VALUES(active_facebook_page_id);
-        `;
-        await db.query(query, [session.user.email, pageId]);
-        
-        return NextResponse.json({ success: true, message: 'Page connected successfully!' });
+        // Encrypt the page access token before storing it
+        const encryptedPageAccessToken = encrypt(pageAccessToken);
+
+        // First, clear any previously active page for this user
+        await db.query(
+            `UPDATE social_connect SET active_facebook_page_id = NULL WHERE user_email = ? AND platform = 'facebook'`,
+            [session.user.email]
+        );
+
+        // Now, update the connection with the new page details AND set it as active
+        await db.query(
+            `UPDATE social_connect 
+             SET 
+                page_id = ?, 
+                page_access_token_encrypted = ?,
+                active_facebook_page_id = ? 
+             WHERE user_email = ? AND platform = 'facebook'`,
+            [pageId, encryptedPageAccessToken, pageId, session.user.email]
+        );
+
+        return NextResponse.json({ success: true, message: `Successfully connected to page: ${pageName}` });
+
     } catch (error) {
-        console.error('Error connecting Facebook page:', error);
-        return NextResponse.json({ error: 'Failed to connect page.' }, { status: 500 });
+        console.error("Error connecting Facebook page:", error);
+        return NextResponse.json({ error: 'Failed to connect Facebook page.' }, { status: 500 });
     }
 }
