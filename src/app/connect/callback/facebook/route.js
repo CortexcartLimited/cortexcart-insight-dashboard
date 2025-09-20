@@ -56,14 +56,14 @@ export async function GET(req) {
         );
 
         // 4. Redirect to the settings page with a success message
-        const successUrl = new URL('/settings', req.url);
+        const successUrl = new URL('/settings/social-connections?connect_status=success', req.url);
         successUrl.searchParams.set('success', 'facebook_connected');
         return NextResponse.redirect(successUrl);
 
     } catch (error) {
         // Log the detailed error from Facebook's response if available
         console.error('Error during Facebook OAuth callback:', error.response ? error.response.data : error.message);
-        const errorUrl = new URL('/settings', req.url);
+        const errorUrl = new URL('/settings/social-connections/', req.url);
         errorUrl.searchParams.set('error', 'facebook_connection_error');
         return NextResponse.redirect(errorUrl);
     }

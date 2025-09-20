@@ -15,7 +15,7 @@ export async function GET(request) {
     const code = searchParams.get('code');
     const shop = searchParams.get('shop');
     
-    const redirectUrl = new URL('/settings?tab=Platforms', request.url);
+    const redirectUrl = new URL('/settings/platforms/', request.url);
 
     if (!code || !shop) {
         redirectUrl.searchParams.set('connect_status', 'error');

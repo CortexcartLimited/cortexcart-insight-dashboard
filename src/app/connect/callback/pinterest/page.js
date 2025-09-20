@@ -29,7 +29,7 @@ function PinterestCallbackHandler() {
         return (
             <div>
                 <p style={{ color: 'red' }}>{error}</p>
-                <a href="/settings">Return to Settings</a>
+                <a href="/settings/social-connections?connect_status=error">Return to Settings</a>
             </div>
         );
     }

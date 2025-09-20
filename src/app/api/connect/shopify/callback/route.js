@@ -13,7 +13,7 @@ export async function GET(request) {
     }
 
     // FIX 1: Use the correct NEXTAUTH_URL for all redirects
-    const settingsUrl = new URL('/settings#platforms', process.env.NEXTAUTH_URL);
+    const settingsUrl = new URL('/settings/platforms/', process.env.NEXTAUTH_URL);
 
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');

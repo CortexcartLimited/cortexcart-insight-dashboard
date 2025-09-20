@@ -15,7 +15,7 @@ export async function GET(req) {
     const code = searchParams.get('code');
 
     if (!code) {
-        const errorRedirectUrl = new URL('/settings', process.env.NEXTAUTH_URL);
+        const errorRedirectUrl = new URL('/settings/social-connections/', process.env.NEXTAUTH_URL);
         errorRedirectUrl.searchParams.set('error', 'YouTube connection failed: Authorization code not found.');
         return NextResponse.redirect(errorRedirectUrl);
     }

@@ -7,7 +7,7 @@ import { authOptions } from '@/lib/auth';
 
 export async function GET(req) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
-    const redirectUrl = new URL('/settings?tab=Platforms', appUrl);
+    const redirectUrl = new URL('/settings/platforms/', appUrl);
     
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
