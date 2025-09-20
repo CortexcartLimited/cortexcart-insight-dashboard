@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from '@/lib/auth';
-import { db } from '@/lib/db';
+
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -12,9 +12,7 @@ export async function GET(req) {
     }
 
     // This dynamically creates the correct callback URL for development or production.
-    const redirectUri = process.env.NODE_ENV === 'production'
-        ? `${process.env.NEXTAUTH_URL}/connect/callback/facebook`
-        : 'http://localhost:3000/connect/callback/facebook';
+    const redirectUri = `${process.env.NEXTAUTH_URL}/connect/callback/facebook`;
 
     const scopes = [
         'email',

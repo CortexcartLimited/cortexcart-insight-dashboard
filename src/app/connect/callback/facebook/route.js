@@ -17,7 +17,7 @@ export async function GET(req) {
     const code = searchParams.get('code');
 
     if (!code) {
-        return NextResponse.redirect(new URL('/settings?error=facebook_auth_failed', req.url));
+        return NextResponse.redirect(new URL('/settings/social-connections?error=facebook_auth_failed', req.url));
     }
 
     try {
