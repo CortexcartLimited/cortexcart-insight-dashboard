@@ -98,7 +98,7 @@ export default async function TwitterCallbackPage({ searchParams }) {
     await fetch(`${process.env.NEXTAUTH_URL}/api/social/clear-cookies`, { method: 'POST' });
 }
     
-    redirect('/settings?connect_status=success');
+     redirect('/settings/social-connections?connect_status=success');
 
     return null;
 }
