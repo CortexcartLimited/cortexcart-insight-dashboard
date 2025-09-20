@@ -114,7 +114,7 @@ export default function IntegrationsPage() {
                                 onChange={(e) => setNewPropertyId(e.target.value)}
                                 placeholder="Enter GA4 Property ID (e.g., 123456789)"
                                 className="flex-grow w-full px-3 py-2 border border-gray-300 rounded-md"
-                                pattern="\\d+"
+                                //pattern="\\d+"
                                 title="Please enter numbers only."
                                 required
                                 disabled={properties.length >= PROPERTY_LIMIT}
