@@ -83,8 +83,7 @@ export default function WidgetSettingsPage() {
           
 
             <div className="max-w-4xl space-y-8">
-                <h3 className="text-xl font-semibold leading-6 text-gray-900">Your Tracking Script</h3>
-                <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-gray-600">
                     Copy the code below and place it in the head section of your website, just before the closing head tag.
                 </p>
                 
