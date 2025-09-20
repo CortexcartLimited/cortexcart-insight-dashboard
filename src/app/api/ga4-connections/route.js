@@ -1,92 +1,109 @@
-// src/app/api/ga4-connections/route.js
-
-import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { NextResponse } from 'next/server';
 
-const PROPERTY_LIMIT = 6; // The limit for how many properties can be added.
-
-// GET - Fetches all connected GA4 properties for the user
-export async function GET(req) {
+/**
+ * @description Fetches all GA4 connections for the logged-in user.
+ * @method GET
+ */
+export async function GET() {
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
     try {
-        const [rows] = await db.query(
-            'SELECT ga4_property_id, property_id FROM ga4_connections WHERE user_email = ?',
+        const [connections] = await db.query(
+            'SELECT id, ga4_property_id FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
         );
-        return NextResponse.json(rows);
+        return NextResponse.json(connections, { status: 200 });
     } catch (error) {
-        console.error("Error fetching GA4 properties:", error);
-        return NextResponse.json({ error: 'Failed to fetch GA4 properties.' }, { status: 500 });
+        console.error('Error fetching GA4 connections:', error);
+        return NextResponse.json({ message: 'Failed to fetch connections' }, { status: 500 });
     }
 }
 
-// POST - Adds a new GA4 property, respecting the limit
+/**
+ * @description Adds a new GA4 property connection for the logged-in user.
+ * @method POST
+ */
 export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    }
+
+    const { propertyId } = await req.json();
+
+    if (!propertyId || !/^\d+$/.test(propertyId)) {
+        return NextResponse.json({ message: 'Invalid Property ID format.' }, { status: 400 });
     }
 
     try {
-        const { propertyId } = await req.json();
-        if (!propertyId || !/^\d+$/.test(propertyId)) {
-            return NextResponse.json({ error: 'A valid GA4 Property ID (numbers only) is required.' }, { status: 400 });
-        }
-
-        const [currentProperties] = await db.query(
-            'SELECT COUNT(*) as count FROM ga4_connections WHERE user_email = ?',
-            [session.user.email]
+        // First, check if this property already exists for the user
+        const [existing] = await db.query(
+            'SELECT id FROM ga4_connections WHERE user_email = ? AND ga4_property_id = ?',
+            [session.user.email, propertyId]
         );
 
-        if (currentProperties[0].count >= PROPERTY_LIMIT) {
-            return NextResponse.json({ error: `You have reached the limit of ${PROPERTY_LIMIT} properties.` }, { status: 403 });
+        // If a record is found, return a conflict error
+        if (existing.length > 0) {
+            return NextResponse.json({ message: 'This property has already been added.' }, { status: 409 });
         }
 
+        // If no duplicate is found, insert the new property
         const [result] = await db.query(
             'INSERT INTO ga4_connections (user_email, ga4_property_id) VALUES (?, ?)',
             [session.user.email, propertyId]
         );
+        
+        const [newConnection] = await db.query(
+            'SELECT id, ga4_property_id FROM ga4_connections WHERE id = ?',
+            [result.insertId]
+        );
 
-        return NextResponse.json({ success: true, ga4_property_id: result.insertId, property_id: propertyId });
-
+        return NextResponse.json(newConnection[0], { status: 201 });
     } catch (error) {
-        // Handle cases where the property ID is already in use (unique constraint)
+        // This will catch the unique constraint violation if the API check somehow fails
         if (error.code === 'ER_DUP_ENTRY') {
-            return NextResponse.json({ error: 'This GA4 Property ID is already connected.' }, { status: 409 });
+            return NextResponse.json({ message: 'This property has already been added.' }, { status: 409 });
         }
-        console.error("Error adding GA4 property:", error);
-        return NextResponse.json({ error: 'Failed to add GA4 property.' }, { status: 500 });
+        console.error('Error adding GA4 connection:', error);
+        return NextResponse.json({ message: 'Failed to add GA4 connection' }, { status: 500 });
     }
 }
 
-// DELETE - Removes a GA4 property
+/**
+ * @description Deletes a specific GA4 connection for the logged-in user.
+ * @method DELETE
+ */
 export async function DELETE(req) {
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    }
+
+    const { id } = await req.json();
+
+    if (!id) {
+        return NextResponse.json({ message: 'Connection ID is required.' }, { status: 400 });
     }
 
     try {
-        const { id } = await req.json(); // We'll delete by the unique row ID
-        if (!id) {
-            return NextResponse.json({ error: 'Property ID is required for deletion.' }, { status: 400 });
-        }
-
-        await db.query(
-            'DELETE FROM ga4_connections WHERE property_id = ? AND user_email = ?',
+        const [result] = await db.query(
+            'DELETE FROM ga4_connections WHERE id = ? AND user_email = ?',
             [id, session.user.email]
         );
 
-        return NextResponse.json({ success: true, message: 'Property disconnected successfully.' });
+        if (result.affectedRows === 0) {
+            return NextResponse.json({ message: 'Connection not found or user not authorized.' }, { status: 404 });
+        }
 
+        return NextResponse.json({ message: 'Connection deleted successfully' }, { status: 200 });
     } catch (error) {
-        console.error("Error deleting GA4 property:", error);
-        return NextResponse.json({ error: 'Failed to delete GA4 property.' }, { status: 500 });
+        console.error('Error deleting GA4 connection:', error);
+        return NextResponse.json({ message: 'Failed to delete connection' }, { status: 500 });
     }
 }
