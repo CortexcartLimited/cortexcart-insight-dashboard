@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
 
-export default async function FacebookCallback(req) {
+export async function GET(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
         return redirect('/login');
