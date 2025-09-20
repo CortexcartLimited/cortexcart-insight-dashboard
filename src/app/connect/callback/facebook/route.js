@@ -1,70 +1,64 @@
-// src/app/connect/callback/facebook/route.js
-
-import { NextResponse } from 'next/server';
+import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
-import axios from 'axios';
 
-export async function GET(req) {
+export default async function FacebookCallback(req) {
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.redirect(new URL('/login', req.url));
+    if (!session?.user?.email) {
+        return redirect('/login');
     }
 
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
+    const userEmail = session.user.email;
+    const redirectUrl = '/settings/social-connections';
 
     if (!code) {
-        return NextResponse.redirect(new URL('/settings/social-connections?error=facebook_auth_failed', req.url));
+        return redirect(`${redirectUrl}?error=facebook_denied`);
     }
 
     try {
-        // 1. Exchange the code for a long-lived access token
-        const tokenUrl = `https://graph.facebook.com/v19.0/oauth/access_token`;
+        // Step 1: Exchange code for a long-lived user access token
+        const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${process.env.FACEBOOK_CLIENT_ID}&redirect_uri=${process.env.NEXTAUTH_URL}/connect/callback/facebook&client_secret=${process.env.FACEBOOK_CLIENT_SECRET}&code=${code}`;
+        const tokenResponse = await fetch(tokenUrl);
+        const tokenData = await tokenResponse.json();
+
+        if (tokenData.error) {
+            throw new Error(tokenData.error.message);
+        }
+        const userAccessToken = tokenData.access_token;
         
-        // Use URLSearchParams to correctly format the request body
-        const tokenParams = new URLSearchParams({
-            client_id: process.env.FACEBOOK_CLIENT_ID,
-            redirect_uri: `${process.env.NEXTAUTH_URL}/connect/callback/facebook`,
-            client_secret: process.env.FACEBOOK_CLIENT_SECRET,
-            code: code,
-        });
+        // Step 2: Fetch pages, now including the 'picture' field
+        const pagesUrl = `https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture&access_token=${userAccessToken}`;
+        const pagesResponse = await fetch(pagesUrl);
+        const pagesData = await pagesResponse.json();
 
-        // Use a POST request which is more standard for this type of exchange
-        const tokenResponse = await axios.post(tokenUrl, tokenParams);
-        const { access_token } = tokenResponse.data;
-
-        if (!access_token) {
-            throw new Error('Failed to retrieve access token from Facebook.');
+        if (pagesData.error) {
+            throw new Error(pagesData.error.message);
         }
 
-        // 2. Encrypt the token for database storage
-        const encryptedAccessToken = encrypt(access_token);
-        const userEmail = session.user.email;
-        const platform = 'facebook';
+        // Step 3: Insert or update each page into your table
+        for (const page of pagesData.data) {
+            const encryptedToken = encrypt(page.access_token);
+            const pictureUrl = page.picture?.data?.url || null; // Safely get the picture URL
 
-        // 3. Save the connection to our single source of truth: 'social_connect'
-        await db.query(
-            `INSERT INTO social_connect (user_email, platform, access_token_encrypted, created_at, updated_at)
-             VALUES (?, ?, ?, NOW(), NOW())
-             ON DUPLICATE KEY UPDATE
-             access_token_encrypted = VALUES(access_token_encrypted),
-             updated_at = NOW()`,
-            [userEmail, platform, encryptedAccessToken]
-        );
-
-        // 4. Redirect to the settings page with a success message
-        const successUrl = new URL('/settings/social-connections?connect_status=success', req.url);
-        successUrl.searchParams.set('success', 'facebook_connected');
-        return NextResponse.redirect(successUrl);
-
+            await db.query(
+                `INSERT INTO facebook_pages (user_email, page_id, page_name, access_token_encrypted, picture_url)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                    page_name = VALUES(page_name),
+                    access_token_encrypted = VALUES(access_token_encrypted),
+                    picture_url = VALUES(picture_url)`,
+                [userEmail, page.id, page.name, encryptedToken, pictureUrl]
+            );
+        }
+        
     } catch (error) {
-        // Log the detailed error from Facebook's response if available
-        console.error('Error during Facebook OAuth callback:', error.response ? error.response.data : error.message);
-        const errorUrl = new URL('/settings/social-connections/', req.url);
-        errorUrl.searchParams.set('error', 'facebook_connection_error');
-        return NextResponse.redirect(errorUrl);
+        console.error('Error during Facebook OAuth callback:', error);
+        return redirect(`${redirectUrl}?error=facebook_failed`);
     }
+
+    return redirect(`${redirectUrl}?success=facebook_connected`);
 }
