@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import FacebookPageManager from '@/app/components/social/FacebookPageManager'; // Import the new component
 
 export default function SocialConnectionsClient() {
+    // ... (keep all your existing state and useEffect logic)
     const [connections, setConnections] = useState({});
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState({ type: '', message: '' });
@@ -39,6 +41,7 @@ export default function SocialConnectionsClient() {
         fetchConnections();
     }, [searchParams]);
 
+    // This component remains the same
     const ConnectionButton = ({ platform, connectUrl }) => {
         const isConnected = connections[platform];
 
@@ -58,6 +61,7 @@ export default function SocialConnectionsClient() {
         );
     };
 
+
     return (
         <div>
             {notification.message && (
@@ -70,33 +74,32 @@ export default function SocialConnectionsClient() {
                 </div>
             )}
 
-            <div className="p-6 bg-white shadow-sm mt-8">
-              
-               
+            <div className="p-6 border rounded-lg bg-white shadow-sm">
+                <h3 className="font-semibold text-gray-800">Connect Your Accounts</h3>
                 <div className="mt-4 space-y-4">
                     {loading ? <p>Loading connections...</p> : (
                         <>
-                            <div className="flex justify-between items-center border rounded-lg p-4">
-                                <span><b>Facebook</b><br/>Manage pages, accounts, and post content.</span>
-                              
-                                <ConnectionButton platform="facebook" connectUrl="/api/connect/facebook" />
+                            {/* --- UPDATE THE FACEBOOK SECTION --- */}
+                            <div>
+                                <div className="flex justify-between items-center">
+                                    <span>Facebook & Instagram</span>
+                                    <ConnectionButton platform="facebook" connectUrl="/api/connect/facebook" />
+                                </div>
+                                {connections.facebook && <FacebookPageManager />}
                             </div>
-                           
-                            <div className="flex justify-between items-center border rounded-lg p-4">
-                                <span><b>X (Twitter)</b><br/>Connect to post tweets and view analytics.</span>
+                            {/* ---------------------------------- */}
+                            <div className="flex justify-between items-center">
+                                <span>X (Twitter)</span>
                                 <ConnectionButton platform="x" connectUrl="/api/connect/twitter" />
                             </div>
-                           
-                                     <div className="flex justify-between items-center border rounded-lg p-4">
-                <span><b>YouTube</b><br/>Connect to upload videos and sync analytics.</span>
-                <ConnectionButton platform="youtube" connectUrl="/api/connect/youtube" />
-            </div>
-            
-            <div className="flex justify-between items-center border rounded-lg p-4">
-                <span><b>Pinterest</b><br/>Connect to post pins and manage boards.</span>
-
-                <ConnectionButton platform="pinterest" connectUrl="/api/connect/pinterest" />
-            </div>
+                            <div className="flex justify-between items-center">
+                                <span>YouTube</span>
+                                <ConnectionButton platform="youtube" connectUrl="/api/connect/youtube" />
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span>Pinterest</span>
+                                <ConnectionButton platform="pinterest" connectUrl="/api/connect/pinterest" />
+                            </div>
                         </>
                     )}
                 </div>

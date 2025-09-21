@@ -3,6 +3,7 @@ import Layout from '@/app/components/Layout';
 import SocialConnectionsClient from './SocialConnectionsClient';
 import Link from 'next/link';
 
+
 // A simple loading component to show while the client component loads
 function Loading() {
     return (
