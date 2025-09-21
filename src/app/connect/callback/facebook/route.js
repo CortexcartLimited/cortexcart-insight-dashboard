@@ -33,9 +33,10 @@ export async function GET(req) {
         const userAccessToken = tokenData.access_token;
         
         // Step 2: Fetch pages the user manages, requesting specific fields
-        const pagesUrl = `https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture{url}&access_token=${userAccessToken}`;
-        const pagesResponse = await fetch(pagesUrl);
-        const pagesData = await pagesResponse.json();
+       // const pagesUrl = `https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture{url}&access_token=${userAccessToken}`;
+       const pagesUrl = `https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture{url},instagram_business_account{id,username,profile_picture_url}&access_token=${userAccessToken}`;
+       const pagesResponse = await fetch(pagesUrl);
+       const pagesData = await pagesResponse.json();
 
         if (pagesData.error) {
             console.error("Facebook Pages Error:", pagesData.error);
@@ -68,7 +69,19 @@ export async function GET(req) {
                         picture_url = VALUES(picture_url)`,
                     [userEmail, page.id, page.name, encryptedToken, pictureUrl]
                 );
+                if (page.instagram_business_account) {
+                    const ig = page.instagram_business_account;
+                    await db.query(
+                        `INSERT INTO instagram_accounts (user_email, page_id, instagram_id, username, profile_picture_url)
+                         VALUES (?, ?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE
+                            username = VALUES(username),
+                            profile_picture_url = VALUES(profile_picture_url)`,
+                        [userEmail, page.id, ig.id, ig.username, ig.profile_picture_url]
+                    );
+                }
             }
+        
         } else {
              console.log(`User ${userEmail} connected, but no manageable pages were found or returned by the API.`);
         }
