@@ -98,7 +98,7 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
                     </button>
                 ))}
                 <Link href="/settings/social-connections/" className="ml-auto flex items-center py-4 px-1 font-medium text-sm transition-colors text-gray-500 hover:text-gray-700">
-                    <Cog6ToothIcon className="h-6 w-6" />
+                    <Cog6ToothIcon className="h-6 w-6" /> Social Settings
                 </Link>
 
             </nav>

@@ -15,21 +15,29 @@ export default function SocialConnectionsClient() {
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         try {
-            // Fetch connection statuses
             const statusResponse = await fetch('/api/social/connections/status');
             if (!statusResponse.ok) throw new Error('Failed to load connection status.');
             const connectionsData = await statusResponse.json();
             setConnections(connectionsData);
 
-            // If Facebook is connected, fetch its pages
+            // --- DEBUG LOGGING ---
+            console.log("Connection Statuses:", connectionsData);
+
             if (connectionsData.facebook) {
                 const pagesResponse = await fetch('/api/social/facebook/pages');
                 if (!pagesResponse.ok) throw new Error('Could not fetch Facebook pages.');
                 const pagesData = await pagesResponse.json();
                 setFacebookPages(pagesData);
+
+                // --- DEBUG LOGGING ---
+                console.log("Fetched Facebook Pages:", pagesData);
+            } else {
+                // Ensure pages are cleared if not connected
+                setFacebookPages([]);
             }
         } catch (err) {
             setNotification({ type: 'error', message: err.message });
+            console.error("Error fetching data:", err);
         } finally {
             setLoading(false);
         }
@@ -56,7 +64,7 @@ export default function SocialConnectionsClient() {
                 throw new Error('Failed to set active page.');
             }
             
-            // Re-fetch all data to ensure UI is perfectly in sync with the database
+            // Re-fetch all data to ensure UI is perfectly in sync
             await fetchAllData();
 
         } catch (err) {
@@ -64,8 +72,8 @@ export default function SocialConnectionsClient() {
         }
     };
     
-    // ... (ConnectionButton component remains the same)
     const ConnectionButton = ({ platform, connectUrl }) => {
+        // ... (This component remains the same)
         const isConnected = connections[platform];
 
         if (isConnected) {
@@ -104,6 +112,7 @@ export default function SocialConnectionsClient() {
                                     <span>Facebook & Instagram</span>
                                     <ConnectionButton platform="facebook" connectUrl="/api/connect/facebook" />
                                 </div>
+                                {/* The key is to check if facebook is connected AND we have pages */}
                                 {connections.facebook && (
                                     <FacebookPageManager 
                                         pages={facebookPages}
@@ -113,6 +122,7 @@ export default function SocialConnectionsClient() {
                                 )}
                             </div>
                             
+                            {/* ... other platforms */}
                             <div className="flex justify-between items-center">
                                 <span>X (Twitter)</span>
                                 <ConnectionButton platform="x" connectUrl="/api/connect/twitter" />
