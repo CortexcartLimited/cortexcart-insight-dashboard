@@ -7,29 +7,52 @@ export default function FacebookPageManager() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        const fetchPages = async () => {
-            try {
-                setLoading(true);
-                const response = await fetch('/api/social/facebook/pages');
-                if (!response.ok) throw new Error('Could not fetch Facebook pages.');
-                const data = await response.json();
-                setPages(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchPages = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/social/facebook/pages');
+            if (!response.ok) throw new Error('Could not fetch Facebook pages.');
+            const data = await response.json();
+            setPages(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchPages();
     }, []);
 
     const handleSetActivePage = async (pageId) => {
-        // Here you would call an API to set this page as the active one for posting
-        console.log('Setting active page:', pageId);
-        // This is a placeholder for the API call
-        // await fetch('/api/social/facebook/active-page', { method: 'POST', body: JSON.stringify({ pageId }) });
+        try {
+            // Optimistically update the UI for a faster user experience
+            setPages(currentPages =>
+                currentPages.map(p => ({
+                    ...p,
+                    is_active: p.page_id === pageId
+                }))
+            );
+
+            const response = await fetch('/api/social/facebook/active-page', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pageId })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to set active page.');
+            }
+            
+            // Optionally, you can re-fetch to confirm the change, but the optimistic update is usually enough.
+            // await fetchPages();
+
+        } catch (err) {
+            setError(err.message);
+            // Revert the optimistic update on error
+            fetchPages(); 
+        }
     };
 
     if (loading) return <p className="text-sm text-gray-500 mt-4">Loading Facebook Pages...</p>;
@@ -50,7 +73,11 @@ export default function FacebookPageManager() {
                             </div>
                             <button
                                 onClick={() => handleSetActivePage(page.page_id)}
-                                className="px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 disabled:bg-gray-400"
+                                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+                                    page.is_active
+                                        ? 'bg-green-600 text-white cursor-default'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
                                 disabled={page.is_active}
                             >
                                 {page.is_active ? 'Active' : 'Set Active'}
@@ -59,7 +86,6 @@ export default function FacebookPageManager() {
                     ))}
                 </ul>
             )}
-            {/* You would add a similar component here for Instagram accounts */}
         </div>
     );
 }

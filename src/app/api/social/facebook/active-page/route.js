@@ -3,29 +3,45 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(req) {
+export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
     try {
-        // Corrected SQL Query
-          const [rows] = await db.query(
-            'SELECT active_facebook_page_id FROM social_connect WHERE user_email = ?',
-            [session.user.email]
-        );
-
-        if (rows.length === 0) {
-            return NextResponse.json({ active_facebook_page_id: null });
+        const { pageId } = await req.json();
+        if (!pageId) {
+            return NextResponse.json({ error: 'Page ID is required' }, { status: 400 });
         }
 
-        return NextResponse.json({ active_facebook_page_id: rows[0].active_facebook_page_id });
+        const userEmail = session.user.email;
 
+        // Start a transaction to ensure both updates succeed or fail together
+        await db.query('START TRANSACTION');
+
+        // Step 1: Set all of the user's pages to inactive
+        await db.query(
+            'UPDATE facebook_pages SET is_active = FALSE WHERE user_email = ?',
+            [userEmail]
+        );
+
+        // Step 2: Set the selected page to active
+        const [result] = await db.query(
+            'UPDATE facebook_pages SET is_active = TRUE WHERE user_email = ? AND page_id = ?',
+            [userEmail, pageId]
+        );
+
+        await db.query('COMMIT');
+
+        if (result.affectedRows === 0) {
+            throw new Error('Page not found or user not authorized to update this page.');
+        }
+
+        return NextResponse.json({ success: true, message: 'Active page updated successfully.' });
     } catch (error) {
-        console.error('Error fetching active Facebook page:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        await db.query('ROLLBACK'); // Rollback the transaction on error
+        console.error('Error setting active Facebook page:', error);
+        return NextResponse.json({ error: 'Failed to set active page.' }, { status: 500 });
     }
 }
