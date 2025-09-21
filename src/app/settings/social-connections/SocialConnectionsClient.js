@@ -1,46 +1,69 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react'; // Import useCallback
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import FacebookPageManager from '@/app/components/social/FacebookPageManager';
 
 export default function SocialConnectionsClient() {
     const [connections, setConnections] = useState({});
+    const [facebookPages, setFacebookPages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState({ type: '', message: '' });
     const searchParams = useSearchParams();
 
-    // --- NEW: Wrap fetchConnections in useCallback ---
-    const fetchConnections = useCallback(async () => {
+    const fetchAllData = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const response = await fetch('/api/social/connections/status');
-            if (!response.ok) throw new Error('Failed to load connection status.');
-            const data = await response.json();
-            setConnections(data);
+            // Fetch connection statuses
+            const statusResponse = await fetch('/api/social/connections/status');
+            if (!statusResponse.ok) throw new Error('Failed to load connection status.');
+            const connectionsData = await statusResponse.json();
+            setConnections(connectionsData);
+
+            // If Facebook is connected, fetch its pages
+            if (connectionsData.facebook) {
+                const pagesResponse = await fetch('/api/social/facebook/pages');
+                if (!pagesResponse.ok) throw new Error('Could not fetch Facebook pages.');
+                const pagesData = await pagesResponse.json();
+                setFacebookPages(pagesData);
+            }
         } catch (err) {
             setNotification({ type: 'error', message: err.message });
         } finally {
             setLoading(false);
         }
-    }, []); // Empty dependency array means this function is created once
+    }, []);
 
     useEffect(() => {
         const success = searchParams.get('success');
-        const error = searchParams.get('error');
-
         if (success) {
             const platform = success.split('_')[0];
             setNotification({ type: 'success', message: `Successfully connected your ${platform} account!` });
         }
-        if (error) {
-            setNotification({ type: 'error', message: 'Something went wrong. Please try connecting your account again.' });
+        fetchAllData();
+    }, [searchParams, fetchAllData]);
+
+    const handleSetActivePage = async (pageId) => {
+        try {
+            const response = await fetch('/api/social/facebook/active-page', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pageId })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to set active page.');
+            }
+            
+            // Re-fetch all data to ensure UI is perfectly in sync with the database
+            await fetchAllData();
+
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message });
         }
-
-        fetchConnections();
-    }, [searchParams, fetchConnections]);
-
+    };
+    
     // ... (ConnectionButton component remains the same)
     const ConnectionButton = ({ platform, connectUrl }) => {
         const isConnected = connections[platform];
@@ -65,9 +88,7 @@ export default function SocialConnectionsClient() {
         <div>
             {notification.message && (
                 <div className={`p-4 mb-4 text-sm rounded-lg ${
-                    notification.type === 'success' 
-                    ? 'text-green-700 bg-green-100' 
-                    : 'text-red-700 bg-red-100'
+                    notification.type === 'success' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
                 }`}>
                     {notification.message}
                 </div>
@@ -83,12 +104,15 @@ export default function SocialConnectionsClient() {
                                     <span>Facebook & Instagram</span>
                                     <ConnectionButton platform="facebook" connectUrl="/api/connect/facebook" />
                                 </div>
-                                {/* --- UPDATED LINE --- */}
-                                {/* Pass the fetchConnections function as the onUpdate prop */}
-                                {connections.facebook && <FacebookPageManager onUpdate={fetchConnections} />}
+                                {connections.facebook && (
+                                    <FacebookPageManager 
+                                        pages={facebookPages}
+                                        onSetActive={handleSetActivePage}
+                                        loading={loading}
+                                    />
+                                )}
                             </div>
                             
-                            {/* ... (other platforms remain the same) ... */}
                             <div className="flex justify-between items-center">
                                 <span>X (Twitter)</span>
                                 <ConnectionButton platform="x" connectUrl="/api/connect/twitter" />
