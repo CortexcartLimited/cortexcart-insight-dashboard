@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 
-export default function FacebookPageManager() {
+// Accept a new prop: onUpdate
+export default function FacebookPageManager({ onUpdate }) {
     const [pages, setPages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     const fetchPages = async () => {
+        // ... (this function remains the same)
         try {
             setLoading(true);
             const response = await fetch('/api/social/facebook/pages');
@@ -27,12 +29,8 @@ export default function FacebookPageManager() {
 
     const handleSetActivePage = async (pageId) => {
         try {
-            // Optimistically update the UI for a faster user experience
             setPages(currentPages =>
-                currentPages.map(p => ({
-                    ...p,
-                    is_active: p.page_id === pageId
-                }))
+                currentPages.map(p => ({ ...p, is_active: p.page_id === pageId }))
             );
 
             const response = await fetch('/api/social/facebook/active-page', {
@@ -45,16 +43,19 @@ export default function FacebookPageManager() {
                 throw new Error('Failed to set active page.');
             }
             
-            // Optionally, you can re-fetch to confirm the change, but the optimistic update is usually enough.
-            // await fetchPages();
+            // --- NEW LINE ---
+            // Call the callback function to notify the parent component
+            if (onUpdate) {
+                onUpdate();
+            }
 
         } catch (err) {
             setError(err.message);
-            // Revert the optimistic update on error
             fetchPages(); 
         }
     };
 
+    // ... (the rest of the component's JSX remains the same)
     if (loading) return <p className="text-sm text-gray-500 mt-4">Loading Facebook Pages...</p>;
     if (error) return <p className="text-sm text-red-500 mt-4">{error}</p>;
 

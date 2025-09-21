@@ -62,7 +62,7 @@ Manage and connect/disconnect your platforms for example: Mailchimp, QuickBooks 
              <CodeBracketIcon className="h-8 w-8 text-orange-500 mr-4 flex-shrink-0" />            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">My Tracking Widget</h2>
           </div>
           <p className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
-View, copy and paste your Widget code here that is specific to you and your website only.
+View, copy and paste your Widget code here that is specific to you and your website only. Need help installing your widget code try the <Link href="/install" className="text-blue-500">install guide</Link> for detailed platform install help.
           </p>
           <Link href="/settings/widget" className="w-full mt-auto bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-center">
             Get my widget embed code
