@@ -1,16 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react'; // Import useCallback
 import { useSearchParams } from 'next/navigation';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import FacebookPageManager from '@/app/components/social/FacebookPageManager'; // Import the new component
+import FacebookPageManager from '@/app/components/social/FacebookPageManager';
 
 export default function SocialConnectionsClient() {
-    // ... (keep all your existing state and useEffect logic)
     const [connections, setConnections] = useState({});
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState({ type: '', message: '' });
     const searchParams = useSearchParams();
+
+    // --- NEW: Wrap fetchConnections in useCallback ---
+    const fetchConnections = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/social/connections/status');
+            if (!response.ok) throw new Error('Failed to load connection status.');
+            const data = await response.json();
+            setConnections(data);
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message });
+        } finally {
+            setLoading(false);
+        }
+    }, []); // Empty dependency array means this function is created once
 
     useEffect(() => {
         const success = searchParams.get('success');
@@ -24,24 +38,10 @@ export default function SocialConnectionsClient() {
             setNotification({ type: 'error', message: 'Something went wrong. Please try connecting your account again.' });
         }
 
-        const fetchConnections = async () => {
-            try {
-                setLoading(true);
-                const response = await fetch('/api/social/connections/status');
-                if (!response.ok) throw new Error('Failed to load connection status.');
-                const data = await response.json();
-                setConnections(data);
-            } catch (err) {
-                setNotification({ type: 'error', message: err.message });
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchConnections();
-    }, [searchParams]);
+    }, [searchParams, fetchConnections]);
 
-    // This component remains the same
+    // ... (ConnectionButton component remains the same)
     const ConnectionButton = ({ platform, connectUrl }) => {
         const isConnected = connections[platform];
 
@@ -61,7 +61,6 @@ export default function SocialConnectionsClient() {
         );
     };
 
-
     return (
         <div>
             {notification.message && (
@@ -79,15 +78,17 @@ export default function SocialConnectionsClient() {
                 <div className="mt-4 space-y-4">
                     {loading ? <p>Loading connections...</p> : (
                         <>
-                            {/* --- UPDATE THE FACEBOOK SECTION --- */}
                             <div>
                                 <div className="flex justify-between items-center">
                                     <span>Facebook & Instagram</span>
                                     <ConnectionButton platform="facebook" connectUrl="/api/connect/facebook" />
                                 </div>
-                                {connections.facebook && <FacebookPageManager />}
+                                {/* --- UPDATED LINE --- */}
+                                {/* Pass the fetchConnections function as the onUpdate prop */}
+                                {connections.facebook && <FacebookPageManager onUpdate={fetchConnections} />}
                             </div>
-                            {/* ---------------------------------- */}
+                            
+                            {/* ... (other platforms remain the same) ... */}
                             <div className="flex justify-between items-center">
                                 <span>X (Twitter)</span>
                                 <ConnectionButton platform="x" connectUrl="/api/connect/twitter" />
