@@ -2,7 +2,6 @@ import NextAuth from 'next-auth'; // FIX: Added missing import
 import { getServerSession } from "next-auth/next";
 import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
-import PinterestProvider from 'next-auth/providers/pinterest'; // FIX: Added missing provider
 import FacebookProvider from 'next-auth/providers/facebook'; // FIX: Added missing provider
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from '@/lib/db';
@@ -60,11 +59,6 @@ export const authOptions = {
         FacebookProvider({
             clientId: process.env.FACEBOOK_CLIENT_ID,
             clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-        }),
-        // FIX: Added Pinterest provider based on previous configurations
-        PinterestProvider({
-            clientId: process.env.PINTEREST_CLIENT_ID,
-            clientSecret: process.env.PINTEREST_CLIENT_SECRET,
         })
     ],
     callbacks: {
