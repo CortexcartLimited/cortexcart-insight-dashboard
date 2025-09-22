@@ -14,9 +14,14 @@ export async function GET(req) {
             'SELECT page_id, instagram_id, username, profile_picture_url, is_active FROM instagram_accounts WHERE user_email = ?',
             [session.user.email]
         );
-        return NextResponse.json(accounts);
+        
+        // --- THIS IS THE KEY ---
+        // Ensure we always return an array, even if 'accounts' is null or undefined
+        return NextResponse.json(accounts || []);
+
     } catch (error) {
         console.error('Error fetching Instagram accounts:', error);
-        return NextResponse.json({ error: 'Failed to fetch Instagram accounts' }, { status: 500 });
+        // Also return an empty array on error to prevent the frontend from crashing
+        return NextResponse.json([], { status: 500 });
     }
 }

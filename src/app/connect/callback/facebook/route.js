@@ -33,7 +33,6 @@ export async function GET(req) {
         const userAccessToken = tokenData.access_token;
         
         // Step 2: Fetch pages the user manages, requesting specific fields
-       // const pagesUrl = `https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture{url}&access_token=${userAccessToken}`;
        const pagesUrl = `https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture{url},instagram_business_account{id,username,profile_picture_url}&access_token=${userAccessToken}`;
        const pagesResponse = await fetch(pagesUrl);
        const pagesData = await pagesResponse.json();

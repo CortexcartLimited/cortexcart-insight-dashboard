@@ -7,10 +7,10 @@ import Link from 'next/link';
 import RealTimeClock from './RealTimeClock';
 import { DocumentChartBarIcon } from '@heroicons/react/24/outline';
 import { 
-    ChartPieIcon, Cog6ToothIcon, ArrowRightEndOnRectangleIcon, LightBulbIcon,
+    ChartPieIcon, Cog6ToothIcon, ArrowRightEndOnRectangleIcon,
     MapIcon, TagIcon, Bars3Icon, XMarkIcon, InformationCircleIcon, 
     ChatBubbleLeftRightIcon, ShareIcon, PuzzlePieceIcon, QuestionMarkCircleIcon,
-    LifebuoyIcon, BellIcon, BeakerIcon, SparklesIcon, ChevronDownIcon, FireIcon, WrenchIcon
+    LifebuoyIcon, BellIcon, SparklesIcon, ChevronDownIcon, WrenchIcon
 } from '@heroicons/react/24/outline';
 
 // --- Sub-component: Top Navigation ---
