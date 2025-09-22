@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/app/components/Layout';
-import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 
 export default function PlatformsPage() {
@@ -64,7 +64,7 @@ export default function PlatformsPage() {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold">Platform Connections</h2>
                 <Link href="/settings" className="flex items-center text-blue-500 hover:text-blue-600 font-bold py-2 px-4 rounded-lg transition duration-300">
-                               Back to Settings Page
+                              <ArrowLeftCircle className="h-5 w-5 mr-2" /> Back to Settings Page
                             </Link>
                             </div>
                 <p className="mt-1 text-sm text-gray-500">Manage your e-commerce, marketing, and financial platform integrations.</p>
