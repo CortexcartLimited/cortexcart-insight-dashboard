@@ -114,7 +114,9 @@ export default function SocialConnectionsClient() {
                                 {connections.facebook && (
                                     <FacebookPageManager 
                                         pages={facebookPages}
+                                        instagramAccounts={instagramAccounts}
                                         onSetActive={handleSetActivePage}
+                                        onSetActiveIg={handleSetActiveIg}
                                         loading={loading}
                                     />
                                 )}
