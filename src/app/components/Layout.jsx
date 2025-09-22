@@ -294,7 +294,7 @@ const SidebarContent = () => {
         {status === 'authenticated' && (
           <div className="mb-4 text-sm"><p className="font-semibold text-white">{session.user.name}</p><p className="text-gray-400 truncate">{session.user.email}</p></div>
         )}
-        <Link href={session ? '#' : '/api/auth/signin'} onClick={() => session && signOut({ callbackUrl: '/' })} className="w-full flex">
+        <Link href={session ? '#' : '/login'} onClick={() => session && signOut({ callbackUrl: '/' })} className="w-full flex">
           <ArrowRightEndOnRectangleIcon className="h-6 w-6 mr-3" /><span>{session ? 'Sign Out' : 'Sign In'}</span>
         </Link>
       </div>
