@@ -8,6 +8,7 @@ import FacebookPageManager from '@/app/components/social/FacebookPageManager';
 export default function SocialConnectionsClient() {
     const [connections, setConnections] = useState({});
     const [facebookPages, setFacebookPages] = useState([]);
+    const [instagramAccounts, setInstagramAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState({ type: '', message: '' });
     const searchParams = useSearchParams();
@@ -15,33 +16,27 @@ export default function SocialConnectionsClient() {
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         try {
-            const statusResponse = await fetch('/api/social/connections/status');
-            if (!statusResponse.ok) throw new Error('Failed to load connection status.');
-            const connectionsData = await statusResponse.json();
+            const [statusRes, pagesRes, igRes] = await Promise.all([
+                fetch('/api/social/connections/status'),
+                fetch('/api/social/facebook/pages'),
+                fetch('/api/social/instagram/accounts')
+            ]);
+            
+            const connectionsData = await statusRes.json();
+            const pagesData = await pagesRes.json();
+            const igData = await igRes.json();
+
             setConnections(connectionsData);
+            setFacebookPages(pagesData);
+            setInstagramAccounts(igData);
 
-            // --- DEBUG LOGGING ---
-            console.log("Connection Statuses:", connectionsData);
-
-            if (connectionsData.facebook) {
-                const pagesResponse = await fetch('/api/social/facebook/pages');
-                if (!pagesResponse.ok) throw new Error('Could not fetch Facebook pages.');
-                const pagesData = await pagesResponse.json();
-                setFacebookPages(pagesData);
-
-                // --- DEBUG LOGGING ---
-                console.log("Fetched Facebook Pages:", pagesData);
-            } else {
-                // Ensure pages are cleared if not connected
-                setFacebookPages([]);
-            }
         } catch (err) {
-            setNotification({ type: 'error', message: err.message });
-            console.error("Error fetching data:", err);
+            setNotification({ type: 'error', message: 'Failed to load social connection data.' });
         } finally {
             setLoading(false);
         }
     }, []);
+
 
     useEffect(() => {
         const success = searchParams.get('success');
@@ -71,9 +66,12 @@ export default function SocialConnectionsClient() {
             setNotification({ type: 'error', message: err.message });
         }
     };
-    
+     const handleSetActiveIg = async (instagramId) => {
+        console.log("Setting active IG account:", instagramId);
+        fetchAllData(); // Re-fetch all data to update the UI
+    };
     const ConnectionButton = ({ platform, connectUrl }) => {
-        // ... (This component remains the same)
+       
         const isConnected = connections[platform];
 
         if (isConnected) {
