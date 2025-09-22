@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/app/components/Layout';
-import { ClipboardDocumentIcon, CheckCircleIcon, InformationCircleIcon, ArrowLeftCircle } from '@heroicons/react/24/solid';
+import { ClipboardDocumentIcon, CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
 import  Link  from 'next/link';
 
 
@@ -74,7 +74,7 @@ export default function WidgetSettingsPage() {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold">Tracking Widget</h2>
                 <Link href="/settings" className="flex items-center text-blue-500 hover:text-blue-600 font-bold py-2 px-4 rounded-lg transition duration-300">
-                              <ArrowLeftCircle className="h-5 w-5 mr-2" /> Back to Settings Page
+                           Back to Settings Page
                             </Link>
                 </div>
                 <p className="mt-1 text-sm text-gray-500">

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import Layout from '@/app/components/Layout';
 import SocialConnectionsClient from './SocialConnectionsClient';
 import Link from 'next/link';
-import { ArrowLeftCircle } from '@heroicons/react/24/solid';
+
 
 
 // A simple loading component to show while the client component loads
@@ -24,7 +24,7 @@ export default function SocialConnectionsPage() {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold text-gray-800">Social Connections</h2>
                 <Link href="/settings" className="flex items-right text-blue-500 hover:text-blue-600 font-bold py-2 px-4 rounded-lg transition duration-300">
-                    <ArrowLeftCircle className="h-5 w-5 mr-2" />Back to Settings Page
+                    Back to Settings Page
                 </Link>
             </div>
             <span className="text-gray-500 mb-8">Manage your connected social media accounts.</span>
