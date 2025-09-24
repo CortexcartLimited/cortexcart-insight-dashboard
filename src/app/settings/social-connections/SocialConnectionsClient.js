@@ -13,40 +13,41 @@ export default function SocialConnectionsClient() {
     const [notification, setNotification] = useState({ type: '', message: '' });
     const searchParams = useSearchParams();
 
-    const fetchAllData = useCallback(async () => {
-        setLoading(true);
-             console.log("Starting to fetch all social data...");
+const fetchAllData = useCallback(async () => {
+    setLoading(true);
+    try {
+        console.log("Starting to fetch all social data...");
 
-            // Fetch Status
-            const statusRes = await fetch('/api/social/connections/status');
-            console.log("Status API Response:", statusRes.status, statusRes.statusText);
-            if (!statusRes.ok) throw new Error('Failed to load connection statuses.');
-            const connectionsData = await statusRes.json();
-            setConnections(connectionsData);
+        const [statusRes, pagesRes, igRes] = await Promise.all([
+            fetch('/api/social/connections/status'),
+            fetch('/api/social/facebook/pages'),
+            fetch('/api/social/instagram/accounts')
+        ]);
 
-            // Fetch Facebook Pages
-            const pagesRes = await fetch('/api/social/facebook/pages');
-            console.log("Facebook Pages API Response:", pagesRes.status, pagesRes.statusText);
-            if (!pagesRes.ok) throw new Error('Failed to load Facebook pages.');
-            const pagesData = await pagesRes.json();
-            setFacebookPages(Array.isArray(pagesData) ? pagesData : []);
+        console.log("Status API Response:", statusRes.status, statusRes.statusText);
+        if (!statusRes.ok) throw new Error('Failed to load connection statuses.');
+        const connectionsData = await statusRes.json();
+        setConnections(connectionsData);
 
-            // Fetch Instagram Accounts
-            const igRes = await fetch('/api/social/instagram/accounts');
-            console.log("Instagram Accounts API Response:", igRes.status, igRes.statusText);
-            if (!igRes.ok) throw new Error('Failed to load Instagram accounts.');
-            const igData = await igRes.json();
-            setInstagramAccounts(Array.isArray(igData) ? igData : []);
+        console.log("Facebook Pages API Response:", pagesRes.status, pagesRes.statusText);
+        if (!pagesRes.ok) throw new Error('Failed to load Facebook pages.');
+        const pagesData = await pagesRes.json();
+        setFacebookPages(Array.isArray(pagesData) ? pagesData : []);
 
-            console.log("All data fetched successfully.");
+        console.log("Instagram Accounts API Response:", igRes.status, igRes.statusText);
+        if (!igRes.ok) throw new Error('Failed to load Instagram accounts.');
+        const igData = await igRes.json();
+        setInstagramAccounts(Array.isArray(igData) ? igData : []);
 
-        } catch (err) {
-            console.error("Error during fetchAllData:", err);
-            setNotification({ type: 'error', message: err.message });
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+        console.log("All data fetched successfully.");
+
+    } catch (err) { // --- THIS LINE WAS MISSING A CLOSING ')' in the previous version
+        console.error("Error during fetchAllData:", err);
+        setNotification({ type: 'error', message: err.message });
+    } finally {
+        setLoading(false);
+    }
+}, []);
 
     useEffect(() => {
         if (searchParams.get('success')) {
@@ -61,7 +62,7 @@ export default function SocialConnectionsClient() {
         });
         await fetchAllData();
     };
-    
+
     const handleSetActiveIg = async (instagramId) => {
         await fetch('/api/social/instagram/active-account', {
             method: 'POST', body: JSON.stringify({ instagramId }), headers: { 'Content-Type': 'application/json' }

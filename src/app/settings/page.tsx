@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChartBarIcon, UsersIcon, PuzzlePieceIcon, CodeBracketIcon, CogIcon } from '@heroicons/react/24/solid';
+import { ChartBarIcon, UsersIcon, PuzzlePieceIcon, CodeBracketIcon, CogIcon, QuestionMarkCircleIcon} from '@heroicons/react/24/solid';
 import Layout from '@/app/components/Layout';
 
 
@@ -79,6 +79,16 @@ View, copy and paste your Widget code here that is specific to you and your webs
           <Link href="/account" className="w-full mt-auto bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-center">
             Go To My Account
           </Link>
+        </div>
+         {/* Other Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 flex flex-col border border-grey-50">
+          <div className="flex items-center mb-4">
+            <QuestionMarkCircleIcon className="h-8 w-8 text-ogray-500 mr-4 flex-shrink-0" /> {/* Using Cog for a generic settings/data icon */}
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Need more help?</h2>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
+       <em> <b>Try our <Link href="/faq" className="text-blue-500">FAQ's</Link></b></em> We have sections for all areas of this app, we also have videos to walk you through each step of using our app. Need to talk, raise a <Link href="/support" className="text-blue-500">support ticket</Link> depending on your plan you can get a response within 24 hours</p>
+          
         </div>
   
        
