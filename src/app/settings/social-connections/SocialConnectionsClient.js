@@ -15,26 +15,33 @@ export default function SocialConnectionsClient() {
 
     const fetchAllData = useCallback(async () => {
         setLoading(true);
-        try {
-            const [statusRes, pagesRes, igRes] = await Promise.all([
-                fetch('/api/social/connections/status'),
-                fetch('/api/social/facebook/pages'),
-                fetch('/api/social/instagram/accounts')
-            ]);
-            
-            if (!statusRes.ok || !pagesRes.ok || !igRes.ok) {
-                throw new Error('Failed to load social connection data.');
-            }
-            
-            const connectionsData = await statusRes.json();
-            const pagesData = await pagesRes.json();
-            const igData = await igRes.json();
+             console.log("Starting to fetch all social data...");
 
+            // Fetch Status
+            const statusRes = await fetch('/api/social/connections/status');
+            console.log("Status API Response:", statusRes.status, statusRes.statusText);
+            if (!statusRes.ok) throw new Error('Failed to load connection statuses.');
+            const connectionsData = await statusRes.json();
             setConnections(connectionsData);
+
+            // Fetch Facebook Pages
+            const pagesRes = await fetch('/api/social/facebook/pages');
+            console.log("Facebook Pages API Response:", pagesRes.status, pagesRes.statusText);
+            if (!pagesRes.ok) throw new Error('Failed to load Facebook pages.');
+            const pagesData = await pagesRes.json();
             setFacebookPages(Array.isArray(pagesData) ? pagesData : []);
+
+            // Fetch Instagram Accounts
+            const igRes = await fetch('/api/social/instagram/accounts');
+            console.log("Instagram Accounts API Response:", igRes.status, igRes.statusText);
+            if (!igRes.ok) throw new Error('Failed to load Instagram accounts.');
+            const igData = await igRes.json();
             setInstagramAccounts(Array.isArray(igData) ? igData : []);
 
+            console.log("All data fetched successfully.");
+
         } catch (err) {
+            console.error("Error during fetchAllData:", err);
             setNotification({ type: 'error', message: err.message });
         } finally {
             setLoading(false);
