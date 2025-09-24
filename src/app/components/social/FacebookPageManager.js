@@ -1,14 +1,9 @@
 'use client';
 
-// Add default empty arrays to the props for safety
-export default function FacebookPageManager({
-    pages = [],
-    instagramAccounts = [],
-    onSetActivePage,
-    onSetActiveIg
-}) {
-    if (!pages || pages.length === 0) {
-        return <p className="text-sm text-gray-500 mt-4">No pages found. Please try reconnecting your account.</p>;
+// This component is now only for display
+export default function FacebookPageManager({ pages = [], instagramAccounts = [], onSetActivePage, onSetActiveIg }) {
+    if (pages.length === 0) {
+        return <p className="text-sm text-gray-500 mt-4">No pages found. Please disconnect and reconnect your account, ensuring you grant all page permissions.</p>;
     }
 
     return (
@@ -16,14 +11,12 @@ export default function FacebookPageManager({
             <h4 className="font-semibold text-gray-700">Connected Pages & Profiles</h4>
             <ul className="mt-2 space-y-3">
                 {pages.map(page => {
-                    // This line will now be safe because instagramAccounts defaults to []
                     const linkedIg = instagramAccounts.find(ig => ig.page_id === page.page_id);
                     return (
                         <li key={page.page_id} className="p-3 bg-gray-50 rounded-md">
-                            {/* ... the rest of your JSX remains the same ... */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <img src={page.picture_url} alt={page.page_name} className="w-8 h-8 rounded-full" />
+                                    {page.picture_url && <img src={page.picture_url} alt={page.page_name} className="w-8 h-8 rounded-full" />}
                                     <span className="text-sm font-medium">{page.page_name}</span>
                                 </div>
                                 <button
@@ -39,7 +32,7 @@ export default function FacebookPageManager({
                                 <div className="mt-3 ml-11 pl-4 border-l border-gray-200">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <img src={linkedIg.profile_picture_url} alt={linkedIg.username} className="w-7 h-7 rounded-full" />
+                                            {linkedIg.profile_picture_url && <img src={linkedIg.profile_picture_url} alt={linkedIg.username} className="w-7 h-7 rounded-full" />}
                                             <span className="text-sm text-gray-600">{linkedIg.username}</span>
                                         </div>
                                         <button
