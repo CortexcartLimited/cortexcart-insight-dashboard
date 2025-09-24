@@ -67,8 +67,23 @@ export default function SocialConnectionsClient() {
         }
     };
      const handleSetActiveIg = async (instagramId) => {
-        console.log("Setting active IG account:", instagramId);
-        fetchAllData(); // Re-fetch all data to update the UI
+        try {
+            const response = await fetch('/api/social/instagram/active-account', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instagramId })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to set active Instagram account.');
+            }
+            
+            // Re-fetch all data to update the UI with the new active status
+            await fetchAllData();
+
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message });
+        }
     };
     const ConnectionButton = ({ platform, connectUrl }) => {
        

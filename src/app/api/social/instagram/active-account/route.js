@@ -17,6 +17,7 @@ export async function POST(req) {
 
         const userEmail = session.user.email;
 
+        // Start a transaction to ensure both updates succeed or fail together
         await db.query('START TRANSACTION');
 
         // Step 1: Set all of the user's Instagram accounts to inactive
@@ -40,7 +41,7 @@ export async function POST(req) {
         return NextResponse.json({ success: true, message: 'Active Instagram account updated.' });
 
     } catch (error) {
-        await db.query('ROLLBACK');
+        await db.query('ROLLBACK'); // Rollback the transaction on error
         console.error('Error setting active Instagram account:', error);
         return NextResponse.json({ error: 'Failed to set active account.' }, { status: 500 });
     }
