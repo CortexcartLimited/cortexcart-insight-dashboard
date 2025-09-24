@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-// --- FIX 1: Import XCircleIcon ---
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid'; 
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import FacebookPageManager from '@/app/components/social/FacebookPageManager';
 
 export default function SocialConnectionsClient() {
@@ -14,7 +13,6 @@ export default function SocialConnectionsClient() {
     const [notification, setNotification] = useState({ type: '', message: '' });
     const searchParams = useSearchParams();
 
-    // ... (fetchAllData function remains the same)
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         try {
@@ -41,7 +39,6 @@ export default function SocialConnectionsClient() {
 
 
     useEffect(() => {
-        // ... (useEffect remains the same)
         const success = searchParams.get('success');
         if (success) {
             const platform = success.split('_')[0];
@@ -50,7 +47,6 @@ export default function SocialConnectionsClient() {
         fetchAllData();
     }, [searchParams, fetchAllData]);
 
-    // ... (handleSetActivePage and handleSetActiveIg remain the same)
     const handleSetActivePage = async (pageId) => {
         try {
             const response = await fetch('/api/social/facebook/active-page', {
@@ -63,6 +59,7 @@ export default function SocialConnectionsClient() {
                 throw new Error('Failed to set active page.');
             }
             
+            // Re-fetch all data to ensure UI is perfectly in sync
             await fetchAllData();
 
         } catch (err) {
@@ -81,6 +78,7 @@ export default function SocialConnectionsClient() {
                 throw new Error('Failed to set active Instagram account.');
             }
             
+            // Re-fetch all data to update the UI with the new active status
             await fetchAllData();
 
         } catch (err) {
@@ -88,8 +86,7 @@ export default function SocialConnectionsClient() {
         }
     };
 
-    // ... (handleDisconnect remains the same)
-    const handleDisconnect = async (platform) => {
+  const handleDisconnect = async (platform) => {
         if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
         
         try {
@@ -106,10 +103,9 @@ export default function SocialConnectionsClient() {
         }
     };
 
-
     const ConnectionButton = ({ platform, connectUrl }) => {
-        // ... (This component is now correct because XCircleIcon is imported)
-         const isConnected = connections[platform];
+       
+        const isConnected = connections[platform];
 
         if (isConnected) {
             return (
@@ -138,8 +134,14 @@ export default function SocialConnectionsClient() {
 
     return (
         <div>
-            {/* ... (notification div remains the same) ... */}
-            
+            {notification.message && (
+                <div className={`p-4 mb-4 text-sm rounded-lg ${
+                    notification.type === 'success' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                }`}>
+                    {notification.message}
+                </div>
+            )}
+
             <div className="p-6 border rounded-lg bg-white shadow-sm">
                 <h3 className="font-semibold text-gray-800">Connect Your Accounts</h3>
                 <div className="mt-4 space-y-4">
@@ -150,20 +152,31 @@ export default function SocialConnectionsClient() {
                                     <span>Facebook & Instagram</span>
                                     <ConnectionButton platform="facebook" connectUrl="/api/connect/facebook" />
                                 </div>
-                                
+                                {/* The key is to check if facebook is connected AND we have pages */}
                                 {connections.facebook && (
                                     <FacebookPageManager 
                                         pages={facebookPages}
                                         instagramAccounts={instagramAccounts}
-                                        // --- FIX 2: Match the prop name to the child component ---
-                                        onSetActivePage={handleSetActivePage}
+                                        onSetActive={handleSetActivePage}
                                         onSetActiveIg={handleSetActiveIg}
                                         loading={loading}
                                     />
                                 )}
                             </div>
                             
-                            {/* ... (other platforms remain the same) ... */}
+                            {/* ... other platforms */}
+                            <div className="flex justify-between items-center">
+                                <span>X (Twitter)</span>
+                                <ConnectionButton platform="x" connectUrl="/api/connect/twitter" />
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span>YouTube</span>
+                                <ConnectionButton platform="youtube" connectUrl="/api/connect/youtube" />
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span>Pinterest</span>
+                                <ConnectionButton platform="pinterest" connectUrl="/api/connect/pinterest" />
+                            </div>
                         </>
                     )}
                 </div>
