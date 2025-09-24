@@ -19,30 +19,18 @@ export async function POST(req, { params }) {
     try {
         await db.query('START TRANSACTION');
 
-        // Delete from the main social_connect table
         await db.query(
             'DELETE FROM social_connect WHERE user_email = ? AND platform = ?',
             [userEmail, platform]
         );
 
-        // If it's Facebook, also delete related pages and Instagram accounts
         if (platform === 'facebook') {
-            await db.query(
-                'DELETE FROM instagram_accounts WHERE user_email = ?',
-                [userEmail]
-            );
-            await db.query(
-                'DELETE FROM facebook_pages WHERE user_email = ?',
-                [userEmail]
-            );
+            await db.query('DELETE FROM instagram_accounts WHERE user_email = ?', [userEmail]);
+            await db.query('DELETE FROM facebook_pages WHERE user_email = ?', [userEmail]);
         }
         
-        // Add similar cleanup logic for other platforms if they have extra tables
-        // e.g., if (platform === 'youtube') { ... }
-
         await db.query('COMMIT');
-
-        return NextResponse.json({ success: true, message: `${platform} disconnected successfully.` });
+        return NextResponse.json({ success: true, message: `${platform} disconnected.` });
 
     } catch (error) {
         await db.query('ROLLBACK');

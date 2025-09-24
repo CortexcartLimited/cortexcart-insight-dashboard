@@ -85,15 +85,42 @@ export default function SocialConnectionsClient() {
             setNotification({ type: 'error', message: err.message });
         }
     };
+
+  const handleDisconnect = async (platform) => {
+        if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
+        
+        try {
+            const response = await fetch(`/api/social/disconnect/${platform}`, {
+                method: 'POST',
+            });
+            if (!response.ok) throw new Error(`Failed to disconnect ${platform}.`);
+
+            setNotification({ type: 'success', message: `Successfully disconnected ${platform}!` });
+            await fetchAllData();
+
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message });
+        }
+    };
+
     const ConnectionButton = ({ platform, connectUrl }) => {
        
         const isConnected = connections[platform];
 
         if (isConnected) {
             return (
-                <div className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md">
-                    <CheckCircleIcon className="w-5 h-5" />
-                    Connected
+                 <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                        <CheckCircleIcon className="w-5 h-5" />
+                        Connected
+                    </div>
+                    <button 
+                        onClick={() => handleDisconnect(platform)}
+                        className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-semibold"
+                    >
+                        <XCircleIcon className="w-4 h-4" />
+                        Disconnect
+                    </button>
                 </div>
             );
         }
