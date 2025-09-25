@@ -106,114 +106,70 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
     );
 };
 
-const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts, pinterestBoards, loading }) => {
-   
-    const [topic, setTopic] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [scheduleDate, setScheduleDate] = useState(moment().add(1, 'day').format('YYYY-MM-DD'));
-    const [scheduleTime, setScheduleTime] = useState('10:00');
-    const [isPosting, setIsPosting] = useState(false);
-    
-    // --- STATE MANAGEMENT FIX ---
-    // We manage these states directly inside the component
+const ComposerTabContent = ({ activeAccounts, onPostScheduled, instagramAccounts: allInstagramAccounts }) => {
     const [postContent, setPostContent] = useState('');
-    const [postImages, setPostImages] = useState([]); 
-    const [selectedPlatform, setSelectedPlatform] = useState('x');
-
+    const [postImages, setPostImages] = useState([]);
+    const [selectedPlatform, setSelectedPlatform] = useState('facebook');
+    const [isPosting, setIsPosting] = useState(false);
     const [postStatus, setPostStatus] = useState({ message: '', type: '' });
     const [error, setError] = useState('');
     const [selectedInstagramId, setSelectedInstagramId] = useState('');
-    const [selectedBoardId, setSelectedBoardId] = useState('');
-    const [pinTitle, setPinTitle] = useState('');
-    const [videoFile, setVideoFile] = useState(null);
-    const [videoTitle, setVideoTitle] = useState('');
-    const [privacyStatus, setPrivacyStatus] = useState('private');
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [uploadMessage, setUploadMessage] = useState('');
 
     useEffect(() => {
-        if (selectedPlatform === 'pinterest' && pinterestBoards && pinterestBoards.length > 0 && !selectedBoardId) {
-            setSelectedBoardId(pinterestBoards[0].board_id);
+        // Pre-select the active Instagram account if it exists
+        if (activeAccounts?.instagram) {
+            setSelectedInstagramId(activeAccounts.instagram.instagram_id);
         }
-        if (selectedPlatform === 'instagram' && instagramAccounts && instagramAccounts.length > 0 && !selectedInstagramId) {
-            setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
-        }
-    }, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]);
+    }, [activeAccounts]);
 
-    const currentPlatform = PLATFORMS[selectedPlatform];
-
-   
-    const handleImageAdded = (newImage) => {
-        console.log("Composer: Received image from ImageManager:", newImage);
-        if (newImage && newImage.file) {
-            setPostImages([{ image_url: newImage.image_url, file: newImage.file }]);
-        } else if (newImage && newImage.image_url) {
-            setPostImages([{ image_url: newImage.image_url, file: null }]);
-        }
-    };
-    
-    const handleRemoveImage = () => {
-        setPostImages([]);
-    };
-
-  const handlePostNow = async () => {
+    const handlePostNow = async () => {
         setIsPosting(true);
         setPostStatus({ message: '', type: '' });
+        setError('');
 
-        // --- THIS IS THE KEY FIX ---
-        // We now get the correct API endpoint from the PLATFORMS constant
         const currentPlatform = PLATFORMS[selectedPlatform];
-        if (!currentPlatform || !currentPlatform.apiEndpoint) {
-            setPostStatus({ message: `Posting to ${selectedPlatform} is not supported yet.`, type: 'error' });
+        if (!currentPlatform) {
+            setError('Invalid platform selected.');
             setIsPosting(false);
             return;
         }
-        
-        const apiEndpoint = currentPlatform.apiEndpoint;
-        const imageFile = postImages[0]?.file;
+
+        let body;
+        const headers = { 'Content-Type': 'application/json' };
+
+        if (selectedPlatform === 'facebook') {
+            if (!activeAccounts.facebook) {
+                setError('No active Facebook Page. Please select one in settings.');
+                setIsPosting(false);
+                return;
+            }
+            body = JSON.stringify({ content: postContent });
+        } else if (selectedPlatform === 'instagram') {
+            if (!selectedInstagramId) {
+                setError('No Instagram account selected for posting.');
+                setIsPosting(false);
+                return;
+            }
+            body = JSON.stringify({ content: postContent, instagramId: selectedInstagramId });
+        } else {
+             body = JSON.stringify({ content: postContent });
+        }
 
         try {
-            let response;
-
-            if (imageFile) {
-                const formData = new FormData();
-                formData.append('content', postContent);
-                formData.append('image', imageFile);
-                // For Instagram, we need to send the selected account ID
-                if (selectedPlatform === 'instagram') {
-                    formData.append('instagramId', selectedInstagramId);
-                }
-                response = await fetch(apiEndpoint, { method: 'POST', body: formData });
-            } else {
-                const body = { 
-                    content: postContent, 
-                    imageUrl: postImages[0]?.image_url || null,
-                    // For Instagram, we also need to send the selected account ID
-                    instagramId: selectedPlatform === 'instagram' ? selectedInstagramId : undefined
-                };
-                response = await fetch(apiEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                });
-            }
-
+            const response = await fetch(currentPlatform.apiEndpoint, { method: 'POST', headers, body });
             const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.details || result.error || 'An unknown error occurred.');
-            }
+            if (!response.ok) throw new Error(result.error || 'An unknown error occurred.');
 
             setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
             setPostContent('');
             setPostImages([]);
-
         } catch (err) {
-            setPostStatus({ message: `${err.message}`, type: 'error' });
+            setError(err.message);
         } finally {
             setIsPosting(false);
         }
     };
+
     const handleSubmit = () => {
         if (selectedPlatform === 'youtube') {
             handleUploadToYouTube();
@@ -1066,6 +1022,9 @@ export default function SocialMediaManagerPage() {
     const [activeTab, setActiveTab] = useState('Composer');
     const [scheduledPosts, setScheduledPosts] = useState([]);
     const [optimalTimes, setOptimalTimes] = useState([]);
+    const [activeAccounts, setActiveAccounts] = useState({ facebook: null, instagram: null });
+    const [allInstagramAccounts, setAllInstagramAccounts] = useState([]);
+
 
     // --- LIFTED STATE ---
     const [postContent, setPostContent] = useState('');
@@ -1110,39 +1069,59 @@ export default function SocialMediaManagerPage() {
             console.error("Failed to fetch optimal times:", error);
         }
     }, []);
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
+   useEffect(() => {
+        const fetchInitialData = async () => {
+            if (status === 'authenticated') {
                 setLoading(true);
-                // Fetch both sets of data in parallel
-                const [igRes, pinRes] = await Promise.all([
-                    fetch('/api/social/instagram/accounts'),
-                    fetch('/api/social/pinterest/boards') // We will create this API route next
-                ]);
+                setError('');
+                try {
+                    // Fetch all data sources in parallel for speed
+                    const [activeRes, igRes, pinRes, postsRes, timesRes] = await Promise.all([
+                        fetch('/api/social/active-accounts'),
+                        fetch('/api/social/instagram/accounts'),
+                        fetch('/api/social/pinterest/boards'),
+                        fetch('/api/social/schedule'),
+                        fetch('/api/social/optimal-times')
+                    ]);
 
-                if (igRes.ok) {
-                    setInstagramAccounts(await igRes.json());
+                    // Check if all responses are OK
+                    if (!activeRes.ok) throw new Error('Could not fetch active accounts. Please select one in settings.');
+                    if (!igRes.ok) throw new Error('Could not fetch Instagram accounts.');
+                    // Add checks for pinRes, postsRes, timesRes if needed
+
+                    const activeData = await activeRes.json();
+                    const allIgData = await igRes.json();
+                    const pinData = await pinRes.json();
+                    const postsData = await postsRes.json();
+                    const timesData = await timesRes.json();
+                    
+                    // Update all state variables
+                    setActiveAccounts(activeData);
+                    setAllInstagramAccounts(Array.isArray(allIgData) ? allIgData : []);
+                    setPinterestBoards(Array.isArray(pinData) ? pinData : []);
+                    setOptimalTimes(Array.isArray(timesData) ? timesData : []);
+                    
+                    const formattedEvents = postsData.map(post => ({
+                        id: post.id,
+                        title: `${PLATFORMS[post.platform]?.name || 'Post'}: ${post.content.substring(0, 30)}...`,
+                        start: new Date(post.scheduled_at),
+                        end: moment(post.scheduled_at).add(30, 'minutes').toDate(),
+                        resource: { platform: post.platform },
+                    }));
+                    setScheduledPosts(formattedEvents);
+
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
                 }
-                if (pinRes.ok) {
-                    setPinterestBoards(await pinRes.json());
-                }
-            } catch (error) {
-                console.error("Failed to fetch social data:", error);
-            } finally {
-                setLoading(false);
             }
         };
 
-        fetchData();
-    }, []);
-    useEffect(() => {
-        if (status === 'authenticated') {
-        fetchOptimalTimes();
-        }
-        fetchScheduledPosts();
-    }, [status, fetchScheduledPosts, fetchOptimalTimes]);
-    
-    if (status === 'loading') return <Layout><p>Loading...</p></Layout>;
+        fetchInitialData();
+    }, [status]); // Dependency array should just be status
+
+    if (status === 'loading' || loading) return <Layout><p>Loading Social Manager...</p></Layout>;
 
     return (
         <Layout>
@@ -1150,29 +1129,22 @@ export default function SocialMediaManagerPage() {
                 <h2 className="text-3xl font-bold">Social Media Manager</h2>
                 <p className="mt-1 text-sm text-gray-500">Design, schedule, and analyze your social media content.</p>
             </div>
+            
+            {error && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">{error}</div>}
+            
             <SocialNav activeTab={activeTab} setActiveTab={setActiveTab} />
             
             {activeTab === 'Composer' && (
                 <ComposerTabContent
                     onPostScheduled={fetchScheduledPosts}
                     scheduledPosts={scheduledPosts}
-                    postContent={postContent}
-                    setPostContent={setPostContent} 
-                    selectedPlatform={selectedPlatform}
-                    setSelectedPlatform={setSelectedPlatform}
-                    postImages={postImages}
-                    setPostImages={setPostImages}
-                    userImages={userImages}
-                    isLoadingImages={isLoadingImages}
-                    setIsLoadingImages={setIsLoadingImages}
-                    activeDragId={activeDragId}
-                    setActiveDragId={setActiveDragId}
-                    fetchScheduledPosts={fetchScheduledPosts} 
-                    instagramAccounts={instagramAccounts}
+                    activeAccounts={activeAccounts}
+                    instagramAccounts={allInstagramAccounts} // Pass all accounts for the dropdown
                     pinterestBoards={pinterestBoards}
                     loading={loading}
-                    />
+                />
             )}
+            
             {activeTab === 'Analytics' && <AnalyticsTabContent />}
             {activeTab === 'Schedule' && (
     <ScheduleTabWithNoSSR 
