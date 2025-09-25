@@ -46,9 +46,13 @@ export async function GET(req) {
                     const ig = page.instagram_business_account;
                     // --- FIX 3: Corrected SQL Syntax ---
                     await db.query(
-                        `INSERT INTO instagram_accounts (user_email, page_id, instagram_id, username, profile_picture_url) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE username = VALUES(username), profile_picture_url = VALUES(profile_picture_url)`,
-                        [userEmail, page.id, ig.id, ig.username, ig.profile_picture_url]
-                    );
+        `INSERT INTO instagram_accounts (user_email, page_id, instagram_user_id, username, profile_picture_url)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+            username = VALUES(username),
+            profile_picture_url = VALUES(profile_picture_url)`,
+        [userEmail, page.id, ig.id, ig.username, ig.profile_picture_url]
+    );
                 }
             }
         }
