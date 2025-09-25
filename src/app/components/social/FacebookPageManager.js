@@ -1,6 +1,5 @@
 'use client';
 
-// This component is now only for display
 export default function FacebookPageManager({ pages = [], instagramAccounts = [], onSetActivePage, onSetActiveIg }) {
     if (pages.length === 0) {
         return <p className="text-sm text-gray-500 mt-4">No pages found. Please disconnect and reconnect your account, ensuring you grant all page permissions.</p>;
