@@ -157,49 +157,63 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, instagramAccounts
         setPostImages([]);
     };
 
-   const handlePostNow = async () => {
-    setIsPosting(true);
-    setPostStatus({ message: '', type: '' });
+  const handlePostNow = async () => {
+        setIsPosting(true);
+        setPostStatus({ message: '', type: '' });
 
-    const currentPlatform = PLATFORMS[selectedPlatform];
-    const apiEndpoint = currentPlatform.apiEndpoint;
-    const imageFile = postImages[0]?.file; // This will contain the raw file data
-
-    try {
-        let response;
-
-        // If a raw file object exists, we MUST send as FormData
-        if (imageFile) {
-            const formData = new FormData();
-            formData.append('content', postContent);
-            formData.append('image', imageFile);
-            response = await fetch(apiEndpoint, { method: 'POST', body: formData });
-        } else {
-            // Otherwise, send as JSON (for text-only posts)
-            const body = { content: postContent, imageUrl: postImages[0]?.image_url || null };
-            response = await fetch(apiEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
+        // --- THIS IS THE KEY FIX ---
+        // We now get the correct API endpoint from the PLATFORMS constant
+        const currentPlatform = PLATFORMS[selectedPlatform];
+        if (!currentPlatform || !currentPlatform.apiEndpoint) {
+            setPostStatus({ message: `Posting to ${selectedPlatform} is not supported yet.`, type: 'error' });
+            setIsPosting(false);
+            return;
         }
+        
+        const apiEndpoint = currentPlatform.apiEndpoint;
+        const imageFile = postImages[0]?.file;
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.details || result.error || 'An unknown error occurred.');
+        try {
+            let response;
+
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('content', postContent);
+                formData.append('image', imageFile);
+                // For Instagram, we need to send the selected account ID
+                if (selectedPlatform === 'instagram') {
+                    formData.append('instagramId', selectedInstagramId);
+                }
+                response = await fetch(apiEndpoint, { method: 'POST', body: formData });
+            } else {
+                const body = { 
+                    content: postContent, 
+                    imageUrl: postImages[0]?.image_url || null,
+                    // For Instagram, we also need to send the selected account ID
+                    instagramId: selectedPlatform === 'instagram' ? selectedInstagramId : undefined
+                };
+                response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+            }
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.details || result.error || 'An unknown error occurred.');
+            }
+
+            setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
+            setPostContent('');
+            setPostImages([]);
+
+        } catch (err) {
+            setPostStatus({ message: `${err.message}`, type: 'error' });
+        } finally {
+            setIsPosting(false);
         }
-
-        setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
-        setPostContent('');
-        setPostImages([]);
-
-    } catch (err) {
-        setPostStatus({ message: `${err.message}`, type: 'error' });
-    } finally {
-        setIsPosting(false);
-    }
-};
-
+    };
     const handleSubmit = () => {
         if (selectedPlatform === 'youtube') {
             handleUploadToYouTube();
