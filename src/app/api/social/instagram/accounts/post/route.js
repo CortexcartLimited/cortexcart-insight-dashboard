@@ -17,7 +17,7 @@ export async function POST(req) {
 
     try {
         const [rows] = await db.query(
-            'SELECT page_access_token_encrypted FROM social_connect WHERE instagram_user_id = ?',
+            'SELECT page_access_token_encrypted FROM social_connect WHERE instagram_id = ?',
             [instagramUserId]
         );
 
