@@ -16,9 +16,9 @@ export async function POST(req) {
     const { instagramUserId, imageUrl, caption } = await req.json();
 
     try {
-        const [rows] = await db.query(
-            'SELECT page_access_token_encrypted FROM social_connect WHERE instagram_id = ?',
-            [instagramUserId]
+          const [accountResults] = await db.query(
+            `SELECT page_id FROM instagram_accounts WHERE instagram_id = ? AND user_email = ?`,
+            [instagramId, session.user.email]
         );
 
         if (rows.length === 0) {
