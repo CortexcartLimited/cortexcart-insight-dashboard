@@ -42,7 +42,7 @@ const PLATFORMS = {
         name: 'X (Twitter)', 
         maxLength: 280, 
         icon: (props) => ( <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M13.682 10.623 20.239 3h-1.64l-5.705 6.44L7.65 3H3l6.836 9.753L3 21h1.64l6.082-6.885L16.351 21H21l-7.318-10.377zM14.78 13.968l-.87-1.242L6.155 4.16h2.443l4.733 6.742.87 1.242 7.03 9.98h-2.443l-5.045-7.143z" /></svg>), 
-        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags", // FIX: Escaped apostrophe
+        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags",
         disabled: false,
         color: '#000000',
         apiEndpoint: '/api/social/x/create-post' 
@@ -51,7 +51,7 @@ const PLATFORMS = {
         name: 'Facebook',
         maxLength: 5000,
         icon: (props) => (<svg {...props} fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.77-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.028C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" /></svg>),
-        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags", // FIX: Escaped apostrophe
+        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags",
         disabled: false,
         color: '#1877F2',
         apiEndpoint: '/api/social/facebook/create-post'
@@ -76,13 +76,11 @@ const PLATFORMS = {
     },
       youtube: {
         name: 'YouTube',
-        // No character limit for video uploads
         maxLength: Infinity,
         icon: YouTubeIcon,
         placeholder: "Enter a video description or generate with AI including video tags...",
         disabled: false,
         color: '#FF0000',
-        // No direct API endpoint for posting, as it's a multi-step process
     }
 };
 
@@ -106,60 +104,78 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
     );
 };
 
-const ComposerTabContent = ({ activeAccounts, onPostScheduled, instagramAccounts: allInstagramAccounts }) => {
-    const [postContent, setPostContent] = useState('');
-    const [postImages, setPostImages] = useState([]);
-    const [selectedPlatform, setSelectedPlatform] = useState('facebook');
+const ComposerTabContent = ({ scheduledPosts, onPostScheduled, activeAccounts, instagramAccounts, pinterestBoards, loading: dataLoading }) => {
+    const [topic, setTopic] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [scheduleDate, setScheduleDate] = useState(moment().add(1, 'day').format('YYYY-MM-DD'));
+    const [scheduleTime, setScheduleTime] = useState('10:00');
     const [isPosting, setIsPosting] = useState(false);
+    const [postContent, setPostContent] = useState('');
+    const [postImages, setPostImages] = useState([]); 
+    const [selectedPlatform, setSelectedPlatform] = useState('x');
     const [postStatus, setPostStatus] = useState({ message: '', type: '' });
     const [error, setError] = useState('');
     const [selectedInstagramId, setSelectedInstagramId] = useState('');
+    const [selectedBoardId, setSelectedBoardId] = useState('');
+    const [pinTitle, setPinTitle] = useState('');
+    const [videoFile, setVideoFile] = useState(null);
+    const [videoTitle, setVideoTitle] = useState('');
+    const [privacyStatus, setPrivacyStatus] = useState('private');
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadMessage, setUploadMessage] = useState('');
 
     useEffect(() => {
-        // Pre-select the active Instagram account if it exists
         if (activeAccounts?.instagram) {
             setSelectedInstagramId(activeAccounts.instagram.instagram_id);
         }
-    }, [activeAccounts]);
+        if (pinterestBoards && pinterestBoards.length > 0 && !selectedBoardId) {
+            setSelectedBoardId(pinterestBoards[0].board_id);
+        }
+    }, [activeAccounts, pinterestBoards, selectedBoardId]);
+
+    const currentPlatform = PLATFORMS[selectedPlatform];
 
     const handlePostNow = async () => {
         setIsPosting(true);
         setPostStatus({ message: '', type: '' });
         setError('');
 
-        const currentPlatform = PLATFORMS[selectedPlatform];
-        if (!currentPlatform) {
-            setError('Invalid platform selected.');
+        if (selectedPlatform === 'facebook' && !activeAccounts.facebook) {
+            setError('No active Facebook Page connected. Please select one in your settings.');
+            setIsPosting(false);
+            return;
+        }
+        if (selectedPlatform === 'instagram' && !selectedInstagramId) {
+            setError('No active Instagram account selected for posting.');
             setIsPosting(false);
             return;
         }
 
-        let body;
-        const headers = { 'Content-Type': 'application/json' };
-
-        if (selectedPlatform === 'facebook') {
-            if (!activeAccounts.facebook) {
-                setError('No active Facebook Page. Please select one in settings.');
-                setIsPosting(false);
-                return;
-            }
-            body = JSON.stringify({ content: postContent });
-        } else if (selectedPlatform === 'instagram') {
-            if (!selectedInstagramId) {
-                setError('No Instagram account selected for posting.');
-                setIsPosting(false);
-                return;
-            }
-            body = JSON.stringify({ content: postContent, instagramId: selectedInstagramId });
-        } else {
-             body = JSON.stringify({ content: postContent });
-        }
-
+        const imageFile = postImages[0]?.file;
+        let response;
+        
         try {
-            const response = await fetch(currentPlatform.apiEndpoint, { method: 'POST', headers, body });
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('content', postContent);
+                formData.append('image', imageFile);
+                if (selectedPlatform === 'instagram') {
+                    formData.append('instagramId', selectedInstagramId);
+                }
+                response = await fetch(currentPlatform.apiEndpoint, { method: 'POST', body: formData });
+            } else {
+                const body = { 
+                    content: postContent, 
+                    imageUrl: postImages[0]?.image_url || null,
+                    instagramId: selectedPlatform === 'instagram' ? selectedInstagramId : undefined
+                };
+                response = await fetch(currentPlatform.apiEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            }
+
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'An unknown error occurred.');
-
+            
             setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
             setPostContent('');
             setPostImages([]);
@@ -170,342 +186,6 @@ const ComposerTabContent = ({ activeAccounts, onPostScheduled, instagramAccounts
         }
     };
 
-    const handleSubmit = () => {
-        if (selectedPlatform === 'youtube') {
-            handleUploadToYouTube();
-        } else {
-            handlePostNow();
-        }
-    };
-
-    const handleUploadToYouTube = async () => {
-        if (!videoFile || !videoTitle) {
-            setPostStatus({ message: 'A video file and title are required.', type: 'error' });
-            return;
-        }
-        
-        setIsUploading(true);
-        setUploadProgress(0);
-        setUploadMessage('Preparing upload...');
-
-        try {
-            const formData = new FormData();
-            formData.append('video', videoFile);
-            formData.append('title', videoTitle);
-            formData.append('description', postContent);
-            formData.append('privacyStatus', privacyStatus);
-
-            if (postImages.length > 0 && postImages[0].image_url) {
-                const response = await fetch(postImages[0].image_url);
-                if (!response.ok) throw new Error('Failed to load thumbnail image.');
-                const blob = await response.blob();
-                formData.append('thumbnail', blob, 'thumbnail.jpg');
-            }
-
-            const result = await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-
-                xhr.upload.addEventListener('progress', (event) => {
-                    if (event.lengthComputable) {
-                        const percentComplete = (event.loaded / event.total) * 100;
-                        setUploadProgress(percentComplete);
-                        setUploadMessage('Uploading video file...');
-                    }
-                });
-
-                xhr.onload = () => {
-                    setUploadMessage('Processing video and setting thumbnail...');
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(JSON.parse(xhr.responseText));
-                    } else {
-                        reject(new Error(xhr.statusText));
-                    }
-                };
-
-                xhr.onerror = () => {
-                    reject(new Error('Upload failed. Please check your network connection.'));
-                };
-
-                xhr.open('POST', '/api/social/youtube/upload-video', true);
-                xhr.send(formData);
-            });
-
-            setPostStatus({ message: result.message, type: 'success' });
-            setVideoFile(null);
-            setVideoTitle('');
-            setPostContent('');
-            setPostImages([]);
-
-        } catch (err) {
-            setPostStatus({ message: err.message, type: 'error' });
-            console.error("YouTube upload process failed:", err);
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    const handleGeneratePost = async () => {
-        if (!topic.trim()) return;
-        setIsGenerating(true);
-        setError('');
-        try {
-            const res = await fetch('/api/ai/generate-post', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    topic: topic,
-                    platform: currentPlatform.name,
-                    maxLength: currentPlatform.maxLength
-                })
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.message || 'Failed to generate post.');
-            setPostContent(result.postContent);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const handleSchedulePost = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        try {
-            const scheduledAt = moment(`${scheduleDate}T${scheduleTime}`).toISOString();
-            if (moment(scheduledAt).isBefore(moment())) {
-                throw new Error('You cannot schedule a post in the past.');
-            }
-            const response = await fetch('/api/social/schedule/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    platform: selectedPlatform,
-                    content: postContent,
-                    hashtags: [], 
-                    scheduledAt: scheduledAt,
-                }),
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to schedule the post.');
-            }
-            onPostScheduled();
-        } catch (err) { setError(err.message); }
-    };
-
-    const isOverLimit = postContent.length > currentPlatform.maxLength;
-
-    return (
-        <>
-            <UploadProgressModal 
-                isOpen={isUploading} 
-                progress={uploadProgress} 
-                message={uploadMessage} 
-            />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <div className="flex items-center border-b pb-4 overflow-x-auto whitespace-nowrap">
-                        {Object.values(PLATFORMS).map(platform => {
-                            const Icon = platform.icon;
-                            return (
-                                <button key={platform.name} onClick={() => setSelectedPlatform(platform.name.toLowerCase().split(' ')[0])} className={`flex items-center px-4 py-2 text-sm font-medium rounded-md mr-2 ${selectedPlatform === platform.name.toLowerCase().split(' ')[0] ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-                                    {Icon && <Icon className="h-5 w-5 mr-2" />} {platform.name}
-                                </button>
-                            );
-                        })}
-                    </div>
-                    {selectedPlatform === 'youtube' && (
-                        <div className="mt-4 space-y-4 p-4 border bg-gray-50 rounded-lg">
-                            <div>
-                                <label htmlFor="video-file" className="block text-sm font-medium text-gray-700">Select Video File</label>
-                                <input type="file" id="video-file" accept="video/*" onChange={(e) => setVideoFile(e.target.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                            </div>
-                            <div>
-                                <label htmlFor="video-title" className="block text-sm font-medium text-gray-700">Video Title <span className="text-red-500">*</span></label>
-                                <input type="text" id="video-title" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-                            </div>
-                            <div>
-                                <label htmlFor="privacy-status" className="block text-sm font-medium text-gray-700">Privacy</label>
-                                <select id="privacy-status" value={privacyStatus} onChange={(e) => setPrivacyStatus(e.target.value)} className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm">
-                                    <option value="private">Private</option>
-                                    <option value="unlisted">Unlisted</option>
-                                    <option value="public">Public</option>
-                                </select>
-                            </div>
-                        </div>
-                    )}
-                    {selectedPlatform === 'pinterest' && (
-                        <div className="mt-4 space-y-4">
-                            <div>
-                                <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">Choose a board:</label>
-                                {/* ✅ FIX: Robust Pinterest board selector */}
-                                <select
-                                    id="board-select"
-                                    value={selectedBoardId}
-                                    onChange={(e) => setSelectedBoardId(e.target.value)}
-                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                                    disabled={loading || !pinterestBoards || pinterestBoards.length === 0}
-                                >
-                                    {loading ? (
-                                        <option>Loading boards...</option>
-                                    ) : !Array.isArray(pinterestBoards) || pinterestBoards.length === 0 ? (
-                                        <option>No boards found or not connected</option>
-                                    ) : (
-                                        pinterestBoards.map((board) => (
-                                            <option key={board.board_id} value={board.board_id}>
-                                                {board.board_name}
-                                            </option>
-                                        ))
-                                    )}
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="pin-title" className="block text-sm font-medium text-gray-700">Pin Title:</label>
-                                <input type="text" id="pin-title" value={pinTitle} onChange={(e) => setPinTitle(e.target.value)} placeholder="Add a title" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required />
-                            </div>
-                        </div>
-                    )}
-                    {selectedPlatform === 'instagram' && (
-                        <div className="mt-4">
-                            <label htmlFor="ig-account-select" className="block text-sm font-medium text-gray-700">Post to Instagram Account:</label>
-                            <select
-                                id="ig-account-select"
-                                value={selectedInstagramId}
-                                onChange={(e) => setSelectedInstagramId(e.target.value)}
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                            >
-                                {instagramAccounts.length === 0 ? (
-                                    <option>No Instagram accounts connected.</option>
-                                ) : (
-                                    instagramAccounts.map((acc) => (
-                                        <option key={acc.instagram_user_id} value={acc.instagram_user_id}>
-                                            {acc.username}
-                                        </option>
-                                    ))
-                                )}
-                            </select>
-                        </div>
-                    )}
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-gap-8" style={{ minHeight: '250px' }}>
-                        <div className="w-full h-full border-2 border-dashed rounded-lg bg-gray-50 flex items-center justify-center relative overflow-hidden">
-                            {postImages.length > 0 ? (
-                                <>
-                                    <Image src={postImages[0].image_url} alt="Staged post preview" layout="fill" className="object-cover" />
-                                    <button onClick={() => handleRemoveImage(postImages[0].id)} title="Remove image" className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/50 text-white transition-colors hover:bg-red-600">
-                                        <XCircleIcon className="h-5 w-5" />
-                                    </button>
-                                </>
-                            ) : (
-                                <p className="text-sm text-gray-400">Your social image or video thumbnail will appear here</p>
-                            )}
-                        </div>
-                    </div>
-                    <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder={currentPlatform.placeholder} className="mt-4 w-full h-64 p-4 border border-gray-200 rounded-md"/>
-                    <div className="mt-4 flex justify-between items-center">
-                        <span className={`text-sm font-medium ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>{postContent.length}/{currentPlatform.maxLength}</span>
-                        <div className="flex items-center gap-x-2">
-                            <button className="flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm bg-white text-gray-700 border-gray-300 hover:bg-gray-50"><ClipboardDocumentIcon className="h-5 w-5 mr-2" />Copy</button>
-                            <button onClick={handleSubmit} disabled={isPosting || !postContent || isOverLimit} className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300">
-                                <PaperAirplaneIcon className="h-5 w-5 mr-2" />
-                                {isPosting ? 'Posting...' : 'Post Now'}
-                            </button>
-                        </div>
-                    </div>
-                    {postStatus.message && (
-                        <div className={`mt-4 text-sm p-2 rounded-md text-center ${postStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {postStatus.message}
-                        </div>
-                    )}
-                    <form onSubmit={handleSchedulePost} className="mt-6 border-t pt-4">
-                        <h4 className="text-lg font-semibold text-gray-800 mb-4">Schedule Post</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="scheduleDate" className="block text-sm font-medium text-gray-700">Date</label>
-                                <input type="date" id="scheduleDate" name="scheduleDate" onChange={(e) => setScheduleDate(e.target.value)} value={scheduleDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
-                            </div>
-                            <div>
-                                <label htmlFor="scheduleTime" className="block text-sm font-medium text-gray-700">Time</label>
-                                <input type="time" id="scheduleTime" name="scheduleTime" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
-                            </div>
-                        </div>
-                        <div className="mt-6">
-                            <button type="submit" disabled={!postContent || isOverLimit || !scheduleDate || !scheduleTime} className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400">
-                                <CalendarIcon className="h-5 w-5 mr-2" />Schedule Post
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                <div className="lg:col-span-1 space-y-8">
-                    <div className="bg-white p-6 rounded-lg shadow-md space-y-4 border border-gray-200">
-                        <h3 className="font-semibold text-lg">AI Assistant</h3>
-                        <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g., 'New Summer T-Shirt Sale'" className="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"/>
-                        <button onClick={handleGeneratePost} disabled={isGenerating || !topic.trim()} className="w-full flex items-center justify-center px-4 py-2 border rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400">
-                            <SparklesIcon className="h-5 w-5 mr-2" />
-                            {isGenerating ? 'Generating...' : 'Generate with AI'}
-                        </button>
-                        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="font-semibold text-lg mb-4">Upcoming Posts</h3>
-                        <div className="space-y-3 max-h-96 overflow-y-auto">
-                            {scheduledPosts.length > 0 ? scheduledPosts.slice(0, 5).map(post => {
-                                const platform = PLATFORMS[post.resource.platform];
-                                const Icon = platform?.icon;
-                                return (
-                                    <div key={post.id} className={`p-3 bg-gray-50 rounded-lg border-l-4`} style={{ borderColor: platform?.color || '#9CA3AF' }}>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                {Icon && <Icon className="h-4 w-4 text-gray-600" />}
-                                                <span className="font-semibold text-sm text-gray-800">{platform?.name}</span>
-                                            </div>
-                                            <span className="text-xs text-blue-600 font-medium">{moment(post.start).format('MMM D, h:mm a')}</span>
-                                        </div>
-                                        <p className="text-sm text-gray-600 truncate mt-1">{post.title.split(': ')[1]}</p>
-                                    </div>
-                                );
-                            }) : (
-                                <p className="text-sm text-center text-gray-500 py-4">No posts scheduled.</p>
-                            )}
-                        </div>
-                    </div>
-                    <ImageManager onImageAdd={handleImageAdded} />
-                </div>
-            </div>
-        </>
-    );
-};
-
-const AnalyticsTabContent = () => {
-    const [data, setData] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [isSyncing, setIsSyncing] = useState({ x: false, facebook: false, pinterest: false, youtube: false});
-    const [syncMessage, setSyncMessage] = useState('');
-    const [syncMessageType, setSyncMessageType] = useState('info');
-  // Define the colors for each platform to match your sync buttons
-       const platformColors = {
-        x: 'rgba(0, 0, 0, 0.7)',
-        facebook: 'rgba(37, 99, 235, 0.7)', // blue-600
-        pinterest: 'rgba(220, 38, 38, 0.7)', // red-600
-        youtube: 'rgba(239, 68, 68, 0.7)', // red-500
-        default: 'rgba(107, 114, 128, 0.7)' // gray-500
-    };
-
-
-     const fetchAnalytics = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const res = await fetch('/api/social/analytics');
-            if (!res.ok) throw new Error('Failed to load analytics data.');
-            setData(await res.json());
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
 
     useEffect(() => {
         fetchAnalytics();
