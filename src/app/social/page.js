@@ -1,5 +1,5 @@
 'use client';
-import UploadProgressModal from '@/app/components/UploadProgressModal'
+import UploadProgressModal from '@/app/components/UploadProgressModal';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
