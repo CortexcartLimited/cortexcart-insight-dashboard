@@ -15,19 +15,25 @@ export async function POST(req) {
 
     const { instagramUserId, imageUrl, caption } = await req.json();
 
+    if (!instagramUserId || !imageUrl) {
+        return NextResponse.json({ error: 'An image and a selected Instagram account are required.' }, { status: 400 });
+    }
+
     try {
-          const [accountResults] = await db.query(
-            `SELECT page_id FROM instagram_accounts WHERE instagram_id = ? AND user_email = ?`,
-            [instagramId, session.user.email]
+        const [accountRows] = await db.query(
+            `SELECT sc.page_access_token_encrypted 
+             FROM instagram_accounts ia
+             JOIN social_connect sc ON ia.page_id = sc.page_id
+             WHERE ia.instagram_user_id = ? AND ia.user_email = ?`,
+            [instagramUserId, session.user.email]
         );
 
-        if (rows.length === 0) {
-            return NextResponse.json({ error: 'Instagram account not found.' }, { status: 404 });
+        if (accountRows.length === 0) {
+            return NextResponse.json({ error: 'Instagram account not found or not linked to a Facebook page.' }, { status: 404 });
         }
         
-        const accessToken = decrypt(rows[0].page_access_token_encrypted);
+        const accessToken = decrypt(accountRows[0].page_access_token_encrypted);
         
-        // --- THE FIX: Convert the relative imageUrl to an absolute URL ---
         const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
 
         // Step 1: Create media container

@@ -6,7 +6,6 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import axios from 'axios';
-import FormData from 'form-data';
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -15,7 +14,6 @@ export async function POST(req) {
     }
 
     try {
-        // This query now reliably finds the single active page from 'social_connect'.
         const [pageRows] = await db.query(
             `SELECT page_id, page_access_token_encrypted 
              FROM social_connect 
@@ -33,23 +31,19 @@ export async function POST(req) {
         const pageAccessToken = decrypt(pageRows[0].page_access_token_encrypted);
         const pageId = pageRows[0].page_id;
         
+        const { content, imageUrl } = await req.json();
         let response;
-        const contentType = req.headers.get('content-type') || '';
 
-        if (contentType.includes('multipart/form-data')) {
-            const incomingFormData = await req.formData();
-            const content = incomingFormData.get('content');
-            const imageFile = incomingFormData.get('image');
-            
-            const form = new FormData();
-            form.append('caption', content);
-            form.append('access_token', pageAccessToken);
-            const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
-            form.append('source', imageBuffer, { filename: imageFile.name, contentType: imageFile.type });
-
-            response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/photos`, form, { headers: form.getHeaders() });
+        if (imageUrl) {
+            // If there's an image, post to the /photos endpoint
+            const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
+            response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
+                url: absoluteImageUrl,
+                caption: content,
+                access_token: pageAccessToken,
+            });
         } else {
-            const { content } = await req.json();
+            // If it's just a text post, use the /feed endpoint
             response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
                 message: content,
                 access_token: pageAccessToken,
