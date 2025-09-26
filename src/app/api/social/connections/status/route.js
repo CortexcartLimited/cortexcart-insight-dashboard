@@ -14,30 +14,27 @@ export async function GET() {
     const userEmail = session.user.email;
 
     try {
-        const connections = {};
+        const [rows] = await db.query(
+            'SELECT platform FROM social_connect WHERE user_email = ? AND access_token_encrypted IS NOT NULL',
+            [userEmail]
+        );
 
-        // Helper function to check for a connection in the main table
-        const checkConnection = async (platform) => {
-            const [rows] = await db.query(
-                `SELECT 1 FROM social_connect WHERE user_email = ? AND platform = ? AND access_token_encrypted IS NOT NULL LIMIT 1`,
-                [userEmail, platform]
-            );
-            return rows.length > 0;
+        const connectedPlatforms = new Set(rows.map(row => row.platform));
+
+        const connections = {
+            x: connectedPlatforms.has('x'),
+            facebook: connectedPlatforms.has('facebook'),
+            pinterest: connectedPlatforms.has('pinterest'),
+            youtube: connectedPlatforms.has('youtube'),
         };
-
-        // Check each standard platform
-        connections.x = await checkConnection('x');
-        connections.facebook = await checkConnection('facebook');
-        connections.pinterest = await checkConnection('pinterest');
-        connections.youtube = await checkConnection('youtube');
-
-        // Instagram is connected if an account exists in its specific table
+        
+        // Instagram is a special case, as it's linked via Facebook's page connection.
         const [igRows] = await db.query(
             `SELECT 1 FROM instagram_accounts WHERE user_email = ? LIMIT 1`,
             [userEmail]
         );
         connections.instagram = igRows.length > 0;
-
+        
         return NextResponse.json(connections);
 
     } catch (error) {
