@@ -45,7 +45,7 @@ const PLATFORMS = {
         placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags", // FIX: Escaped apostrophe
         disabled: false,
         color: '#000000',
-        apiEndpoint: '/api/social/x/create-post' 
+        apiEndpoint: '/api/social/post' 
     },
     facebook: {
         name: 'Facebook',
@@ -97,8 +97,8 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
                         <tab.icon className="mr-2 h-5 w-5" /> {tab.name}
                     </button>
                 ))}
-                <Link href="/settings/social-connections/" className="ml-auto flex items-center py-4 px-1 font-medium text-sm transition-colors text-gray-500 hover:text-gray-700">
-                    <Cog6ToothIcon className="h-6 w-6" /> Social Settings
+                <Link href="/settings/#social-connect" className="ml-auto flex items-center py-4 px-1 font-medium text-sm transition-colors text-gray-500 hover:text-gray-700">
+                    <Cog6ToothIcon className="h-6 w-6" />
                 </Link>
 
             </nav>
@@ -106,69 +106,37 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
     );
 };
 
-const ComposerTabContent = ({ activeAccounts, onPostScheduled, instagramAccounts: allInstagramAccounts }) => {
-    const [postContent, setPostContent] = useState('');
-    const [postImages, setPostImages] = useState([]);
-    const [selectedPlatform, setSelectedPlatform] = useState('facebook');
+const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setPostContent, selectedPlatform, setSelectedPlatform, instagramAccounts, pinterestBoards, loading, ...props }) => {
+   
+    const [topic, setTopic] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [scheduleDate, setScheduleDate] = useState(moment().add(1, 'day').format('YYYY-MM-DD'));
+    const [scheduleTime, setScheduleTime] = useState('10:00');
     const [isPosting, setIsPosting] = useState(false);
+    const [postImages, setPostImages] = useState([]);
     const [postStatus, setPostStatus] = useState({ message: '', type: '' });
     const [error, setError] = useState('');
     const [selectedInstagramId, setSelectedInstagramId] = useState('');
+    const [selectedBoardId, setSelectedBoardId] = useState('');
+    const [pinTitle, setPinTitle] = useState('');
+    const [videoFile, setVideoFile] = useState(null);
+    const [videoTitle, setVideoTitle] = useState('');
+    const [privacyStatus, setPrivacyStatus] = useState('private');
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadMessage, setUploadMessage] = useState('');
 
     useEffect(() => {
-        // Pre-select the active Instagram account if it exists
-        if (activeAccounts?.instagram) {
-            setSelectedInstagramId(activeAccounts.instagram.instagram_id);
+        // Set default selection when data becomes available
+        if (selectedPlatform === 'pinterest' && pinterestBoards && pinterestBoards.length > 0 && !selectedBoardId) {
+            setSelectedBoardId(pinterestBoards[0].board_id);
         }
-    }, [activeAccounts]);
-
-    const handlePostNow = async () => {
-        setIsPosting(true);
-        setPostStatus({ message: '', type: '' });
-        setError('');
-
-        const currentPlatform = PLATFORMS[selectedPlatform];
-        if (!currentPlatform) {
-            setError('Invalid platform selected.');
-            setIsPosting(false);
-            return;
+        if (selectedPlatform === 'instagram' && instagramAccounts && instagramAccounts.length > 0 && !selectedInstagramId) {
+            setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
         }
+    }, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]);
 
-        let body;
-        const headers = { 'Content-Type': 'application/json' };
-
-        if (selectedPlatform === 'facebook') {
-            if (!activeAccounts.facebook) {
-                setError('No active Facebook Page. Please select one in settings.');
-                setIsPosting(false);
-                return;
-            }
-            body = JSON.stringify({ content: postContent });
-        } else if (selectedPlatform === 'instagram') {
-            if (!selectedInstagramId) {
-                setError('No Instagram account selected for posting.');
-                setIsPosting(false);
-                return;
-            }
-            body = JSON.stringify({ content: postContent, instagramId: selectedInstagramId });
-        } else {
-             body = JSON.stringify({ content: postContent });
-        }
-
-        try {
-            const response = await fetch(currentPlatform.apiEndpoint, { method: 'POST', headers, body });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'An unknown error occurred.');
-
-            setPostStatus({ message: `Successfully posted to ${currentPlatform.name}!`, type: 'success' });
-            setPostContent('');
-            setPostImages([]);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsPosting(false);
-        }
-    };
+    const currentPlatform = PLATFORMS[selectedPlatform];
 
     const handleSubmit = () => {
         if (selectedPlatform === 'youtube') {
@@ -243,6 +211,14 @@ const ComposerTabContent = ({ activeAccounts, onPostScheduled, instagramAccounts
             setIsUploading(false);
         }
     };
+    
+    const handleImageAdded = (newImage) => {
+        setPostImages([newImage]);
+    };
+
+    const handleRemoveImage = () => {
+        setPostImages([]);
+    };
 
     const handleGeneratePost = async () => {
         if (!topic.trim()) return;
@@ -265,6 +241,66 @@ const ComposerTabContent = ({ activeAccounts, onPostScheduled, instagramAccounts
             setError(err.message);
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handlePostNow = async () => {
+        if (!postContent) return;
+
+        setIsPosting(true);
+        setPostStatus({ message: '', type: '' });
+
+        let apiEndpoint = currentPlatform.apiEndpoint;
+        let requestBody = {};
+
+        if (selectedPlatform === 'pinterest') {
+            if (!selectedBoardId || !postImages[0]?.image_url || !pinTitle) {
+                setPostStatus({ message: 'A board, image, and title are required for Pinterest.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
+            requestBody = {
+                boardId: selectedBoardId,
+                imageUrl: postImages[0].image_url,
+                title: pinTitle,
+                description: postContent
+            };
+        } else if (selectedPlatform === 'instagram') {
+            if (!postImages[0]?.image_url || !selectedInstagramId) {
+                setPostStatus({ message: 'An image and a selected Instagram account are required.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
+            requestBody = {
+                instagramUserId: selectedInstagramId,
+                imageUrl: postImages[0].image_url,
+                caption: postContent,
+            }
+        } else {
+            requestBody = {
+                platform: selectedPlatform,
+                content: postContent,
+                imageUrl: postImages[0]?.image_url,
+            };
+        }
+
+        try {
+            const res = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'An unknown error occurred');
+            
+            setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
+            setPostContent('');
+            setPostImages([]);
+        } catch (err) {
+            setPostStatus({ message: err.message, type: 'error' });
+        } finally {
+            setIsPosting(false);
         }
     };
 
@@ -1073,15 +1109,11 @@ export default function SocialMediaManagerPage() {
                 // Fetch both sets of data in parallel
                 const [igRes, pinRes] = await Promise.all([
                     fetch('/api/social/instagram/accounts'),
-                    fetch('/api/social/pinterest/boards'),
-                    fetch('/api/social/active-accounts') // We will create this API route next
+                    fetch('/api/social/pinterest/boards') // We will create this API route next
                 ]);
 
                 if (igRes.ok) {
-                    
                     setInstagramAccounts(await igRes.json());
-                    setActiveAccounts(activeData);
-                    setAllInstagramAccounts(allIgData);
                 }
                 if (pinRes.ok) {
                     setPinterestBoards(await pinRes.json());
@@ -1131,7 +1163,6 @@ export default function SocialMediaManagerPage() {
                     instagramAccounts={instagramAccounts}
                     pinterestBoards={pinterestBoards}
                     loading={loading}
-                    activeAccounts={activeAccounts}
                     />
             )}
             {activeTab === 'Analytics' && <AnalyticsTabContent />}
