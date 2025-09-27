@@ -1,141 +1,124 @@
+// src/app/settings/social-connections/SocialConnectionsClient.js
+
 'use client';
-
-import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { Switch } from '@headlessui/react';
 import FacebookPageManager from '@/app/components/social/FacebookPageManager';
+import {Cog6ToothIcon, ExclamationTriangleIcon} from '@heroicons/react/24/outline';
 
-export default function SocialConnectionsClient() {
-    const [connections, setConnections] = useState({});
-    const [facebookPages, setFacebookPages] = useState([]);
-    const [instagramAccounts, setInstagramAccounts] = useState([]);
+const SocialConnectionsClient = () => {
+    const { data: session } = useSession();
+    const [connections, setConnections] = useState({
+        x: false,
+        facebook: false,
+        pinterest: false,
+        instagram: false,
+        youtube: false,
+    });
     const [loading, setLoading] = useState(true);
-    const [notification, setNotification] = useState({ type: '', message: '' });
-    const searchParams = useSearchParams();
-
-    const fetchAllData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const [statusRes, pagesRes, igRes] = await Promise.all([
-                fetch('/api/social/connections/status'),
-                fetch('/api/social/facebook/pages'),
-                fetch('/api/social/instagram/accounts')
-            ]);
-            
-            if (!statusRes.ok || !pagesRes.ok || !igRes.ok) {
-                throw new Error('Failed to load social connection data.');
-            }
-            
-            const connectionsData = await statusRes.json();
-            const pagesData = await pagesRes.json();
-            const igData = await igRes.json();
-
-            console.log("Fetched Pages:", pagesData);
-            console.log("Fetched Instagram Accounts:", igData);
-
-            setConnections(connectionsData);
-            setFacebookPages(Array.isArray(pagesData) ? pagesData : []);
-            setInstagramAccounts(Array.isArray(igData) ? igData : []);
-
-        } catch (err) {
-            setNotification({ type: 'error', message: err.message });
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const [error, setError] = useState('');
+    const [showFacebookManager, setShowFacebookManager] = useState(false);
 
     useEffect(() => {
-        if (searchParams.get('success')) {
-            setNotification({ type: 'success', message: 'Account connected successfully!' });
-        }
-        fetchAllData();
-    }, [searchParams, fetchAllData]);
+        const fetchConnections = async () => {
+            setLoading(true);
+            setError('');
+            try {
+                const res = await fetch('/api/social/connections/status');
+                const data = await res.json();
+                if (!res.ok) {
+                    // This is the important change to show detailed errors
+                    throw new Error(data.details || data.error || 'Failed to load connection statuses.');
+                }
+                setConnections(data);
+            } catch (err) {
+                console.error("Caught error:", err);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchConnections();
+    }, []);
 
-    const handleSetActivePage = async (pageId) => {
-        await fetch('/api/social/facebook/active-page', {
-            method: 'POST', body: JSON.stringify({ pageId }), headers: { 'Content-Type': 'application/json' }
-        });
-        await fetchAllData();
-    };
-    
-    const handleSetActiveIg = async (instagramId) => {
-        await fetch('/api/social/instagram/active-account', {
-            method: 'POST', body: JSON.stringify({ instagramId }), headers: { 'Content-Type': 'application/json' }
-        });
-        await fetchAllData();
+    const handleConnect = (platform) => {
+        window.location.href = `/api/connect/${platform}`;
     };
 
-    const handleDisconnect = async (platform) => {
-        if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
-        await fetch(`/api/social/disconnect/${platform}`, { method: 'POST' });
-        await fetchAllData();
-    };
-
-    const ConnectionButton = ({ platform, connectUrl }) => {
-        const isConnected = connections[platform];
-        if (isConnected) {
-            return (
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-sm font-medium text-green-700">
-                        <CheckCircleIcon className="w-5 h-5" /> Connected
-                    </div>
-                    <button onClick={() => handleDisconnect(platform)} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-semibold">
-                        <XCircleIcon className="w-4 h-4" /> Disconnect
-                    </button>
-                </div>
-            );
-        }
+    if (loading) {
         return (
-            <a href={connectUrl} className="px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-md hover:bg-black">
-                Connect {platform.charAt(0).toUpperCase() + platform.slice(1)}
-            </a>
+            <div className="text-center p-8">
+                <Cog6ToothIcon className="h-12 w-12 mx-auto text-gray-400 animate-spin" />
+                <p className="mt-4 text-lg font-medium text-gray-600">Loading your connections...</p>
+            </div>
         );
+    }
+    
+    if (error) {
+        return (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
+                <div className="flex">
+                    <div className="flex-shrink-0">
+                        <ExclamationTriangleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+                    </div>
+                    <div className="ml-3">
+                        <p className="text-sm font-bold text-red-800">Failed to load social connection data.</p>
+                        <p className="mt-1 text-sm text-red-700">{error}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const platformConfig = {
+        x: { name: 'X (Twitter)' },
+        facebook: { name: 'Facebook' },
+        pinterest: { name: 'Pinterest' },
+        instagram: { name: 'Instagram', note: 'Connected via Facebook' },
+        youtube: { name: 'YouTube' },
     };
 
     return (
-        <div>
-            {notification.message && (
-                <div className={`p-4 mb-4 text-sm rounded-lg ${
-                    notification.type === 'success' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
-                }`}>
-                    {notification.message}
+        <div className="divide-y divide-gray-200">
+            {Object.entries(platformConfig).map(([platform, config]) => (
+                <div key={platform} className="py-4 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-lg font-semibold text-gray-900">{config.name}</p>
+                        {config.note && <p className="text-sm text-gray-500">{config.note}</p>}
+                    </div>
+                    <div className="mt-2 sm:mt-0 flex items-center space-x-4">
+                         {platform === 'facebook' && connections.facebook && (
+                            <button
+                                onClick={() => setShowFacebookManager(!showFacebookManager)}
+                                className="px-3 py-1.5 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md"
+                            >
+                                Manage Pages
+                            </button>
+                        )}
+                        <Switch
+                            checked={connections[platform]}
+                            onChange={() => !connections[platform] && handleConnect(platform)}
+                            className={`${connections[platform] ? 'bg-blue-600' : 'bg-gray-200'}
+                              relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+                        >
+                            <span className="sr-only">Use setting</span>
+                            <span
+                              aria-hidden="true"
+                              className={`${connections[platform] ? 'translate-x-5' : 'translate-x-0'}
+                                pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                            />
+                        </Switch>
+                    </div>
+                </div>
+            ))}
+            {showFacebookManager && (
+                <div className="py-6">
+                    <FacebookPageManager />
                 </div>
             )}
-            <div className="p-6 border rounded-lg bg-white shadow-sm">
-                <h3 className="font-semibold text-gray-800">Connect Your Accounts</h3>
-                <div className="mt-4 space-y-4">
-                    {loading ? <p>Loading...</p> : (
-                        <>
-                            <div>
-                                <div className="flex justify-between items-center">
-                                    <span>Facebook & Instagram</span>
-                                    <ConnectionButton platform="facebook" connectUrl="/api/connect/facebook" />
-                                </div>
-                                {connections.facebook && (
-                                    <FacebookPageManager 
-                                        pages={facebookPages}
-                                        instagramAccounts={instagramAccounts}
-                                        onSetActivePage={handleSetActivePage}
-                                        onSetActiveIg={handleSetActiveIg}
-                                    />
-                                )}
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span>X (Twitter)</span>
-                                <ConnectionButton platform="x" connectUrl="/api/connect/twitter" />
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span>YouTube</span>
-                                <ConnectionButton platform="youtube" connectUrl="/api/connect/youtube" />
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span>Pinterest</span>
-                                <ConnectionButton platform="pinterest" connectUrl="/api/connect/pinterest" />
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
         </div>
     );
-}
+};
+
+export default SocialConnectionsClient;
