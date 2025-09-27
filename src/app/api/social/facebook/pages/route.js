@@ -10,7 +10,7 @@ import axios from 'axios';
 export async function GET(req) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !session.user.email) {
-        return NextResponse.json({ pages: [], error: 'Unauthorized' }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userEmail = session.user.email;
 
@@ -21,27 +21,39 @@ export async function GET(req) {
         );
 
         if (userRows.length === 0 || !userRows[0].access_token_encrypted) {
-            return NextResponse.json({ pages: [], error: 'Facebook account not fully connected. Please try reconnecting your account in settings.' }, { status: 404 });
+            return NextResponse.json({ error: 'Facebook connection is incomplete. Please try reconnecting your account.' }, { status: 404 });
         }
+        
         const accessToken = decrypt(userRows[0].access_token_encrypted);
-
-        const [connectRows] = await db.query(
-            `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' AND active_facebook_page_id IS NOT NULL LIMIT 1`,
-            [userEmail]
-        );
-        const activePageId = connectRows.length > 0 ? connectRows[0].active_facebook_page_id : null;
 
         const fbResponse = await axios.get(`https://graph.facebook.com/v19.0/me/accounts`, {
             params: { fields: 'id,name', access_token: accessToken }
         });
 
+        const [connectRows] = await db.query(
+            `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
+            [userEmail]
+        );
+        const activePageId = connectRows[0]?.active_facebook_page_id || null;
         const pages = fbResponse.data?.data || [];
-        
+
         return NextResponse.json({ pages, activePageId });
 
     } catch (error) {
-        console.error("Error fetching Facebook pages:", error);
-        const errorMessage = error.response?.data?.error?.message || 'An unexpected server error occurred while fetching pages.';
-        return NextResponse.json({ pages: [], error: errorMessage, details: error.message }, { status: 500 });
+        // --- THIS IS THE CRITICAL CHANGE ---
+        // We will now log and send the full, detailed error.
+        console.error("CRITICAL DIAGNOSTIC: Error fetching Facebook pages:", JSON.stringify(error, null, 2));
+
+        const errorMessage = error.response?.data?.error?.message || 'An unexpected server error occurred.';
+        const errorDetails = {
+            message: error.message,
+            code: error.code,
+            response_data: error.response?.data,
+        };
+        
+        return NextResponse.json({
+            error: errorMessage,
+            details: errorDetails
+        }, { status: 500 });
     }
 }
