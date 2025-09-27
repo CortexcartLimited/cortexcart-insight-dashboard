@@ -4,9 +4,10 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export async function GET() {
-    console.log("Attempting to run database debug route...");
+    console.log("Attempting to run database debug route with MYSQL_ variables...");
 
-    const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+    // Using the correct variable names from your db.js file
+    const requiredEnvVars = ['MYSQL_HOST', 'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE'];
     const missingVars = requiredEnvVars.filter(v => !process.env[v]);
 
     if (missingVars.length > 0) {
@@ -19,12 +20,9 @@ export async function GET() {
     }
 
     try {
-        // Attempt to get a connection from the pool and execute a simple query
         const connection = await db.getConnection();
-        console.log("Successfully obtained a database connection.");
-        
-        await connection.query('SELECT 1'); // Simple query to test the connection is live
-        connection.release(); // IMPORTANT: release the connection back to the pool
+        await connection.query('SELECT 1'); 
+        connection.release(); 
         
         console.log("Database connection test was successful.");
         return NextResponse.json({
