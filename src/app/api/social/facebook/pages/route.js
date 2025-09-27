@@ -12,26 +12,28 @@ export async function GET(req) {
     if (!session || !session.user || !session.user.email) {
         return NextResponse.json({ pages: [], error: 'Unauthorized' }, { status: 401 });
     }
-
     const userEmail = session.user.email;
 
     try {
-        // Find the specific access token for the Facebook platform
-        const [connectRows] = await db.query(
-            `SELECT access_token_encrypted, active_facebook_page_id 
-             FROM social_connect 
-             WHERE user_email = ? AND platform = 'facebook'
-             LIMIT 1`,
+        // Step 1: Get the main user access token from the 'users' table. This is the correct, stable source.
+        const [userRows] = await db.query(
+            `SELECT access_token_encrypted FROM users WHERE email = ?`,
             [userEmail]
         );
 
-        if (connectRows.length === 0 || !connectRows[0].access_token_encrypted) {
-            return NextResponse.json({ pages: [], error: 'Facebook account not connected or access token is missing.' }, { status: 404 });
+        if (userRows.length === 0 || !userRows[0].access_token_encrypted) {
+            return NextResponse.json({ pages: [], error: 'Facebook account not fully connected. The main access token is missing from the user profile. Please try reconnecting.' });
         }
+        const accessToken = decrypt(userRows[0].access_token_encrypted);
 
-        const accessToken = decrypt(connectRows[0].access_token_encrypted);
-        const activePageId = connectRows[0].active_facebook_page_id;
+        // Step 2: Get the active page ID from the 'social_connect' table.
+        const [connectRows] = await db.query(
+            `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' AND active_facebook_page_id IS NOT NULL LIMIT 1`,
+            [userEmail]
+        );
+        const activePageId = connectRows.length > 0 ? connectRows[0].active_facebook_page_id : null;
 
+        // Step 3: Fetch all pages from the Facebook API using the main user token.
         const fbResponse = await axios.get(`https://graph.facebook.com/v19.0/me/accounts`, {
             params: {
                 fields: 'id,name',
@@ -40,19 +42,20 @@ export async function GET(req) {
         });
 
         if (!fbResponse.data || !fbResponse.data.data) {
-            return NextResponse.json({ pages: [], activePageId, error: 'No pages found for this Facebook account.' });
+            return NextResponse.json({ pages: [], activePageId, error: 'No pages were returned from the Facebook API for this account.' });
         }
 
         const pages = fbResponse.data.data.map(page => ({
             id: page.id,
             name: page.name,
+            isActive: page.id === activePageId,
         }));
 
         return NextResponse.json({ pages, activePageId });
 
     } catch (error) {
         console.error("CRITICAL Error fetching Facebook pages:", error.response ? error.response.data.error : error.message);
-        const errorMessage = error.response?.data?.error?.message || 'An unexpected error occurred while fetching your pages.';
+        const errorMessage = error.response?.data?.error?.message || 'An unexpected server error occurred while fetching pages.';
         return NextResponse.json({ pages: [], error: errorMessage, details: error.message }, { status: 500 });
     }
 }
