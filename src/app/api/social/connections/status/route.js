@@ -8,14 +8,14 @@ import { db } from '@/lib/db';
 export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !session.user.email) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized: No active session.' }, { status: 401 });
     }
 
     const userEmail = session.user.email;
 
     try {
         const [rows] = await db.query(
-            'SELECT platform FROM social_connect WHERE user_email = ? AND access_token_encrypted IS NOT NULL',
+            'SELECT platform FROM social_connect WHERE user_email = ?',
             [userEmail]
         );
 
@@ -26,19 +26,17 @@ export async function GET() {
             facebook: connectedPlatforms.has('facebook'),
             pinterest: connectedPlatforms.has('pinterest'),
             youtube: connectedPlatforms.has('youtube'),
+            instagram: connectedPlatforms.has('instagram'),
         };
-        
-        // Instagram is a special case, as it's linked via Facebook's page connection.
-        const [igRows] = await db.query(
-            `SELECT 1 FROM instagram_accounts WHERE user_email = ? LIMIT 1`,
-            [userEmail]
-        );
-        connections.instagram = igRows.length > 0;
         
         return NextResponse.json(connections);
 
     } catch (error) {
-        console.error("Failed to load social connection data:", error);
-        return NextResponse.json({ error: 'Failed to load social connection data.' }, { status: 500 });
+        console.error("CRITICAL ERROR in connections/status:", error);
+        // This is the important change: send the actual error message back for debugging.
+        return NextResponse.json({
+            error: 'Failed to load social connection data.',
+            details: error.message 
+        }, { status: 500 });
     }
 }
