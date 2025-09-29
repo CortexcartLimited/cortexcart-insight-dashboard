@@ -15,33 +15,28 @@ export async function GET(req) {
     const userEmail = session.user.email;
 
     try {
-        const [userRows] = await db.query(
-            `SELECT access_token_encrypted FROM users WHERE email = ?`,
+        // CORRECTED: Fetches the access token from the 'social_connect' table where it is actually stored.
+        const [connectRows] = await db.query(
+            `SELECT access_token_encrypted, active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
             [userEmail]
         );
 
-        if (userRows.length === 0 || !userRows[0].access_token_encrypted) {
-            return NextResponse.json({ error: 'Facebook connection is incomplete. Please try reconnecting your account.' }, { status: 404 });
+        if (connectRows.length === 0 || !connectRows[0].access_token_encrypted) {
+            return NextResponse.json({ error: 'Facebook connection not found or access token is missing. Please try reconnecting your account.' }, { status: 404 });
         }
         
-        const accessToken = decrypt(userRows[0].access_token_encrypted);
+        const accessToken = decrypt(connectRows[0].access_token_encrypted);
+        const activePageId = connectRows[0].active_facebook_page_id || null;
 
         const fbResponse = await axios.get(`https://graph.facebook.com/v19.0/me/accounts`, {
             params: { fields: 'id,name', access_token: accessToken }
         });
 
-        const [connectRows] = await db.query(
-            `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
-            [userEmail]
-        );
-        const activePageId = connectRows[0]?.active_facebook_page_id || null;
         const pages = fbResponse.data?.data || [];
 
         return NextResponse.json({ pages, activePageId });
 
     } catch (error) {
-        // --- THIS IS THE CRITICAL CHANGE ---
-        // We will now log and send the full, detailed error.
         console.error("CRITICAL DIAGNOSTIC: Error fetching Facebook pages:", JSON.stringify(error, null, 2));
 
         const errorMessage = error.response?.data?.error?.message || 'An unexpected server error occurred.';
