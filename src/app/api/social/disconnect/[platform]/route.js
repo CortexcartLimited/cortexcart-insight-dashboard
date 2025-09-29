@@ -20,11 +20,16 @@ export async function POST(req, { params }) {
             await db.query('DELETE FROM instagram_accounts WHERE user_email = ?', [userEmail]);
         }
 
-        // CORRECTED: Deletes only from the 'social_connect' table that we know exists.
-        await db.query(
+        // Deletes the connection from our main social table
+        const [deleteResult] = await db.query(
             'DELETE FROM social_connect WHERE user_email = ? AND platform = ?',
             [userEmail, platform]
         );
+        
+        if (deleteResult.affectedRows === 0) {
+            // This isn't a critical error, but good to know.
+            console.warn(`Attempted to disconnect ${platform}, but no existing connection was found in social_connect.`);
+        }
 
         return NextResponse.json({ success: true, message: `Successfully disconnected from ${platform}.` });
 
