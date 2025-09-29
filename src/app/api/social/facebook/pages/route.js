@@ -15,14 +15,13 @@ export async function GET(req) {
     const userEmail = session.user.email;
 
     try {
-        // CORRECTED: Fetches the access token from the 'social_connect' table where it is actually stored.
         const [connectRows] = await db.query(
             `SELECT access_token_encrypted, active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
             [userEmail]
         );
 
         if (connectRows.length === 0 || !connectRows[0].access_token_encrypted) {
-            return NextResponse.json({ error: 'Facebook connection not found or access token is missing. Please try reconnecting your account.' }, { status: 404 });
+            return NextResponse.json({ error: 'Facebook connection not found. Please try reconnecting your account.' }, { status: 404 });
         }
         
         const accessToken = decrypt(connectRows[0].access_token_encrypted);
@@ -37,18 +36,8 @@ export async function GET(req) {
         return NextResponse.json({ pages, activePageId });
 
     } catch (error) {
-        console.error("CRITICAL DIAGNOSTIC: Error fetching Facebook pages:", JSON.stringify(error, null, 2));
-
-        const errorMessage = error.response?.data?.error?.message || 'An unexpected server error occurred.';
-        const errorDetails = {
-            message: error.message,
-            code: error.code,
-            response_data: error.response?.data,
-        };
-        
-        return NextResponse.json({
-            error: errorMessage,
-            details: errorDetails
-        }, { status: 500 });
+        console.error("Error fetching Facebook pages:", error);
+        const errorMessage = error.response?.data?.error?.message || 'An unexpected server error occurred while fetching pages.';
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 }
