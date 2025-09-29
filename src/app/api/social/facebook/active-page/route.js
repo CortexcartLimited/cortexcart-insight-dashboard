@@ -14,20 +14,14 @@ export async function POST(req) {
     const userEmail = session.user.email;
 
     try {
-        // First, clear any existing active page setting for this user.
-        await db.query(
-            `UPDATE social_connect SET active_facebook_page_id = NULL WHERE user_email = ? AND platform = 'facebook'`,
-            [userEmail]
-        );
-
-        // Then, set the new active page on the correct row.
+        // CORRECTED: Updates the 'active_facebook_page_id' column in the existing 'social_connect' table.
         const [updateResult] = await db.query(
-            `UPDATE social_connect SET active_facebook_page_id = ? WHERE user_email = ? AND page_id = ?`,
-            [pageId, userEmail, pageId]
+            `UPDATE social_connect SET active_facebook_page_id = ? WHERE user_email = ? AND platform = 'facebook'`,
+            [pageId, userEmail]
         );
 
         if (updateResult.affectedRows === 0) {
-            throw new Error('Could not find the specified page to activate in the database.');
+            throw new Error('Could not find the social_connect entry for Facebook to update.');
         }
 
         return NextResponse.json({ success: true, message: 'Active page updated successfully.' });

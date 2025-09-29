@@ -15,19 +15,12 @@ export async function POST(req, { params }) {
     const userEmail = session.user.email;
 
     try {
-        // Special handling for Facebook, which also manages Instagram
         if (platform === 'facebook') {
-            await db.query(
-                'DELETE FROM instagram_accounts WHERE user_email = ?',
-                [userEmail]
-            );
-             await db.query(
-                `UPDATE users SET access_token_encrypted = NULL, refresh_token_encrypted = NULL WHERE email = ?`,
-                [userEmail]
-            );
+            // When disconnecting Facebook, also remove any linked Instagram accounts
+            await db.query('DELETE FROM instagram_accounts WHERE user_email = ?', [userEmail]);
         }
 
-        // General disconnect for all platforms from the main connection table
+        // CORRECTED: Deletes only from the 'social_connect' table that we know exists.
         await db.query(
             'DELETE FROM social_connect WHERE user_email = ? AND platform = ?',
             [userEmail, platform]
@@ -37,6 +30,6 @@ export async function POST(req, { params }) {
 
     } catch (error) {
         console.error(`Error disconnecting from ${platform}:`, error);
-        return NextResponse.json({ error: `Failed to disconnect from ${platform}.`, details: error.message }, { status: 500 });
+        return NextResponse.json({ error: `Failed to disconnect from ${platform}.` }, { status: 500 });
     }
 }
