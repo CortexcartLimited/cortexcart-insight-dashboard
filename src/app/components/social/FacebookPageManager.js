@@ -23,14 +23,21 @@ const FacebookPageManager = () => {
 
             const pagesData = await pagesRes.json();
             if (!pagesRes.ok) throw new Error(pagesData.error || 'Could not load Facebook pages.');
-
+            
             const igData = await igRes.json();
-            if (!igRes.ok) console.warn('Could not load Instagram accounts:', igData.error);
+            
+            // --- THIS IS THE FIX ---
+            // We now check if igData is an array before using array methods on it.
+            if (igRes.ok && Array.isArray(igData)) {
+                setInstagramAccounts(igData);
+                setActiveIgId(igData.find(acc => acc.is_active)?.instagram_user_id || null);
+            } else {
+                console.warn('Could not load Instagram accounts:', igData.error || 'Response was not an array.');
+                setInstagramAccounts([]); // Ensure it's always an array
+            }
 
             setPages(pagesData.pages || []);
             setActivePageId(pagesData.activePageId);
-            setInstagramAccounts(igData || []);
-            setActiveIgId(igData.find(acc => acc.is_active)?.instagram_user_id || null);
 
         } catch (err) {
             setError(err.message || 'An unknown error occurred.');
