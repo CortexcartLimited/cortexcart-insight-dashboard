@@ -13,30 +13,37 @@ export async function POST(req) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { instagramUserId, imageUrl, caption } = await req.json();
-
-    if (!instagramUserId || !imageUrl) {
-        return NextResponse.json({ error: 'An image and a selected Instagram account are required.' }, { status: 400 });
-    }
-
     try {
+        const { instagramUserId, imageUrl, caption } = await req.json();
+
+        if (!instagramUserId || !imageUrl) {
+            return NextResponse.json({ error: 'An image and a selected Instagram account are required.' }, { status: 400 });
+        }
+
+        // Step 1: Find the Facebook Page linked to the selected Instagram account.
         const [accountRows] = await db.query(
-            `SELECT sc.page_access_token_encrypted 
-             FROM instagram_accounts ia
-             JOIN social_connect sc ON ia.page_id = sc.page_id
-             WHERE ia.instagram_user_id = ? AND ia.user_email = ?`,
+            `SELECT page_id FROM instagram_accounts WHERE instagram_id = ? AND user_email = ?`,
             [instagramUserId, session.user.email]
         );
 
         if (accountRows.length === 0) {
-            return NextResponse.json({ error: 'Instagram account not found or not linked to a Facebook page.' }, { status: 404 });
+            return NextResponse.json({ error: 'Could not find the linked Facebook page for this Instagram account.' }, { status: 404 });
         }
-        
-        const accessToken = decrypt(accountRows[0].page_access_token_encrypted);
-        
-        const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
+        const linkedPageId = accountRows[0].page_id;
 
-        // Step 1: Create media container
+        // Step 2: Get the access token for that specific Facebook Page.
+        const [pageRows] = await db.query(
+            `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND page_id = ?`,
+            [session.user.email, linkedPageId]
+        );
+
+        if (pageRows.length === 0 || !pageRows[0].page_access_token_encrypted) {
+             return NextResponse.json({ error: 'Could not find credentials for the linked Facebook Page.' }, { status: 404 });
+        }
+        const accessToken = decrypt(pageRows[0].page_access_token_encrypted);
+
+        // Step 3: Execute the two-step Instagram posting process.
+        const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
         const createContainerResponse = await axios.post(
             `https://graph.facebook.com/v19.0/${instagramUserId}/media`, {
                 image_url: absoluteImageUrl,
@@ -46,11 +53,8 @@ export async function POST(req) {
         );
 
         const creationId = createContainerResponse.data.id;
-        if (!creationId) {
-            throw new Error('Failed to create media container.');
-        }
+        if (!creationId) throw new Error('Failed to create media container.');
 
-        // Step 2: Publish the media container
         await axios.post(
             `https://graph.facebook.com/v19.0/${instagramUserId}/media_publish`, {
                 creation_id: creationId,
@@ -61,16 +65,8 @@ export async function POST(req) {
         return NextResponse.json({ success: true, message: 'Posted to Instagram successfully.' });
 
     } catch (error) {
-        console.error("Error posting to Instagram:", error.response ? error.response.data.error : error.message);
+        console.error("Error posting to Instagram:", error.response?.data?.error || error.message);
         const fbError = error.response?.data?.error;
-        if (fbError) {
-            if (fbError.code === 190) { // Specific code for expired/invalid tokens
-                 return NextResponse.json({
-                    error: "Your Facebook/Instagram connection has expired. Please go to settings and reconnect your Facebook account."
-                }, { status: 401 });
-            }
-            return NextResponse.json({ error: `Instagram Error: ${fbError.message}` }, { status: 500 });
-        }
-        return NextResponse.json({ error: 'An unexpected server error occurred while posting to Instagram.' }, { status: 500 });
+        return NextResponse.json({ error: `Instagram Error: ${fbError?.message || 'An unexpected server error occurred.'}` }, { status: 500 });
     }
 }

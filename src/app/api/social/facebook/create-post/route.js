@@ -14,37 +14,43 @@ export async function POST(req) {
     }
 
     try {
-        const [pageRows] = await db.query(
-            `SELECT page_id, page_access_token_encrypted 
-             FROM social_connect 
-             WHERE user_email = ? AND platform = 'facebook' AND active_facebook_page_id IS NOT NULL`,
+        const { content, imageUrl } = await req.json();
+
+        // Step 1: Get the active page ID from the main Facebook connection row.
+        const [connectRows] = await db.query(
+            `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
             [session.user.email]
         );
 
-        if (pageRows.length === 0) {
-            return NextResponse.json({ 
-                error: 'Failed to post to Facebook.', 
-                details: 'No active Facebook Page connected. Please select one in your settings.' 
-            }, { status: 404 });
+        if (connectRows.length === 0 || !connectRows[0].active_facebook_page_id) {
+            return NextResponse.json({ error: 'No active Facebook Page has been set. Please select one in your settings.' }, { status: 400 });
         }
-        
-        const pageAccessToken = decrypt(pageRows[0].page_access_token_encrypted);
-        const pageId = pageRows[0].page_id;
-        
-        const { content, imageUrl } = await req.json();
-        let response;
+        const activePageId = connectRows[0].active_facebook_page_id;
 
+        // Step 2: Get the specific page access token for that active page.
+        const [pageRows] = await db.query(
+            `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND page_id = ?`,
+            [session.user.email, activePageId]
+        );
+        
+        if (pageRows.length === 0 || !pageRows[0].page_access_token_encrypted) {
+             return NextResponse.json({ error: 'Could not find credentials for the active Facebook Page.' }, { status: 404 });
+        }
+        const pageAccessToken = decrypt(pageRows[0].page_access_token_encrypted);
+
+        // Step 3: Post to the correct Facebook API endpoint based on whether an image is present.
+        let response;
         if (imageUrl) {
-            // If there's an image, post to the /photos endpoint
+            // Use the /photos endpoint for image posts
             const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
-            response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
+            response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/photos`, {
                 url: absoluteImageUrl,
                 caption: content,
                 access_token: pageAccessToken,
             });
         } else {
-            // If it's just a text post, use the /feed endpoint
-            response = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+            // Use the /feed endpoint for text-only posts
+            response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/feed`, {
                 message: content,
                 access_token: pageAccessToken,
             });
