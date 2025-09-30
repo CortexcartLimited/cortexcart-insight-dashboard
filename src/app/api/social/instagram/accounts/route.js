@@ -18,25 +18,27 @@ export async function GET(req) {
         );
         const activeIgId = connectRows.length > 0 ? connectRows[0].active_instagram_account_id : null;
 
+        // --- THIS IS THE FIX ---
+        // Corrected 'instagram_user_id' to 'instagram_id' to match what your database expects.
         const [accounts] = await db.query(
-            'SELECT instagram_user_id, username, page_id FROM instagram_accounts WHERE user_email = ?',
+            'SELECT instagram_id, username, page_id FROM instagram_accounts WHERE user_email = ?',
             [session.user.email]
         );
 
         const accountsWithStatus = (accounts || []).map(acc => ({
             ...acc,
-            is_active: acc.instagram_user_id === activeIgId,
+            // This line ensures the front-end gets the data in the format it expects.
+            instagram_user_id: acc.instagram_id,
+            is_active: acc.instagram_id === activeIgId,
         }));
         
         return NextResponse.json(accountsWithStatus);
 
     } catch (error) {
-        // --- THIS IS THE CRITICAL FIX ---
-        // It now sends the actual database error message to the front end.
         console.error('CRITICAL Error fetching Instagram accounts:', error);
         return NextResponse.json({ 
             error: 'A database error occurred while fetching Instagram accounts.',
-            details: error.message // This will tell us the specific problem
+            details: error.message
         }, { status: 500 });
     }
 }
