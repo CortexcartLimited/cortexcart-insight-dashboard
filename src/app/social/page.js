@@ -344,7 +344,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
                     <div className="flex items-center border-b pb-4 overflow-x-auto whitespace-nowrap">
                         {Object.values(PLATFORMS).map(platform => {
-                            .filter(platform => platform.name !== 'Pinterest') // Temporary pinterest posting deactivation
+                            .filter(platform => platform.name !== 'Pinterest')
                             const Icon = platform.icon;
                             return (
                                 <button key={platform.name} onClick={() => setSelectedPlatform(platform.name.toLowerCase().split(' ')[0])} className={`flex items-center px-4 py-2 text-sm font-medium rounded-md mr-2 ${selectedPlatform === platform.name.toLowerCase().split(' ')[0] ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
