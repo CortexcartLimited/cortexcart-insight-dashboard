@@ -14,8 +14,9 @@ export async function POST(req) {
     try {
         const { content, imageUrl } = await req.json();
 
+        // CORRECTED: Finds the single row for the Facebook connection to get the active page ID.
         const [connectRows] = await db.query(
-            `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' AND active_facebook_page_id IS NOT NULL LIMIT 1`,
+            `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
             [session.user.email]
         );
 
@@ -24,6 +25,7 @@ export async function POST(req) {
         }
         const activePageId = connectRows[0].active_facebook_page_id;
 
+        // Now, find the credentials for that specific active page.
         const [pageRows] = await db.query(
             `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND page_id = ?`,
             [session.user.email, activePageId]

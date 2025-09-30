@@ -17,6 +17,7 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Image and Instagram account are required.' }, { status: 400 });
         }
 
+        // CORRECTED: Uses 'instagram_id' to match your database schema.
         const [accountRows] = await db.query(
             `SELECT page_id FROM instagram_accounts WHERE instagram_id = ? AND user_email = ?`,
             [instagramUserId, session.user.email]
