@@ -7,34 +7,36 @@ import { db } from '@/lib/db';
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.email) {
-        return NextResponse.json([], { status: 401 });
+    if (!session?.user?.email) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    const userEmail = session.user.email;
 
     try {
-        // Get the active Instagram ID from the main social_connect row for Facebook
         const [connectRows] = await db.query(
             `SELECT active_instagram_account_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
-            [userEmail]
+            [session.user.email]
         );
         const activeIgId = connectRows.length > 0 ? connectRows[0].active_instagram_account_id : null;
 
-        // Get all linked Instagram accounts
         const [accounts] = await db.query(
-            `SELECT instagram_user_id, username, page_id FROM instagram_accounts WHERE user_email = ?`,
-            [userEmail]
+            'SELECT instagram_user_id, username, page_id FROM instagram_accounts WHERE user_email = ?',
+            [session.user.email]
         );
-        
-        // Add the 'is_active' flag to each account
-        const accountsWithStatus = accounts.map(acc => ({
+
+        const accountsWithStatus = (accounts || []).map(acc => ({
             ...acc,
             is_active: acc.instagram_user_id === activeIgId,
         }));
-
+        
         return NextResponse.json(accountsWithStatus);
+
     } catch (error) {
-        console.error("Error fetching Instagram accounts:", error);
-        return NextResponse.json({ error: 'Failed to fetch Instagram accounts.' }, { status: 500 });
+        // --- THIS IS THE CRITICAL FIX ---
+        // It now sends the actual database error message to the front end.
+        console.error('CRITICAL Error fetching Instagram accounts:', error);
+        return NextResponse.json({ 
+            error: 'A database error occurred while fetching Instagram accounts.',
+            details: error.message // This will tell us the specific problem
+        }, { status: 500 });
     }
 }
