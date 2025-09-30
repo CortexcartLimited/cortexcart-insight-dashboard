@@ -14,20 +14,19 @@ export async function POST(req) {
     try {
         const { content, imageUrl } = await req.json();
 
-        // CORRECTED: Finds the single row for the Facebook connection to get the active page ID.
         const [connectRows] = await db.query(
             `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
             [session.user.email]
         );
 
         if (connectRows.length === 0 || !connectRows[0].active_facebook_page_id) {
-            return NextResponse.json({ error: 'No active Facebook Page is set. Please select one in your settings.' }, { status: 400 });
+            return NextResponse.json({ error: 'No active Facebook Page is set.' }, { status: 400 });
         }
         const activePageId = connectRows[0].active_facebook_page_id;
 
-        // Now, find the credentials for that specific active page.
+        // CORRECTED: Fetches the token from the 'facebook_pages' table.
         const [pageRows] = await db.query(
-            `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND page_id = ?`,
+            `SELECT page_access_token_encrypted FROM facebook_pages WHERE user_email = ? AND page_id = ?`,
             [session.user.email, activePageId]
         );
         
@@ -39,21 +38,14 @@ export async function POST(req) {
         let response;
         if (imageUrl) {
             const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
-            response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/photos`, {
-                url: absoluteImageUrl,
-                caption: content,
-                access_token: pageAccessToken,
-            });
+            response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/photos`, { url: absoluteImageUrl, caption: content, access_token: pageAccessToken });
         } else {
-            response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/feed`, {
-                message: content,
-                access_token: pageAccessToken,
-            });
+            response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/feed`, { message: content, access_token: pageAccessToken });
         }
 
-        return NextResponse.json({ success: true, postId: response.data.id }, { status: 200 });
+        return NextResponse.json({ success: true, postId: response.data.id });
     } catch (error) {
-        console.error("Error posting to Facebook:", error.response?.data?.error || error.message);
+        console.error("Error posting to Facebook:", error.response?.data || error.message);
         return NextResponse.json({ error: 'Failed to post to Facebook.', details: error.response?.data?.error?.message }, { status: 500 });
     }
 }
