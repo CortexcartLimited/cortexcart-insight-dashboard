@@ -343,16 +343,18 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
                     <div className="flex items-center border-b pb-4 overflow-x-auto whitespace-nowrap">
-                        {Object.values(PLATFORMS).map(platform => {
-                            .filter(platform => platform.name !== 'Pinterest')
-                            const Icon = platform.icon;
-                            return (
-                                <button key={platform.name} onClick={() => setSelectedPlatform(platform.name.toLowerCase().split(' ')[0])} className={`flex items-center px-4 py-2 text-sm font-medium rounded-md mr-2 ${selectedPlatform === platform.name.toLowerCase().split(' ')[0] ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-                                    {Icon && <Icon className="h-5 w-5 mr-2" />} {platform.name}
-                                </button>
-                            );
-                        })}
-                    </div>
+    {Object.values(PLATFORMS)
+        .filter(platform => platform.name !== 'Pinterest') // This is the correct placement
+        .map(platform => {
+            const Icon = platform.icon;
+            return (
+                <button key={platform.name} onClick={() => setSelectedPlatform(platform.name.toLowerCase().split(' ')[0])} className={`flex items-center px-4 py-2 text-sm font-medium rounded-md mr-2 ${selectedPlatform === platform.name.toLowerCase().split(' ')[0] ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                    {Icon && <Icon className="h-5 w-5 mr-2" />} {platform.name}
+                </button>
+            );
+        })
+    }
+</div>
                     {selectedPlatform === 'youtube' && (
                         <div className="mt-4 space-y-4 p-4 border bg-gray-50 rounded-lg">
                             <div>
