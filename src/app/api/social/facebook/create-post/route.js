@@ -20,13 +20,12 @@ export async function POST(req) {
         );
 
         if (connectRows.length === 0 || !connectRows[0].active_facebook_page_id) {
-            return NextResponse.json({ error: 'No active Facebook Page is set.' }, { status: 400 });
+            return NextResponse.json({ error: 'No active Facebook Page is set. Please select one in settings.' }, { status: 400 });
         }
         const activePageId = connectRows[0].active_facebook_page_id;
 
-        // CORRECTED: Fetches the token from the 'facebook_pages' table.
         const [pageRows] = await db.query(
-            `SELECT page_access_token_encrypted FROM facebook_pages WHERE user_email = ? AND page_id = ?`,
+            `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = 'facebook-page' AND page_id = ?`,
             [session.user.email, activePageId]
         );
         

@@ -17,20 +17,18 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Image and Instagram account are required.' }, { status: 400 });
         }
 
-        // CORRECTED: Uses 'instagram_id' to match your database.
         const [accountRows] = await db.query(
             `SELECT page_id FROM instagram_accounts WHERE instagram_id = ? AND user_email = ?`,
             [instagramUserId, session.user.email]
         );
 
         if (accountRows.length === 0) {
-            return NextResponse.json({ error: 'Could not find linked Facebook page for this Instagram account.' }, { status: 404 });
+            return NextResponse.json({ error: 'Could not find the linked Facebook page for this Instagram account.' }, { status: 404 });
         }
         const linkedPageId = accountRows[0].page_id;
 
-        // CORRECTED: Fetches token from the 'facebook_pages' table.
         const [pageRows] = await db.query(
-            `SELECT page_access_token_encrypted FROM facebook_pages WHERE user_email = ? AND page_.id = ?`,
+            `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = 'facebook-page' AND page_id = ?`,
             [session.user.email, linkedPageId]
         );
 
