@@ -7,7 +7,7 @@ import { Cog6ToothIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outl
 import FacebookPageManager from '@/app/components/social/FacebookPageManager';
 
 const SocialConnectionsClient = () => {
-    const [connections, setConnections] = useState(null);
+    const [connections, setConnections] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showFacebookManager, setShowFacebookManager] = useState(false);
@@ -19,7 +19,7 @@ const SocialConnectionsClient = () => {
             const res = await fetch('/api/social/connections/status');
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.details || data.error || 'Failed to load connection statuses.');
+                throw new Error(data.error || 'Failed to load connection statuses.');
             }
             setConnections(data);
         } catch (err) {
@@ -42,7 +42,9 @@ const SocialConnectionsClient = () => {
             return;
         }
         try {
-            const res = await fetch(`/api/social/disconnect/${platform}`, { method: 'POST' });
+            const res = await fetch(`/api/social/disconnect/${platform}`, {
+                method: 'POST',
+            });
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.error || `Failed to disconnect from ${platform}.`);
@@ -66,14 +68,13 @@ const SocialConnectionsClient = () => {
     }
 
     if (error) {
-        return <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md"><div className="flex"><ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-3" /><div><p className="font-bold text-red-800">An Error Occurred</p><p className="mt-1 text-sm text-red-700">{error}</p></div></div></div>;
-    }
-    
-    if (!connections) {
-        return null; // Don't render if connections haven't loaded
+        return (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
+                <div className="flex"><ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-3" /><div><p className="font-bold text-red-800">An Error Occurred</p><p className="mt-1 text-sm text-red-700">{error}</p></div></div>
+            </div>
+        );
     }
 
-    // This is the configuration object that was missing
     const platformConfig = {
         x: { name: 'X (Twitter)' },
         facebook: { name: 'Facebook' },
@@ -84,34 +85,31 @@ const SocialConnectionsClient = () => {
 
     return (
         <div className="divide-y divide-gray-200">
-            {Object.entries(platformConfig).map(([platform, config]) => {
-                const isConnected = !!connections[platform];
-                return (
-                    <div key={platform} className="py-4 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                            <p className="text-lg font-semibold text-gray-900">{config.name}</p>
-                            {config.note && <p className="text-sm text-gray-500">{config.note}</p>}
-                        </div>
-                        <div className="mt-2 sm:mt-0 flex items-center space-x-4">
-                            {platform === 'facebook' && isConnected && (
-                                <button
-                                    onClick={() => setShowFacebookManager(prev => !prev)}
-                                    className="px-3 py-1.5 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md"
-                                >
-                                    {showFacebookManager ? 'Hide Pages' : 'Manage Pages'}
-                                </button>
-                            )}
-                            <Switch
-                                checked={isConnected}
-                                onChange={() => handleToggle(platform, isConnected)}
-                                className={`${isConnected ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none`}
-                            >
-                                <span className={`${isConnected ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`} />
-                            </Switch>
-                        </div>
+            {Object.entries(platformConfig).map(([platform, config]) => (
+                <div key={platform} className="py-4 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-lg font-semibold text-gray-900">{config.name}</p>
+                        {config.note && <p className="text-sm text-gray-500">{config.note}</p>}
                     </div>
-                );
-            })}
+                    <div className="mt-2 sm:mt-0 flex items-center space-x-4">
+                         {platform === 'facebook' && connections.facebook && (
+                            <button
+                                onClick={() => setShowFacebookManager(prev => !prev)}
+                                className="px-3 py-1.5 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md"
+                            >
+                                {showFacebookManager ? 'Hide Pages' : 'Manage Pages'}
+                            </button>
+                        )}
+                        <Switch
+                            checked={connections[platform]}
+                            onChange={() => handleToggle(platform, connections[platform])}
+                            className={`${connections[platform] ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none`}
+                        >
+                            <span className={`${connections[platform] ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`} />
+                        </Switch>
+                    </div>
+                </div>
+            ))}
             {showFacebookManager && (
                 <div className="py-6">
                     <FacebookPageManager />
