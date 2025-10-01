@@ -17,12 +17,12 @@ export async function GET(req) {
     const scopes = [
         'email',
         'public_profile',
-        'pages_show_list',
-        'read_insights',
-        'pages_read_engagement',
-        'pages_manage_posts',
-        'instagram_basic',
-        'instagram_manage_insights',
+        //'pages_show_list',
+        //'read_insights',
+        //'pages_read_engagement',
+        //'pages_manage_posts',
+        //'instagram_basic',
+        //'instagram_manage_insights',
     ];
 
     const state = JSON.stringify({
