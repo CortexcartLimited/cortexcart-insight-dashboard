@@ -22,8 +22,7 @@ export const authOptions = {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure: true,
-                domain: 'cortexcart.com' // Set to your parent domain
+                secure: true
             },
         },
         callbackUrl: {
@@ -31,18 +30,16 @@ export const authOptions = {
             options: {
                 sameSite: 'lax',
                 path: '/',
-                secure: true,
-                domain: 'cortexcart.com' // Set to your parent domain
+                secure: true
             },
         },
         csrfToken: {
-            name: `__Host-next-auth.csrf-token`,
+            name: `__Secure-next-auth.csrf-token`,
             options: {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure: true,
-                domain: 'cortexcart.com' // Set to your parent domain
+                secure: true
             },
         },
         pkceCodeVerifier: {
@@ -51,8 +48,7 @@ export const authOptions = {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure: true,
-                domain: 'cortexcart.com' // Set to your parent domain
+                secure: true
             }
         },
         state: {
@@ -61,8 +57,7 @@ export const authOptions = {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure: true,
-                domain: 'cortexcart.com' // Set to your parent domain
+                secure: true
             }
         },
     },
