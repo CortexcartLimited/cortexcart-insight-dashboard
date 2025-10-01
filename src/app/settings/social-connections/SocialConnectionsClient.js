@@ -21,7 +21,18 @@ const SocialConnectionsClient = () => {
             if (!res.ok) {
                 throw new Error(data.error || 'Failed to load connection statuses.');
             }
-            setConnections(data);
+            
+            // Create a new object to hold the transformed connection statuses
+            const connectionStatuses = {};
+            // Check if the 'connections' array exists in the response
+            if (data.connections && Array.isArray(data.connections)) {
+                // Loop through the array and build the object the UI expects
+                data.connections.forEach(conn => {
+                    connectionStatuses[conn.platform] = conn.status === 'connected';
+                });
+            }
+            setConnections(connectionStatuses);
+            
         } catch (err) {
             setError(err.message);
         } finally {
