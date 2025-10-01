@@ -17,31 +17,28 @@ export async function GET() {
     const userEmail = session.user.email;
 
     try {
-        // --- Get connections from the 'social_connect' table ---
-        const [socialRows] = await db.query(
-            'SELECT DISTINCT platform FROM social_connect WHERE user_email = ?',
+        // Fetch all relevant platform connections for the user in one go.
+        const [rows] = await db.query(
+            'SELECT platform, shopify_shop_name FROM social_connect WHERE user_email = ?',
             [userEmail]
         );
-        const connectedPlatforms = new Set(socialRows.map(row => row.platform));
 
-        // --- Get Shopify connection details, including the store name ---
-        const [shopifyRows] = await db.query(
-            `SELECT shop as shopName FROM shopify_stores WHERE user_email = ? LIMIT 1`,
-            [userEmail]
-        );
-        const shopifyConnection = shopifyRows.length > 0 ? shopifyRows[0] : null;
+        // Use a Map for easy lookups.
+        const connectionsMap = new Map(rows.map(row => [row.platform, row]));
 
-        // --- Build the response object in the format the UI expects ---
+        const shopifyRow = connectionsMap.get('shopify');
+
+        // Build the response object in the format the UI expects.
         const connections = {
             shopify: {
-                isConnected: !!shopifyConnection,
-                shopName: shopifyConnection ? shopifyConnection.shopName : null,
+                isConnected: !!shopifyRow,
+                shopName: shopifyRow ? shopifyRow.shopify_shop_name : null,
             },
             quickbooks: {
-                isConnected: connectedPlatforms.has('quickbooks'),
+                isConnected: connectionsMap.has('quickbooks'),
             },
             mailchimp: {
-                isConnected: connectedPlatforms.has('mailchimp'),
+                isConnected: connectionsMap.has('mailchimp'),
             },
         };
         
