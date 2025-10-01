@@ -15,6 +15,57 @@ export const authOptions = {
         strategy: "jwt",
     },
     secret: process.env.NEXTAUTH_SECRET,
+     cookies: {
+        sessionToken: {
+            name: `__Secure-next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: true,
+                domain: 'cortexcart.com' // Set to your parent domain
+            },
+        },
+        callbackUrl: {
+            name: `__Secure-next-auth.callback-url`,
+            options: {
+                sameSite: 'lax',
+                path: '/',
+                secure: true,
+                domain: 'cortexcart.com' // Set to your parent domain
+            },
+        },
+        csrfToken: {
+            name: `__Host-next-auth.csrf-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: true,
+                domain: 'cortexcart.com' // Set to your parent domain
+            },
+        },
+        pkceCodeVerifier: {
+            name: `__Secure-next-auth.pkce.code_verifier`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: true,
+                domain: 'cortexcart.com' // Set to your parent domain
+            }
+        },
+        state: {
+            name: `__Secure-next-auth.state`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: true,
+                domain: 'cortexcart.com' // Set to your parent domain
+            }
+        },
+    },
     providers: [
         CredentialsProvider({
             name: 'Credentials',
