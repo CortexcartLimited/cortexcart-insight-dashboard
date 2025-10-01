@@ -2,7 +2,7 @@ import NextAuth from 'next-auth'; // FIX: Added missing import
 import { getServerSession } from "next-auth/next";
 import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
-import FacebookProvider from 'next-auth/providers/facebook'; // FIX: Added missing provider
+//import FacebookProvider from 'next-auth/providers/facebook'; // FIX: Added missing provider
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from '@/lib/db';
 import axios from 'axios';
@@ -102,15 +102,15 @@ export const authOptions = {
             version: "2.0",
         }),
         // FIX: Added Facebook provider to match the logic in your JWT callback
-       FacebookProvider({
-            clientId: process.env.FACEBOOK_CLIENT_ID,
-            clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-            authorization: {
-                params: {
-                    scope: 'email public_profile',
-                },
-            },
-        })
+       //FacebookProvider({
+          //  clientId: process.env.FACEBOOK_CLIENT_ID,
+           // clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+           // authorization: {
+             //   params: {
+               //     scope: 'email public_profile',
+               // },
+           // },
+       // })
     ],
     callbacks: {
         async signIn({ user, account }) {
