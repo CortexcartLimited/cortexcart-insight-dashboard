@@ -14,35 +14,46 @@ export async function GET() {
     const userEmail = session.user.email;
 
     try {
-        // Get all distinct platform names for the user from the primary connection table
-        const [rows] = await db.query(
-            'SELECT DISTINCT platform FROM social_connect WHERE user_email = ? AND access_token_encrypted IS NOT NULL',
+        // --- Social & E-commerce Connections from 'social_connect' table ---
+        const [socialRows] = await db.query(
+            'SELECT DISTINCT platform FROM social_connect WHERE user_email = ?',
             [userEmail]
         );
-        const connectedPlatforms = new Set(rows.map(row => row.platform));
+        const connectedPlatforms = new Set(socialRows.map(row => row.platform));
 
-        // Separately, check if any Instagram accounts are linked
+        // --- Instagram (special case) ---
         const [igRows] = await db.query(
             `SELECT 1 FROM instagram_accounts WHERE user_email = ? LIMIT 1`,
             [userEmail]
         );
-        const isInstagramConnected = igRows.length > 0;
+        
+        // --- Shopify (uses its own table) ---
+        const [shopifyRows] = await db.query(
+            `SELECT 1 FROM shopify_stores WHERE user_email = ? LIMIT 1`,
+            [userEmail]
+        );
+
+        // A user is connected to Facebook if a 'facebook' OR 'facebook-page' record exists.
+        const isFacebookConnected = connectedPlatforms.has('facebook') || connectedPlatforms.has('facebook-page');
 
         const connections = {
+            // Social Platforms
             x: connectedPlatforms.has('x'),
-            facebook: connectedPlatforms.has('facebook'),
+            facebook: isFacebookConnected,
             pinterest: connectedPlatforms.has('pinterest'),
             youtube: connectedPlatforms.has('youtube'),
-            instagram: isInstagramConnected, // Set Instagram status based on its own table
+            instagram: igRows.length > 0,
+            
+            // Integration Platforms
+            shopify: shopifyRows.length > 0,
+            quickbooks: connectedPlatforms.has('quickbooks'),
+            mailchimp: connectedPlatforms.has('mailchimp'),
         };
         
         return NextResponse.json(connections);
 
     } catch (error) {
-        console.error("Error loading social connection statuses:", error);
-        return NextResponse.json({ 
-            error: 'Failed to load social connection statuses.', 
-            details: error.message 
-        }, { status: 500 });
+        console.error("Error loading all connection statuses:", error);
+        return NextResponse.json({ error: 'Failed to load connection statuses.' }, { status: 500 });
     }
 }
