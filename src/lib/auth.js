@@ -56,9 +56,14 @@ export const authOptions = {
             version: "2.0",
         }),
         // FIX: Added Facebook provider to match the logic in your JWT callback
-        FacebookProvider({
+       FacebookProvider({
             clientId: process.env.FACEBOOK_CLIENT_ID,
             clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+            authorization: {
+                params: {
+                    scope: 'email public_profile',
+                },
+            },
         })
     ],
     callbacks: {
