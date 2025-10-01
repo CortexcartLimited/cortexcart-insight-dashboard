@@ -15,7 +15,7 @@ export default function PlatformsPage() {
     const fetchStatuses = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/social/connections/status'); // This API can be reused
+            const response = await fetch('/api/platforms/status'); // This API can be reused
             if (!response.ok) throw new Error('Failed to fetch platform statuses.');
             setStatuses(await response.json());
         } catch (err) {

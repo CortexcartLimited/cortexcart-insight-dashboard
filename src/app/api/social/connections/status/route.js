@@ -1,11 +1,11 @@
 // src/app/api/social/connections/status/route.js
-export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -16,46 +16,47 @@ export async function GET() {
     const userEmail = session.user.email;
 
     try {
-        // --- Social & E-commerce Connections from 'social_connect' table ---
+        // --- Get social connections from various tables ---
         const [socialRows] = await db.query(
             'SELECT DISTINCT platform FROM social_connect WHERE user_email = ?',
             [userEmail]
         );
         const connectedPlatforms = new Set(socialRows.map(row => row.platform));
 
-        // --- Instagram (special case) ---
         const [igRows] = await db.query(
             `SELECT 1 FROM instagram_accounts WHERE user_email = ? LIMIT 1`,
             [userEmail]
         );
         
-        // --- Shopify (uses its own table) ---
-        const [shopifyRows] = await db.query(
-            `SELECT 1 FROM shopify_stores WHERE user_email = ? LIMIT 1`,
-            [userEmail]
-        );
-
-        // A user is connected to Facebook if a 'facebook' OR 'facebook-page' record exists.
-        const isFacebookConnected = connectedPlatforms.has('facebook') || connectedPlatforms.has('facebook-page');
-
-        const connections = {
-            // Social Platforms
-            x: connectedPlatforms.has('x'),
-            facebook: isFacebookConnected,
-            pinterest: connectedPlatforms.has('pinterest'),
-            youtube: connectedPlatforms.has('youtube'),
-            instagram: igRows.length > 0,
-            
-            // Integration Platforms
-            shopify: shopifyRows.length > 0,
-            quickbooks: connectedPlatforms.has('quickbooks'),
-            mailchimp: connectedPlatforms.has('mailchimp'),
-        };
+        // --- Build response in the array format the social connections page expects ---
+        const connectionsArray = [];
         
-        return NextResponse.json(connections);
+        if (connectedPlatforms.has('x')) {
+            connectionsArray.push({ platform: 'x', status: 'connected' });
+        }
+        
+        const isFacebookConnected = connectedPlatforms.has('facebook') || connectedPlatforms.has('facebook-page');
+        if (isFacebookConnected) {
+            connectionsArray.push({ platform: 'facebook', status: 'connected' });
+        }
+        
+        if (connectedPlatforms.has('pinterest')) {
+            connectionsArray.push({ platform: 'pinterest', status: 'connected' });
+        }
+        
+        if (connectedPlatforms.has('youtube')) {
+            connectionsArray.push({ platform: 'youtube', status: 'connected' });
+        }
+        
+        if (igRows.length > 0) {
+            connectionsArray.push({ platform: 'instagram', status: 'connected' });
+        }
+        
+        // The UI expects the array inside a 'connections' property
+        return NextResponse.json({ connections: connectionsArray });
 
     } catch (error) {
-        console.error("Error loading all connection statuses:", error);
+        console.error("Error loading social connection statuses:", error);
         return NextResponse.json({ error: 'Failed to load connection statuses.' }, { status: 500 });
     }
 }
