@@ -244,7 +244,7 @@ export default function DashboardPage() {
                  <VisitorMap />
                 </ChartContainer>
                 <ChartContainer title="Recent Activity">
-                   <ActivityTimeline />
+                   <ActivityTimeline dateRange={dateRange} />
                 </ChartContainer>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// Add useSession to get data from the user's session
-import { useSession } from 'next-auth/react'; 
+import { useSession } from 'next-auth/react';
 import { EyeIcon, CursorArrowRaysIcon, BanknotesIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import SkeletonCard from './SkeletonCard';
 
@@ -12,43 +11,50 @@ const getEventVisuals = (eventName) => {
             return { Icon: EyeIcon, color: 'text-blue-500', bgColor: 'bg-blue-50' };
         case 'click':
             return { Icon: CursorArrowRaysIcon, color: 'text-green-500', bgColor: 'bg-green-50' };
-          default:
+        case 'sale':
+            return { Icon: BanknotesIcon, color: 'text-amber-500', bgColor: 'bg-amber-50' };
+        default:
             return { Icon: QuestionMarkCircleIcon, color: 'text-gray-500', bgColor: 'bg-gray-50' };
     }
 };
 
 const timeSince = (date) => {
+    if (!date) return '';
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
+    let interval = seconds / 3600;
+    if (interval > 24) return Math.floor(interval / 24) + " days ago";
     if (interval > 1) return Math.floor(interval) + " hours ago";
     interval = seconds / 60;
     if (interval > 1) return Math.floor(interval) + " minutes ago";
     return Math.floor(seconds) + " seconds ago";
 };
 
-const ActivityTimeline = () => {
-    // Get the session data, which includes the user's site_id
+// Accept 'dateRange' as a prop
+const ActivityTimeline = ({ dateRange }) => { 
     const { data: session } = useSession(); 
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Only fetch events if we have the siteId from the session
-        if (session?.user?.site_id) {
+        if (session?.user?.email) {
             const fetchEvents = async () => {
                 setLoading(true);
+                setError(null);
                 try {
-                    // Append the siteId to the fetch request URL
-                    const response = await fetch(`/api/events?siteId=${session.user.site_id}`); 
+                    // Build the URL with the user's email
+                    let url = `/api/events?userEmail=${session.user.email}`;
+
+                    // If a date range is provided, add it to the URL
+                    if (dateRange?.startDate && dateRange?.endDate) {
+                        url += `&startDate=${dateRange.startDate.toISOString().split('T')[0]}`;
+                        url += `&endDate=${dateRange.endDate.toISOString().split('T')[0]}`;
+                    }
+                    
+                    const response = await fetch(url); 
                     if (!response.ok) {
-                        throw new Error('Failed to fetch recent events.');
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'A data fetch failed: Bad Request');
                     }
                     const data = await response.json();
                     setEvents(data);
@@ -61,11 +67,10 @@ const ActivityTimeline = () => {
 
             fetchEvents();
         } else if (session) {
-            // Handle case where session exists but site_id is missing
             setLoading(false);
-            setError("Could not determine your Site ID.");
         }
-    }, [session]); // The effect will re-run when the session is loaded
+    // Add 'dateRange' to the dependency array so the component re-fetches when the filter changes
+    }, [session, dateRange]); 
 
     if (loading) {
         return <SkeletonCard />;
