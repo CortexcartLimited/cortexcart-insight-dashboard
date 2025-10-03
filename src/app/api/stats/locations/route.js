@@ -29,7 +29,7 @@ export async function GET(request) {
             FROM 
                 events  -- Corrected table name
             WHERE 
-                event_type = 'pageview' AND  -- Filter for only pageview events
+                type = 'pageview' AND  -- Filter for only pageview events
                 timestamp >= DATE_SUB(NOW(), INTERVAL ${interval})
             GROUP BY 
                 country
