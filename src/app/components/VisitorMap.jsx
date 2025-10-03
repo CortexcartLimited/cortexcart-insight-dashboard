@@ -1,75 +1,73 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ResponsiveChoropleth } from '@nivo/geo';
-import worldCountries from './world_countries.json'; // We will create this file next
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import SkeletonCard from './SkeletonCard';
 
-const VisitorMap = () => {
+// Define a consistent color palette for the chart segments
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF19AF', '#19AFFF'];
+
+const VisitorsByCountryChart = ({ period }) => {
     const [data, setData] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        async function fetchData() {
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
             try {
-                const response = await fetch('/api/stats/locations');
-                const locationData = await response.json();
-                setData(locationData);
-            } catch (error) {
-                console.error("Failed to fetch map data:", error);
+                const response = await fetch(`/api/stats/locations?period=${period}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+                const result = await response.json();
+                setData(result);
+            } catch (err) {
+                setError(err.message);
             } finally {
-                setIsLoading(false);
+                setLoading(false);
             }
-        }
-        fetchData();
-    }, []);
+        };
 
-    if (isLoading) {
-        return <div className="h-96 flex items-center justify-center bg-gray-100 rounded-lg">Loading Map...</div>;
+        fetchData();
+    }, [period]); // Refetch data when the period changes
+
+    if (loading) {
+        return <SkeletonCard />;
+    }
+
+    if (error) {
+        return <div className="text-red-500 text-center p-4">Error: {error}</div>;
+    }
+    
+    if (data.length === 0) {
+        return <div className="text-center p-4 text-gray-500">No visitor data available for this period.</div>
     }
 
     return (
-        <div style={{ height: '400px' }} className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow">
-            <ResponsiveChoropleth
-                data={data}
-                features={worldCountries.features}
-                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                colors="blues"
-                domain={[0, Math.max(...data.map(d => d.value), 0) || 100]} // Dynamic domain based on data
-                unknownColor="#EAEAEA"
-                label="properties.name"
-                valueFormat=".2s"
-                projectionTranslation={[0.5, 0.5]}
-                projectionRotation={[0, 0, 0]}
-                enableGraticule={false}
-                borderWidth={0.5}
-                borderColor="#333"
-                legends={[
-                    {
-                        anchor: 'bottom-left',
-                        direction: 'column',
-                        justify: true,
-                        translateX: 20,
-                        translateY: -50,
-                        itemsSpacing: 0,
-                        itemWidth: 94,
-                        itemHeight: 18,
-                        itemDirection: 'left-to-right',
-                        itemTextColor: '#444444',
-                        itemOpacity: 0.85,
-                        symbolSize: 18,
-                    },
-                ]}
-                 theme={{
-                    tooltip: {
-                        container: {
-                            background: '#333',
-                            color: '#fff',
-                        },
-                    },
-                }}
-            />
-        </div>
+        <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+                <Pie
+                    data={data}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                    {data.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                </Pie>
+                <Tooltip formatter={(value) => [`${value} visitors`, 'Visitors']} />
+                <Legend />
+            </PieChart>
+        </ResponsiveContainer>
     );
 };
 
-export default VisitorMap;
+export default VisitorsByCountryChart;

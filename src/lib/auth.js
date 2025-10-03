@@ -1,64 +1,51 @@
-import NextAuth from 'next-auth'; // FIX: Added missing import
+import NextAuth from 'next-auth';
 import { getServerSession } from "next-auth/next";
 import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
-//import FacebookProvider from 'next-auth/providers/facebook'; // FIX: Added missing provider
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from '@/lib/db';
-import axios from 'axios';
 import { encrypt } from '@/lib/crypto';
 import bcrypt from 'bcryptjs';
 
+// Automatically determine if we should use secure cookies.
+const useSecureCookies = process.env.NEXTAUTH_URL.startsWith("https");
+
 /** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
+    pages: {
+        signIn: '/login',
+    },
+    useSecureCookies: useSecureCookies,
     session: {
         strategy: "jwt",
     },
     secret: process.env.NEXTAUTH_SECRET,
-     cookies: {
+    cookies: {
         sessionToken: {
-            name: `__Secure-next-auth.session-token`,
+            name: `${useSecureCookies ? '__Secure-' : ''}next-auth.session-token`,
             options: {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure: true
+                secure: useSecureCookies,
             },
         },
         callbackUrl: {
-            name: `__Secure-next-auth.callback-url`,
+            name: `${useSecureCookies ? '__Secure-' : ''}next-auth.callback-url`,
             options: {
                 sameSite: 'lax',
                 path: '/',
-                secure: true
+                secure: useSecureCookies,
             },
         },
         csrfToken: {
-            name: `__Secure-next-auth.csrf-token`,
+            name: `${useSecureCookies ? '__Host-' : ''}next-auth.csrf-token`,
             options: {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure: true
+                secure: useSecureCookies,
             },
-        },
-        pkceCodeVerifier: {
-            name: `__Secure-next-auth.pkce.code_verifier`,
-            options: {
-                httpOnly: true,
-                sameSite: 'lax',
-                path: '/',
-                secure: true
-            }
-        },
-        state: {
-            name: `__Secure-next-auth.state`,
-            options: {
-                httpOnly: true,
-                sameSite: 'lax',
-                path: '/',
-                secure: true
-            }
         },
     },
     providers: [
@@ -95,23 +82,13 @@ export const authOptions = {
                 }
             }
         }),
-        // FIX: Updated to the modern Twitter provider to remove the warning
         TwitterProvider({
             clientId: process.env.X_CLIENT_ID,
             clientSecret: process.env.X_CLIENT_SECRET,
             version: "2.0",
         }),
-        // FIX: Added Facebook provider to match the logic in your JWT callback
-       //FacebookProvider({
-          //  clientId: process.env.FACEBOOK_CLIENT_ID,
-           // clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-           // authorization: {
-             //   params: {
-               //     scope: 'email public_profile',
-               // },
-           // },
-       // })
     ],
+    // --- DATABASE LOGIC IS NOW RESTORED ---
     callbacks: {
         async signIn({ user, account }) {
             let { email, name } = user;
@@ -129,9 +106,9 @@ export const authOptions = {
                 }
             } catch (error) {
                 console.error("DB Error during signIn:", error);
-                return false;
+                return false; // If DB error occurs, cancel sign-in
             }
-            return true;
+            return true; // Allow sign-in
         },
         async jwt({ token, user, account }) {
             if (account && user) {
@@ -140,7 +117,7 @@ export const authOptions = {
                 token.name = user.name;
                 token.picture = user.image;
 
-                if (account.access_token) { // Only save connection if there is a token
+                if (account.access_token) { 
                     try {
                         const query = `
                             INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
@@ -182,5 +159,4 @@ export const authOptions = {
    },
 };
 
-// FIX: Added the main NextAuth export
 export default NextAuth(authOptions);

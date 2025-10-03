@@ -18,7 +18,7 @@ export async function POST(request) {
         // Update the user's site information and mark onboarding as complete
         await db.query(
             `UPDATE sites 
-             SET site_name = ?, site_url = ?, owner_name = ?, address = ?, postal_code = ?, onboarding_completed = TRUE 
+             SET site_name = ?, site_url = ?, full_name = ?, address = ?, postal_code = ?, onboarding_completed = TRUE 
              WHERE user_email = ?`,
             [siteName, siteUrl, fullName, address, postalCode, session.user.email]
         );
