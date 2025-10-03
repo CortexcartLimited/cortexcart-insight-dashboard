@@ -21,18 +21,21 @@ export async function GET(request) {
     const interval = intervalMap[period] || '7 DAY';
 
     try {
-        // Corrected Query: Using the 'events' table and its columns
+        // Corrected Query: Extracts 'country' from the JSON in 'event_data'
+        // and filters by 'event_name'.
         const query = `
             SELECT 
-                country, 
-                COUNT(*) as visitor_count
+                JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) AS country,
+                COUNT(*) AS visitor_count
             FROM 
-                events  -- Corrected table name
+                events
             WHERE 
-                type = 'pageview' AND  -- Filter for only pageview events
+                event_name = 'page view' AND
                 timestamp >= DATE_SUB(NOW(), INTERVAL ${interval})
             GROUP BY 
                 country
+            HAVING
+                country IS NOT NULL AND country != ''
             ORDER BY 
                 visitor_count DESC
             LIMIT 7;
