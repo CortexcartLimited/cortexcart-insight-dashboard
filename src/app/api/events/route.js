@@ -24,8 +24,7 @@ export async function GET(request) {
 
   try {
     const query = `
-      SELECT 
-      JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.event_name')) AS event,
+       SELECT 
         id, 
         event_name, 
         event_data,
@@ -34,11 +33,11 @@ export async function GET(request) {
       WHERE 
         site_id = ? ${dateFilter}
       ORDER BY 
-        event DESC
+        created_at DESC
       LIMIT 15;
     `;
 
-    const [results] = await db.query(query, queryParams);
+      const [results] = await db.query(query, queryParams);
     return NextResponse.json(results, { status: 200 });
 
   } catch (error) {

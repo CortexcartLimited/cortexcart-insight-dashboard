@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+// Add useSession to get data from the user's session
+import { useSession } from 'next-auth/react'; 
 import { EyeIcon, CursorArrowRaysIcon, BanknotesIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import SkeletonCard from './SkeletonCard';
 
-// Helper to assign an icon and color to each event type
 const getEventVisuals = (eventName) => {
     switch (eventName) {
         case 'page view':
@@ -18,7 +19,6 @@ const getEventVisuals = (eventName) => {
     }
 };
 
-// Helper to format the time since the event occurred
 const timeSince = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
     let interval = seconds / 31536000;
@@ -34,31 +34,40 @@ const timeSince = (date) => {
     return Math.floor(seconds) + " seconds ago";
 };
 
-
 const ActivityTimeline = () => {
+    // Get the session data, which includes the user's site_id
+    const { data: session } = useSession(); 
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchEvents = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch('/api/events'); // Your existing API route for events
-                if (!response.ok) {
-                    throw new Error('Failed to fetch recent events.');
+        // Only fetch events if we have the siteId from the session
+        if (session?.user?.site_id) {
+            const fetchEvents = async () => {
+                setLoading(true);
+                try {
+                    // Append the siteId to the fetch request URL
+                    const response = await fetch(`/api/events?siteId=${session.user.site_id}`); 
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch recent events.');
+                    }
+                    const data = await response.json();
+                    setEvents(data);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
                 }
-                const data = await response.json();
-                setEvents(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
+            };
 
-        fetchEvents();
-    }, []);
+            fetchEvents();
+        } else if (session) {
+            // Handle case where session exists but site_id is missing
+            setLoading(false);
+            setError("Could not determine your Site ID.");
+        }
+    }, [session]); // The effect will re-run when the session is loaded
 
     if (loading) {
         return <SkeletonCard />;
