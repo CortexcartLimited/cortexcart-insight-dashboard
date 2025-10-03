@@ -24,17 +24,17 @@ export async function GET(request) {
 
   try {
     const query = `
-       SELECT 
-        id, 
-        event_name, 
-        event_data,
-        created_at
-      FROM events 
-      WHERE 
-        site_id = ? ${dateFilter}
-      ORDER BY 
-        created_at DESC
-      LIMIT 15;
+      SELECT 
+    id, 
+    event_name, 
+    created_at
+FROM events  AS created_at
+WHERE 
+    site_id = ? ${dateFilter}
+    AND event_name IN ('click', 'pageview')
+ORDER BY 
+    created_at DESC
+LIMIT 15;
     `;
 
       const [results] = await db.query(query, queryParams);

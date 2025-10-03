@@ -12,9 +12,7 @@ const getEventVisuals = (eventName) => {
             return { Icon: EyeIcon, color: 'text-blue-500', bgColor: 'bg-blue-50' };
         case 'click':
             return { Icon: CursorArrowRaysIcon, color: 'text-green-500', bgColor: 'bg-green-50' };
-        case 'sale':
-            return { Icon: BanknotesIcon, color: 'text-amber-500', bgColor: 'bg-amber-50' };
-        default:
+          default:
             return { Icon: QuestionMarkCircleIcon, color: 'text-gray-500', bgColor: 'bg-gray-50' };
     }
 };
