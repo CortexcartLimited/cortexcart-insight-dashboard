@@ -10,7 +10,7 @@ import StatCard from '@/app/components/StatCard';
 import StatCard2 from '@/app/components/StatCard2';
 import ChartContainer from '@/app/components/ChartContainer';
 import SalesBarChart from '@/app/components/SalesBarChart';
-import RecentEventsTable from '@/app/components/RecentEventsTable';
+import ActivityTimeline from '@/app/components/ActivityTimeline';
 import DateFilter from '@/app/components/DataFilter';
 import TopPagesList from '@/app/components/TopPagesList';
 import TopReferrersList from '@/app/components/TopReferrersList';
@@ -243,8 +243,8 @@ export default function DashboardPage() {
                 <ChartContainer title="Visitors by Country" className="h-full">
                  <VisitorMap />
                 </ChartContainer>
-                <ChartContainer title="Recent Events">
-                  <RecentEventsTable events={recentEvents} />
+                <ChartContainer title="Recent Activity">
+                   <ActivityTimeline />
                 </ChartContainer>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
