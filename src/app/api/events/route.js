@@ -25,6 +25,7 @@ export async function GET(request) {
   try {
     const query = `
       SELECT 
+      JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.event_name')) AS event,
         id, 
         event_name, 
         event_data,
@@ -33,7 +34,7 @@ export async function GET(request) {
       WHERE 
         site_id = ? ${dateFilter}
       ORDER BY 
-        created_at DESC
+        event DESC
       LIMIT 15;
     `;
 
