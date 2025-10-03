@@ -98,7 +98,7 @@ const ActivityTimeline = () => {
                                             </p>
                                         </div>
                                         <div className="whitespace-nowrap text-right text-sm text-gray-500">
-                                            <time dateTime={event.timestamp}>{timeSince(event.timestamp)}</time>
+                                            <time dateTime={event.created_at}>{timeSince(event.created_at)}</time>
                                         </div>
                                     </div>
                                 </div>
