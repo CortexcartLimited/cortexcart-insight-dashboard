@@ -31,7 +31,7 @@ export async function GET(request) {
                 events
             WHERE 
                 event_name = 'page view' AND
-                timestamp >= DATE_SUB(NOW(), INTERVAL ${interval})
+                created_at >= DATE_SUB(NOW(), INTERVAL ${interval})
             GROUP BY 
                 country
             HAVING
