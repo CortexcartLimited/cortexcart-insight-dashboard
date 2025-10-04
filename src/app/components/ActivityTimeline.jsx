@@ -1,23 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react'; 
 import { EyeIcon, CursorArrowRaysIcon, BanknotesIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import SkeletonCard from './SkeletonCard';
 
+// These helper functions do not need to change
 const getEventVisuals = (eventName) => {
     switch (eventName) {
-        case 'page view':
-            return { Icon: EyeIcon, color: 'text-blue-500', bgColor: 'bg-blue-50' };
-        case 'click':
-            return { Icon: CursorArrowRaysIcon, color: 'text-green-500', bgColor: 'bg-green-50' };
-        case 'sale':
-            return { Icon: BanknotesIcon, color: 'text-amber-500', bgColor: 'bg-amber-50' };
-        default:
-            return { Icon: QuestionMarkCircleIcon, color: 'text-gray-500', bgColor: 'bg-gray-50' };
+        case 'page view': return { Icon: EyeIcon, color: 'text-blue-500', bgColor: 'bg-blue-50' };
+        case 'click': return { Icon: CursorArrowRaysIcon, color: 'text-green-500', bgColor: 'bg-green-50' };
+        case 'sale': return { Icon: BanknotesIcon, color: 'text-amber-500', bgColor: 'bg-amber-50' };
+        default: return { Icon: QuestionMarkCircleIcon, color: 'text-gray-500', bgColor: 'bg-gray-50' };
     }
 };
-
 const timeSince = (date) => {
     if (!date) return '';
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -29,24 +25,22 @@ const timeSince = (date) => {
     return Math.floor(seconds) + " seconds ago";
 };
 
-// Accept 'dateRange' as a prop
 const ActivityTimeline = ({ dateRange }) => { 
-    const { data: session } = useSession(); 
+    const { data: session, status } = useSession(); 
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    useEffect(() => {
-        if (session?.user?.email) {
+    
+  useEffect(() => {
+        if (status === 'authenticated' && session?.user?.email) {
             const fetchEvents = async () => {
                 setLoading(true);
                 setError(null);
                 try {
-                    // Build the URL with the user's email
-                    let url = `/api/events?userEmail=${session.user.email}`;
+                    let url = `/api/events?siteId=${session.user.email}`;
 
-                    // If a date range is provided, add it to the URL
-                    if (dateRange?.startDate && dateRange?.endDate) {
+                    // --- FIX: Check if dateRange and its properties exist ---
+                    if (dateRange && dateRange.startDate && dateRange.endDate) {
                         url += `&startDate=${dateRange.startDate.toISOString().split('T')[0]}`;
                         url += `&endDate=${dateRange.endDate.toISOString().split('T')[0]}`;
                     }
@@ -64,33 +58,24 @@ const ActivityTimeline = ({ dateRange }) => {
                     setLoading(false);
                 }
             };
-
             fetchEvents();
-        } else if (session) {
-            setLoading(false);
+        } else if (status === 'loading') {
+            setLoading(true);
         }
-    // Add 'dateRange' to the dependency array so the component re-fetches when the filter changes
-    }, [session, dateRange]); 
+    }, [session, dateRange, status]);
 
-    if (loading) {
-        return <SkeletonCard />;
-    }
 
-    if (error) {
-        return <div className="text-red-500 text-center p-4">Error: {error}</div>;
-    }
-    
-    if (events.length === 0) {
-        return <div className="text-center p-4 text-gray-500">No recent activity to display.</div>
-    }
+    if (loading) { return <SkeletonCard />; }
+    if (error) { return <div className="text-red-500 text-center p-4">Error: {error}</div>; }
+    if (events.length === 0) { return <div className="text-center p-4 text-gray-500">No recent activity to display.</div> }
 
     return (
+        // The JSX for the timeline remains the same
         <div className="flow-root">
             <ul className="-mb-8">
                 {events.map((event, eventIdx) => {
                     const { Icon, color, bgColor } = getEventVisuals(event.event_name);
                     const path = event.event_data?.path || 'an unknown page';
-
                     return (
                         <li key={event.id}>
                             <div className="relative pb-8">

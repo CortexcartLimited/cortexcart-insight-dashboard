@@ -1,20 +1,18 @@
-import { db } from '@/lib/db';
+import { db } from '@/lib/db'; // Adjust path if necessary
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  // We now expect a userEmail instead of a siteId
-  const userEmail = searchParams.get('userEmail');
+  const siteId = searchParams.get('siteId');
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
 
-  if (!userEmail) {
-    return NextResponse.json({ message: 'User Email is required' }, { status: 400 });
+  if (!siteId) {
+    return NextResponse.json({ message: 'Site ID is required' }, { status: 400 });
   }
 
   let dateFilter = '';
-  // The first query parameter is now the email address
-  const queryParams = [userEmail];
+  const queryParams = [siteId];
 
   if (startDate && endDate) {
     const inclusiveEndDate = new Date(endDate);
@@ -33,7 +31,7 @@ export async function GET(request) {
         created_at
       FROM events 
       WHERE 
-        site_id = ? ${dateFilter} -- This will now check for the email in the site_id column
+        site_id = ? ${dateFilter}
       ORDER BY 
         created_at DESC
       LIMIT 15;

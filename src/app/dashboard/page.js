@@ -27,7 +27,7 @@ import DemographicsCharts from '@/app/components/DemographicsCharts';
 const currencySymbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$' };
 
 const DataSourceToggle = ({ dataSource, setDataSource }) => (
-  <div className="flex items-center p-1 bg-gray-100 rounded-lg">
+  <div className="flex items-center p-1 bg-gray-200 rounded-lg">
     <button onClick={() => setDataSource('cortexcart')} className={`px-4 py-1 text-sm font-medium rounded-md transition-colors ${dataSource === 'cortexcart' ? 'bg-white shadow' : 'text-gray-600'}`}>CortexCart</button>
     <button onClick={() => setDataSource('ga4')} className={`px-4 py-1 text-sm font-medium rounded-md transition-colors ${dataSource === 'ga4' ? 'bg-white shadow' : 'text-gray-600'}`}>Google Analytics</button>
   </div>
@@ -61,11 +61,11 @@ export default function DashboardPage() {
   const [siteSettings, setSiteSettings] = useState({ currency: 'USD' });
   
   const [dateRange, setDateRange] = useState(() => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    return { startDate: startDate.toISOString().split('T')[0], endDate: endDate.toISOString().split('T')[0] };
-  });
+  const endDate = new Date();
+        // Use a very early date as the start for "All Time"
+        const startDate = new Date('2020-01-01'); 
+        return { startDate, endDate };
+        });
 
   const siteId = session?.user?.email;
 
@@ -243,8 +243,8 @@ export default function DashboardPage() {
                 <ChartContainer title="Visitors by Country" className="h-full">
                  <VisitorMap />
                 </ChartContainer>
-                <ChartContainer title="Recent Activity">
-                   <ActivityTimeline dateRange={dateRange} />
+                <ChartContainer title="Recent Events">
+                  <ActivityTimeline eventsData={recentEvents} />
                 </ChartContainer>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

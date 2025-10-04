@@ -1,12 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image'; // Import the Image component from next/image
 import { Cog, CreditCard, ShieldAlert, Zap, NotebookPen } from 'lucide-react';
 import Layout from '@/app/components/Layout';
 
 const AccountPage = () => {
   return (
     <Layout>
+      <Link href="/upgrade-plans">
+      <Image src="/cortex cart-main-banner-upgrade.jpg" alt="Cortex Cart Upgrade Banner" width={1200} height={300} className="mb-8 rounded-lg shadow-md" />
+</Link>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="lg:col-span-2">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">My Account</h1>

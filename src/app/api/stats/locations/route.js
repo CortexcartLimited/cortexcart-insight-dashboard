@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
@@ -21,21 +23,26 @@ export async function GET(request) {
     const interval = intervalMap[period] || '7 DAY';
 
     try {
-        // Corrected Query: Extracts 'country' from the JSON in 'event_data'
-        // and filters by 'event_name'.
-              const [rows] = await db.query(
-            `SELECT 
-                JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) as country_code, 
-                COUNT(*) as value 
-             FROM events 
-             WHERE 
-                site_id = ? AND 
-                event_name = 'pageview' AND 
-                JSON_EXTRACT(event_data, '$.country') IS NOT NULL
-             GROUP BY country_code 
-             ORDER BY value DESC`,
-            [session.user.site_id]
-        );
+        const query = `
+            SELECT 
+                JSON_UNQUOTE(JSON_EXTRACT(event_data, '$.country')) AS country,
+                COUNT(*) AS visitor_count
+            FROM 
+                events
+            WHERE 
+                event_name = 'page view' AND
+                site_id = ? AND -- Filter by the user's site identifier (email)
+                created_at >= DATE_SUB(NOW(), INTERVAL ${interval})
+            GROUP BY 
+                country
+            HAVING
+                country IS NOT NULL AND country != ''
+            ORDER BY 
+                visitor_count DESC
+            LIMIT 7;
+        `;
+
+        const [rows] = await db.query(query, [session.user.email]);
 
         const formattedData = rows.map(row => ({
             name: row.country || 'Unknown',
@@ -46,6 +53,6 @@ export async function GET(request) {
 
     } catch (error) {
         console.error("Error fetching visitor locations:", error);
-        return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
