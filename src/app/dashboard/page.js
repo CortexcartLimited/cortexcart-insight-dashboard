@@ -20,7 +20,7 @@ import SkeletonCard from '@/app/components/SkeletonCard';
 import Ga4LineChart from '@/app/components/Ga4LineChart';
 import PerformanceScore from '@/app/components/PerformanceScore';
 import OnboardingModal from '@/app/components/OnboardingModal';
-import VisitorMap from '@/app/components/VisitorMap';
+import VisitorsByCountryChart from '@/app/components/VisitorsByCountryChart';
 import NewVsReturningChart from '@/app/components/NewVsReturningChart';
 import DemographicsCharts from '@/app/components/DemographicsCharts';
 
@@ -241,7 +241,7 @@ export default function DashboardPage() {
               </ChartContainer>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ChartContainer title="Visitors by Country" className="h-full">
-                 <VisitorMap />
+                 <VisitorsByCountryChart dateRange={dateRange} />
                 </ChartContainer>
                 <ChartContainer title="Recent Events">
                   <ActivityTimeline eventsData={recentEvents} />

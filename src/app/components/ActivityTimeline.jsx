@@ -71,11 +71,12 @@ const ActivityTimeline = ({ dateRange }) => {
 
     return (
         // The JSX for the timeline remains the same
-        <div className="flow-root">
+         <div className="h-96 overflow-y-auto pr-4 -mr-4">
+             <div className="flow-root">
             <ul className="-mb-8">
                 {events.map((event, eventIdx) => {
                     const { Icon, color, bgColor } = getEventVisuals(event.event_name);
-                    const path = event.event_data?.path || 'an unknown page';
+                    const path = event.event_data ? JSON.parse(event.event_data).path : 'N/A';
                     return (
                         <li key={event.id}>
                             <div className="relative pb-8">
@@ -105,6 +106,8 @@ const ActivityTimeline = ({ dateRange }) => {
                 })}
             </ul>
         </div>
+        </div>
+
     );
 };
 

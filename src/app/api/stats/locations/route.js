@@ -1,26 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || '7d';
+    const siteId = searchParams.get('siteId');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
-    const intervalMap = {
-        '24h': '1 DAY',
-        '7d': '7 DAY',
-        '30d': '30 DAY',
-        '90d': '90 DAY',
-    };
-    const interval = intervalMap[period] || '7 DAY';
+    if (!siteId || !startDate || !endDate) {
+        return NextResponse.json({ message: 'Site ID and date range are required' }, { status: 400 });
+    }
 
     try {
         const query = `
@@ -30,9 +21,9 @@ export async function GET(request) {
             FROM 
                 events
             WHERE 
-                event_name = 'page view' AND
-                site_id = ? AND -- Filter by the user's site identifier (email)
-                created_at >= DATE_SUB(NOW(), INTERVAL ${interval})
+                event_name = 'pageview' AND
+                site_id = ? AND
+                created_at BETWEEN ? AND ?
             GROUP BY 
                 country
             HAVING
@@ -42,7 +33,8 @@ export async function GET(request) {
             LIMIT 7;
         `;
 
-        const [rows] = await db.query(query, [session.user.email]);
+        const queryParams = [siteId, startDate, `${endDate} 23:59:59`];
+        const [rows] = await db.query(query, queryParams);
 
         const formattedData = rows.map(row => ({
             name: row.country || 'Unknown',
