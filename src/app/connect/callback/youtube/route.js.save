@@ -1,0 +1,75 @@
+// src/app/connect/callback/youtube/route.js
+
+import { google } from 'googleapis';
+import { NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { encrypt } from '@/lib/crypto';
+
+export async function GET(req) {
+    const url = new URL(req.url);
+    const code = url.searchParams.get('code');
+    const error = url.searchParams.get('error');
+
+    // Handle cases where the user denies access
+    if (error) {
+        console.error('YouTube Auth Error: User denied access.', error);
+        return NextResponse.redirect(new URL('/settings?error=youtube_access_denied', req.nextUrl.origin));
+    }
+    
+    if (!code) {
+        console.error('YouTube Auth Error: No authorization code provided.');
+        return NextResponse.redirect(new URL('/settings?error=youtube_auth_failed', req.nextUrl.origin));
+    }
+
+    const redirectUri = process.env.NODE_ENV === 'production' ? `${process.env.NEXTAUTH_URL}/api/connect/callback/youtube`;
+    const oAuth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        redirectUri
+    );
+
+    try {
+        // --- Step 1: Exchange code for tokens ---
+        console.log("Attempting to get YouTube tokens with code:", code);
+        const { tokens } = await oAuth2Client.getToken(code);
+        oAuth2Client.setCredentials(tokens);
+        console.log("Successfully received YouTube tokens.");
+
+        // --- Step 2: Get user session ---
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user || !session.user.email) {
+            console.error("YouTube Auth Error: No active user session found.");
+            return NextResponse.redirect(new URL('/login?error=session_expired', req.nextUrl.origin));
+        }
+        
+        const userEmail = session.user.email;
+        const accessToken = tokens.access_token;
+        const refreshToken = tokens.refresh_token;
+        const expiryDate = new Date(tokens.expiry_date);
+
+        // --- Step 3: Save tokens to the database ---
+        try {
+            console.log(`Saving YouTube tokens for user: ${userEmail}`);
+            await db.query(
+                `INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE access_token_encrypted = VALUES(access_token_encrypted), refresh_token_encrypted = VALUES(refresh_token_encrypted), expires_at = VALUES(expires_at)`,
+                [userEmail, 'youtube', encrypt(accessToken), refreshToken ? encrypt(refreshToken) : null, expiryDate]
+            );
+            console.log("Successfully saved YouTube tokens to DB.");
+        } catch (dbError) {
+            console.error("CRITICAL: Failed to save YouTube tokens to database.", dbError);
+            return NextResponse.redirect(new URL('/settings?error=database_error', req.nextUrl.origin));
+        }
+
+        // --- Step 4: Redirect on success ---
+        return NextResponse.redirect(new URL('/settings?success=youtube_connected', req.nextUrl.origin));
+
+    } catch (tokenError) {
+        // This will catch errors from oAuth2Client.getToken(code)
+        console.error("CRITICAL: Failed to exchange authorization code for YouTube tokens.", tokenError.response?.data || tokenError.message);
+        return NextResponse.redirect(new URL('/settings?error=youtube_token_exchange_failed', req.nextUrl.origin));
+    }
+}
