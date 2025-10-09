@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+// This GET handler is now corrected to properly fetch the active page ID.
 export async function GET(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -19,18 +20,12 @@ export async function GET(req) {
         );
 
         if (rows.length > 0 && rows[0].active_facebook_page_id) {
-            // We have an active page, let's get its details
-            const [pageDetails] = await db.query(
-                `SELECT * FROM social_connect WHERE user_email = ? AND platform = 'facebook' AND page_id = ?`,
-                [userEmail, rows[0].active_facebook_page_id]
-            );
-
-            if (pageDetails.length > 0) {
-                 return NextResponse.json({ pageId: pageDetails[0].page_id, pageName: pageDetails[0].account_name });
-            }
+            // Simply return the pageId. The frontend already has the page name.
+            return NextResponse.json({ pageId: rows[0].active_facebook_page_id });
         }
         
-        return NextResponse.json(null); // No active page set
+        // Return null if no active page is set
+        return NextResponse.json(null);
 
     } catch (error) {
         console.error("Error fetching active Facebook page:", error);
@@ -47,16 +42,20 @@ export async function POST(req) {
     const { pageId } = await req.json();
     const userEmail = session.user.email;
 
+    if (!pageId) {
+        return NextResponse.json({ error: 'Page ID is required' }, { status: 400 });
+    }
+
     try {
-        // CORRECTED: Updates the 'active_facebook_page_id' column in the existing 'social_connect' table.
         const [updateResult] = await db.query(
             `UPDATE social_connect SET active_facebook_page_id = ? WHERE user_email = ? AND platform = 'facebook'`,
             [pageId, userEmail]
         );
 
         if (updateResult.affectedRows === 0) {
-            // This can happen if the user has never connected facebook before, let's insert it
-            await db.query(
+            // This could happen if the user's main Facebook record doesn't exist yet for some reason.
+            // We can create it for them.
+             await db.query(
                 `INSERT INTO social_connect (user_email, platform, active_facebook_page_id) VALUES (?, 'facebook', ?) ON DUPLICATE KEY UPDATE active_facebook_page_id = VALUES(active_facebook_page_id)`,
                 [userEmail, pageId]
             );
