@@ -21,7 +21,7 @@ export async function GET(req) {
         if (rows.length > 0 && rows[0].active_facebook_page_id) {
             // We have an active page, let's get its details
             const [pageDetails] = await db.query(
-                `SELECT page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' AND page_id = ?`,
+                `SELECT * FROM social_connect WHERE user_email = ? AND platform = 'facebook' AND page_id = ?`,
                 [userEmail, rows[0].active_facebook_page_id]
             );
 
