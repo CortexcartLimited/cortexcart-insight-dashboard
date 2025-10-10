@@ -14,7 +14,7 @@ export async function GET(request) {
 
     try {
         // 1. Find the user in your database
-        const [userRows] = await db.query('SELECT stripeCustomerId FROM users WHERE email = ? LIMIT 1', [session.user.email]);
+        const [userRows] = await db.query('SELECT stripe_customer_id FROM sites WHERE email = ? LIMIT 1', [session.user.email]);
         const user = userRows[0];
 
         if (!user || !user.stripeCustomerId) {

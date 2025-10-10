@@ -14,7 +14,7 @@ export async function GET(request) {
     }
 
     try {
-        const [userRows] = await db.query('SELECT stripeSubscriptionId FROM users WHERE email = ? LIMIT 1', [session.user.email]);
+        const [userRows] = await db.query('SELECT stripe_subscription_id FROM sites WHERE email = ? LIMIT 1', [session.user.email]);
         const user = userRows[0];
 
         if (!user || !user.stripeSubscriptionId) {
@@ -43,7 +43,7 @@ export async function POST(request) {
     try {
         const { autoPaymentEnabled } = await request.json();
 
-        const [userRows] = await db.query('SELECT stripeSubscriptionId FROM users WHERE email = ? LIMIT 1', [session.user.email]);
+        const [userRows] = await db.query('SELECT stripe_subscription_id FROM sites WHERE email = ? LIMIT 1', [session.user.email]);
         const user = userRows[0];
         
         if (!user || !user.stripeSubscriptionId) {
