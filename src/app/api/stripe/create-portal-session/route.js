@@ -1,4 +1,4 @@
-// app/api/stripe/create-portal-session/route.js
+// src/app/api/stripe/create-portal-session/route.js
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
@@ -14,8 +14,6 @@ export async function POST(req) {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
-    // This is the URL of your app's settings/billing page where users will be sent
-    // after they are done in the Stripe portal.
     const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/account`;
 
     // 1. Get the user's Stripe Customer ID from your database
@@ -24,8 +22,11 @@ export async function POST(req) {
       [session.user.email]
     );
 
+    // --- THIS IS THE IMPORTANT FIX ---
+    // Check if a user was found and if they have a customer ID.
     if (userRows.length === 0 || !userRows[0].stripe_customer_id) {
-      return NextResponse.json({ message: 'Stripe customer not found.' }, { status: 404 });
+      console.error(`Attempted to create portal session for user without a Stripe Customer ID: ${session.user.email}`);
+      return NextResponse.json({ message: 'No subscription found for this user. Please subscribe to a plan first.' }, { status: 400 });
     }
     const stripeCustomerId = userRows[0].stripe_customer_id;
 
@@ -40,6 +41,7 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('Error creating Stripe portal session:', error);
+    // Send back a generic server error if something else goes wrong
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }

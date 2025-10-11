@@ -1,4 +1,4 @@
-// app/api/stripe/webhook/route.js
+// src/app/api/stripe/webhook/route.js
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
@@ -16,42 +16,62 @@ export async function POST(req) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
-    console.error(`❌ Error message: ${err.message}`);
+    console.error(`❌ Webhook signature verification failed: ${err.message}`);
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
+
+  // Get the Stripe Customer ID from the event object
+  const stripeCustomerId = event.data.object.customer;
 
   // Handle the event
   switch (event.type) {
     case 'checkout.session.completed':
       const session = event.data.object;
-
-      // This is the email the customer used in the Stripe Checkout form
       const customerEmail = session.customer_details.email;
-      const stripeCustomerId = session.customer;
 
-      if (!customerEmail) {
-        console.error('Webhook Error: No customer email found in the session.');
+      if (!customerEmail || !stripeCustomerId) {
+        console.error('Webhook Error: Missing customer details in checkout.session.completed.');
         break;
       }
       
       try {
-        // Update the user's record in your database
         await db.query(
-          `UPDATE sites 
-           SET subscription_status = ?, stripe_customer_id = ? 
-           WHERE user_email = ?`,
-          ['active', stripeCustomerId, customerEmail]
+          `UPDATE sites SET subscription_status = 'active', stripe_customer_id = ? WHERE user_email = ?`,
+          [stripeCustomerId, customerEmail]
         );
         console.log(`✅ Subscription for ${customerEmail} is now active.`);
       } catch (dbError) {
-        console.error('Database error updating subscription:', dbError);
+        console.error('Database error activating subscription:', dbError);
       }
-
       break;
-    
-    // You can add more event types here later, like...
+
+    case 'customer.subscription.updated':
+      const subscriptionUpdated = event.data.object;
+      const newStatus = subscriptionUpdated.status; // e.g., 'active', 'past_due', 'canceled'
+      
+      try {
+        await db.query(
+          `UPDATE sites SET subscription_status = ? WHERE stripe_customer_id = ?`,
+          [newStatus, stripeCustomerId]
+        );
+        console.log(`✅ Subscription for customer ${stripeCustomerId} updated to ${newStatus}.`);
+      } catch (dbError) {
+        console.error('Database error updating subscription status:', dbError);
+      }
+      break;
+
     case 'customer.subscription.deleted':
-      // Handle a canceled subscription
+      const subscriptionDeleted = event.data.object;
+      
+      try {
+        await db.query(
+          `UPDATE sites SET subscription_status = 'canceled' WHERE stripe_customer_id = ?`,
+          [stripeCustomerId]
+        );
+        console.log(`✅ Subscription for customer ${stripeCustomerId} has been canceled.`);
+      } catch (dbError) {
+        console.error('Database error canceling subscription:', dbError);
+      }
       break;
 
     default:

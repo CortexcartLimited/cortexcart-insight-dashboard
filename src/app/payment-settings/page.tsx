@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/app/components/Layout';
 import { useRouter } from 'next/navigation';
 import ManageBillingButton from '@/app/components/ManageBillingButton';
+import Link from 'next/link';
 
 const PaymentSettingsPage = () => {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
