@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/app/components/Layout';
 import { useRouter } from 'next/navigation';
 import ManageBillingButton from '@/app/components/ManageBillingButton';
-import Link from 'next/link';
+import SubscriptionDetails from '@/app/components/SubscriptionDetails';
 
 const PaymentSettingsPage = () => {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
@@ -75,9 +75,11 @@ const PaymentSettingsPage = () => {
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-8 border border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Billing Information</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Update your payment method and view your invoice history on our secure Stripe portal.
+          Here is a quick view of your existing plan with us, you can update your payment method and view your invoice history on our secure Stripe portal.
         </p>
+         <SubscriptionDetails />
         <ManageBillingButton />
+       
       </div>
     </Layout>
   );

@@ -1,49 +1,62 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import {db} from "@/lib/db";
-import { NextResponse } from "next/server";
-import { getPlanFromPriceId } from "@/lib/plans";
+// src/app/api/billing/my-plan/route.js
 import Stripe from 'stripe';
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { db } from '@/lib/db';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-export async function GET(request) {
+export async function GET() {
+  try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+      return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
-    try {
-        const [userRows] = await db.query(
-            'SELECT stripeSubscriptionId, stripePriceId, stripeCurrentPeriodEnd FROM users WHERE email = ? LIMIT 1',
-            [session.user.email]
-        );
-        const user = userRows[0];
+    // 1. Get the user's Stripe Customer ID from your database
+    const [userRows] = await db.query(
+      'SELECT stripe_customer_id, subscription_status FROM sites WHERE user_email = ?',
+      [session.user.email]
+    );
 
-        // If the user has no subscription/price ID, they are on the default Beta plan
-        if (!user || !user.stripeSubscriptionId) {
-            return NextResponse.json({
-                planName: 'Beta',
-                status: 'Active',
-                renewalDate: null,
-            });
-        }
-
-        // For paying users, get the latest details directly from Stripe
-        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-
-        const planName = getPlanFromPriceId(user.stripePriceId);
-        const renewalDate = new Date(subscription.current_period_end * 1000).toLocaleDateString('en-GB', {
-            day: '2-digit', month: 'long', year: 'numeric'
-        });
-        
-        // The subscription status is "Canceled" if it's set not to renew, otherwise it's "Active".
-        const status = subscription.cancel_at_period_end ? 'Canceled' : 'Active';
-
-        return NextResponse.json({ planName, status, renewalDate });
-
-    } catch (error) {
-        console.error('Error fetching plan details:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    if (userRows.length === 0 || !userRows[0].stripe_customer_id) {
+      return NextResponse.json({ message: 'No subscription found for this user.' }, { status: 404 });
     }
+    const stripeCustomerId = userRows[0].stripe_customer_id;
+    const dbStatus = userRows[0].subscription_status;
+
+    // 2. Use the Stripe API to retrieve the subscription details
+    const subscriptions = await stripe.subscriptions.list({
+      customer: stripeCustomerId,
+      status: 'all',
+      limit: 1, // Usually a customer has only one active subscription
+    });
+
+    if (subscriptions.data.length === 0) {
+      // If Stripe has no subscription, but our DB says it does, sync it.
+      if (dbStatus === 'active') {
+        await db.query(`UPDATE sites SET subscription_status = 'inactive' WHERE stripe_customer_id = ?`, [stripeCustomerId]);
+      }
+      return NextResponse.json({ message: 'No subscription found on Stripe.' }, { status: 404 });
+    }
+
+    const sub = subscriptions.data[0];
+    const plan = sub.items.data[0].price;
+
+    // 3. Format the data to send to the frontend
+    const planDetails = {
+      status: sub.status, // e.g., 'active', 'trialing', 'past_due'
+      current_period_end: new Date(sub.current_period_end * 1000).toLocaleDateString(),
+      plan_name: plan.nickname || 'N/A', // The name of the plan, e.g., "Pro Plan"
+      price: `${(plan.unit_amount / 100).toFixed(2)} ${plan.currency.toUpperCase()}`,
+      interval: plan.recurring.interval, // e.g., 'month', 'year'
+    };
+
+    return NextResponse.json(planDetails, { status: 200 });
+
+  } catch (error) {
+    console.error('Error fetching subscription details:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
 }
