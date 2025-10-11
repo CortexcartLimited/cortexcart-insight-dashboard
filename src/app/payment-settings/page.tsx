@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/app/components/Layout';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {db} from "@/lib/db";
+import ManageBillingButton from '@/app/components/ManageBillingButton';
 
 const PaymentSettingsPage = () => {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
@@ -62,25 +61,6 @@ const PaymentSettingsPage = () => {
       setIsPortalLoading(false);
     }
   };
-  
-  const handleToggleAutoPayment = async () => {
-    const newStatus = !autoPaymentEnabled;
-    setAutoPaymentEnabled(newStatus);
-
-    try {
-      const res = await fetch('/api/stripe/manage-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ autoPaymentEnabled: newStatus }),
-      });
-      if (!res.ok) {
-        throw new Error('Failed to update setting.');
-      }
-    } catch (err) {
-      setError('Failed to update setting. Please try again.');
-      setAutoPaymentEnabled(!newStatus);
-    }
-  };
 
   return (
     <Layout>
@@ -96,13 +76,7 @@ const PaymentSettingsPage = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Update your payment method and view your invoice history on our secure Stripe portal.
         </p>
-        <button
-          onClick={handleManageBilling}
-          disabled={isPortalLoading}
-          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-        >
-          {isPortalLoading ? 'Redirecting...' : 'Manage Billing & Invoices'}
-        </button>
+        <ManageBillingButton />
       </div>
     </Layout>
   );

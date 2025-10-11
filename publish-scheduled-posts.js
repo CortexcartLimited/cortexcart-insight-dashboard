@@ -27,7 +27,7 @@ async function publishPosts() {
     console.log('Checking for scheduled posts to publish...');
 
     const [result] = await connection.query(
-      `UPDATE blog_posts 
+      `UPDATE scheduled_posts 
        SET status = 'published' 
        WHERE status = 'scheduled' AND published_at <= NOW()`
     );
