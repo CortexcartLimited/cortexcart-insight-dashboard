@@ -1,7 +1,8 @@
 // publish-scheduled-posts.js
 
-// This line is crucial to load your environment variables
-require('dotenv').config({ path: '.env.local' });
+const path = require('path');
+// This line now creates an absolute path to your .env.local file
+require('dotenv').config({ path: path.join(__dirname, '.env.production') });
 
 const mysql = require('mysql2/promise');
 
@@ -11,7 +12,7 @@ async function publishPosts() {
 
   // Check if all necessary environment variables are loaded
   if (!process.env.MYSQL_HOST || !process.env.MYSQL_USER || !process.env.MYSQL_DATABASE) {
-    console.error('❌ Error: Database environment variables are not loaded.');
+    console.error('❌ Error: Database environment variables are not loaded. Check the path in the script.');
     return;
   }
 
