@@ -14,16 +14,16 @@ export async function GET(request) {
 
     try {
         // 1. Find the user in your database
-        const [userRows] = await db.query('SELECT stripe_customer_id FROM sites WHERE email = ? LIMIT 1', [session.user.email]);
+        const [userRows] = await db.query('SELECT user_email, stripe_customer_id FROM sites WHERE user_email = ? LIMIT 1', [session.user.email]);
         const user = userRows[0];
 
-        if (!user || !user.stripeCustomerId) {
+        if (!user || !user.stripe_customer_id) {
             return NextResponse.json({ message: 'Stripe customer ID not found.' }, { status: 404 });
         }
 
         // 2. Create a Stripe Billing Portal session
         const portalSession = await stripe.billingPortal.sessions.create({
-            customer: user.stripeCustomerId,
+            customer: user.stripe_customer_id,
             return_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-settings`,
         });
 
