@@ -29,7 +29,7 @@ async function publishPosts() {
     const [result] = await connection.query(
       `UPDATE scheduled_posts 
        SET status = 'published' 
-       WHERE status = 'scheduled' AND published_at <= NOW()`
+       WHERE status = 'scheduled' AND scheduled_at <= NOW()`
     );
 
     if (result.affectedRows > 0) {
