@@ -17,7 +17,7 @@ export async function GET(req) {
 
     // Find posts that are scheduled and due
     const [postsToProcess] = await connection.query(
-      "SELECT * FROM social_posts WHERE status = 'scheduled' AND scheduled_at <= NOW()"
+      "SELECT * FROM scheduled_posts WHERE status = 'scheduled' AND scheduled_at <= NOW()"
     );
 
     if (postsToProcess.length === 0) {
