@@ -1,64 +1,97 @@
-// File: src/app/api/social/cron/route.js
-
+// src/app/api/social/cron/route.js
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { decrypt, encrypt } from '@/lib/crypto';
-import { TwitterApi } from 'twitter-api-v2';
 
-async function postToX(accessToken, refreshToken, content, userEmail) {
-    
-    const twitterClient = new TwitterApi({ clientId: process.env.X_CLIENT_ID, clientSecret: process.env.X_CLIENT_SECRET });
-    const { client: refreshedClient, accessToken: newAccessToken, refreshToken: newRefreshToken } = await twitterClient.refreshOAuth2Token(refreshToken);
+export async function GET(req) {
+  // Security check: Ensure this endpoint is only triggered by a trusted source (e.g., your server's cron job)
+  const authToken = req.headers.get('authorization');
+  if (authToken !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
 
-    if (newRefreshToken) {
-        await db.query(
-            `UPDATE social_connect SET access_token_encrypted = ?, refresh_token_encrypted = ? WHERE user_email = ? AND platform = 'x'`,
-            [encrypt(newAccessToken), encrypt(newRefreshToken), userEmail]
-        );
+  console.log('CRON JOB: Checking for scheduled social posts...');
+
+  let connection;
+  try {
+    connection = await db.getConnection();
+
+    // Find posts that are scheduled and due
+    const [postsToProcess] = await connection.query(
+      "SELECT * FROM social_posts WHERE status = 'scheduled' AND scheduled_at <= NOW()"
+    );
+
+    if (postsToProcess.length === 0) {
+      console.log('CRON JOB: No posts to publish at this time.');
+      return NextResponse.json({ message: 'No posts to publish.' });
     }
-    
-    const result = await refreshedClient.v2.tweet(content);
-    return result.data.id;
-}
 
-export async function GET() {
-    try {
-        const connection = await db.getConnection();
-        const [postsToSend] = await connection.query("SELECT * FROM scheduled_posts WHERE status = 'scheduled' AND scheduled_at <= NOW()");
+    console.log(`CRON JOB: Found ${postsToProcess.length} post(s) to process.`);
+    const results = [];
 
-        if (postsToSend.length === 0) {
-            connection.release();
-            return NextResponse.json({ message: 'No posts to send.' });
-        }
+    for (const post of postsToProcess) {
+      let endpoint;
+      const { platform, content, image_url, user_email, scheduled_at } = post;
 
-        for (const post of postsToSend) {
-            try {
-                
-                const [connections] = await connection.query('SELECT * FROM social_connect WHERE user_email = ? AND platform = ?', [post.user_email, post.platform]);
-                if (connections.length > 0) {
-                    const conn = connections[0];
-                    const refreshToken = decrypt(conn.refresh_token_encrypted);
-                    let newPostId;
-                    if (post.platform === 'x') {
-                        newPostId = await postToX(null, refreshToken, post.content, post.user_email);
-                    }
-                    if (newPostId) {
-                         await connection.query(
-                            "UPDATE scheduled_posts SET status = 'posted', likes = 0, shares = 0, impressions = 0, platform_post_id = ? WHERE id = ?",
-                            [newPostId, post.id]
-                        );
-                    }
-                }
-            } catch (postError) {
-                console.error(`Failed to process post ID ${post.id}:`, postError);
-                await connection.query("UPDATE scheduled_posts SET status = 'failed' WHERE id = ?", [post.id]);
-            }
-        }
+      switch (platform) {
+        case 'x':
+          endpoint = '/api/social/x/create-post';
+          break;
+        case 'facebook':
+          endpoint = '/api/social/facebook/create-post';
+          break;
+        case 'pinterest':
+          endpoint = '/api/social/pinterest/post';
+          break;
+        default:
+          console.error(`CRON JOB: Unknown platform for post ID ${post.id}: ${platform}`);
+          results.push({ id: post.id, status: 'failed', reason: `Unknown platform: ${platform}` });
+          continue; // Skip to the next post
+      }
+
+      try {
+        const postResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Pass a secret header to secure the internal API call
+            'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`,
+          },
+          body: JSON.stringify({
+            user_email: user_email,
+            content: content,
+            imageUrl: image_url,
+          }),
+        });
         
-        connection.release();
-        return NextResponse.json({ message: `Processed ${postsToSend.length} posts.` });
-    } catch (error) {
-        console.error('Cron job failed:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        // --- THIS IS THE IMPORTANT CHANGE ---
+        // We now capture and log the specific error message if the post fails.
+        if (!postResponse.ok) {
+          const errorData = await postResponse.json();
+          throw new Error(errorData.message || `API returned status ${postResponse.status}`);
+        }
+
+        // If successful, update the post status to 'posted'
+        await connection.query(
+          "UPDATE social_posts SET status = 'posted' WHERE id = ?",
+          [post.id]
+        );
+        console.log(`CRON JOB: Successfully posted scheduled post ID ${post.id} to ${platform}.`);
+        results.push({ id: post.id, status: 'success' });
+
+      } catch (error) {
+        console.error(`CRON JOB: FAILED to post scheduled post ID ${post.id} to ${platform}. Reason: ${error.message}`);
+        results.push({ id: post.id, status: 'failed', reason: error.message });
+        // We will not update the status in the DB, so it might be retried later.
+        // You could also set a 'failed' status here if you prefer.
+      }
     }
+
+    return NextResponse.json({ message: 'Cron job completed.', results });
+
+  } catch (error) {
+    console.error('CRON JOB: A critical error occurred:', error);
+    return new Response('Internal Server Error', { status: 500 });
+  } finally {
+    if (connection) connection.release();
+  }
 }
