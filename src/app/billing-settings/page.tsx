@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Zap, CreditCardIcon, ListChecksIcon, ArrowLeftCircle} from 'lucide-react';
+import {  CreditCardIcon, ArrowLeftCircle} from 'lucide-react';
 import Layout from '@/app/components/Layout';
 
 const BillingDetailsPage = () => {
@@ -31,8 +31,20 @@ const BillingDetailsPage = () => {
             Manage Payment Settings 
           </Link>
         </div>
+   {/* Invoices */}
+       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 flex flex-col  border border-grey-50 ">
+          <div className="flex items-center mb-4">
+            <CreditCardIcon className="h-8 w-8 text-blue-500 mr-4 flex-shrink-0" />
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">View your Invoices</h2>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
+           View your invoices and statements relating to your subscription.
+          </p>
+          <Link href="/billing-invoices" className="w-full mt-auto bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-center">
+            View Invoices 
+          </Link>
+        </div>
 
-      
 
        
 

@@ -77,9 +77,8 @@ const PaymentSettingsPage = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Here is a quick view of your existing plan with us, you can update your payment method and view your invoice history on our secure Stripe portal.
         </p>
-         <SubscriptionDetails />
+        <SubscriptionDetails />
         <ManageBillingButton />
-       
       </div>
     </Layout>
   );
