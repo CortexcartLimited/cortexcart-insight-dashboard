@@ -40,7 +40,7 @@ export async function GET(req) {
       const { platform, content, image_url, user_email, scheduled_at } = post;
 
       switch (platform) {
-        case 'x':
+           case 'x':
           endpoint = '/api/social/x/create-post';
           break;
         case 'facebook':
@@ -48,6 +48,12 @@ export async function GET(req) {
           break;
         case 'pinterest':
           endpoint = '/api/social/pinterest/post';
+          break;
+        case 'instagram':
+          endpoint = '/api/social/instagram/accounts/post';
+          break;
+        case 'youtube':
+          endpoint = '/api/social/youtube/upload-video';
           break;
         default:
           console.error(`CRON JOB: Unknown platform for post ID ${post.id}: ${platform}`);
