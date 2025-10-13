@@ -35,7 +35,7 @@ export async function GET(req) {
     const results = [];
 
     for (const post of postsToProcess) {
-      // ... (rest of your existing code for processing posts)
+      
       let endpoint;
       const { platform, content, image_url, user_email, scheduled_at } = post;
 
@@ -75,7 +75,7 @@ export async function GET(req) {
         }
 
         await connection.query(
-          "UPDATE social_posts SET status = 'posted' WHERE id = ?",
+          "UPDATE scheduled_posts SET status = 'posted' WHERE id = ?",
           [post.id]
         );
         console.log(`CRON JOB: Successfully posted scheduled post ID ${post.id} to ${platform}.`);
