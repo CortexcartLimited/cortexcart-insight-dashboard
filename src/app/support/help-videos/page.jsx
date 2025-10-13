@@ -36,21 +36,21 @@ const videos = [
     id: '1',
     title: 'Finding your GA4 Property ID',
     duration: '0.21',
-    thumbnail: 'https://img.youtube.com/vi/cJ1rQ6OjuYM/hqdefault.jpg', // Replace with actual thumbnail URL
+    thumbnail: '/cortexcart-com-logo-videos.jpg', // Replace with actual thumbnail URL
     videoUrl: 'https://www.youtube.com/embed/cJ1rQ6OjuYM', // Replace with actual video URL
   },
   {
     id: '2',
     title: 'Connecting YouTube to CortexCart',
     duration: '0.14',
-    thumbnail: 'https://img.youtube.com/vi/-bPbByoNEU0/hqdefault.jpg',
+    thumbnail: '/cortexcart-com-logo-videos.jpg',
     videoUrl: 'https://www.youtube.com/embed/-bPbByoNEU0',
   },
   {
     id: '3',
     title: 'Connecting Twitter/X to CortexCart',
     duration: '0.17',
-    thumbnail: 'https://img.youtube.com/vi/v2TedYtS0lQ/hqdefault.jpg',
+    thumbnail: '/cortexcart-com-logo-videos.jpg',
     videoUrl: 'https://www.youtube.com/embed/v2TedYtS0lQ',
   },
 ];
@@ -84,8 +84,9 @@ const HelpVideosPage = () => {
           &larr; Back to Support
         </a>
       </div>
-
+<span className="text-gray-500 block mb-4 bg-gray-50 p-2">Help Videos: 3</span>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+
         {videos.map((video) => (
           <div
             key={video.id}
@@ -98,7 +99,7 @@ const HelpVideosPage = () => {
                 alt={video.title}
                 className="absolute inset-0 w-full h-full object-cover"
               />
-              <Play className="absolute text-white text-5xl opacity-80 hover:opacity-100 transition-opacity duration-300" />
+              <Play className="absolute text-gray-900 text-5xl" />
               <span className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
                 {video.duration}
               </span>
