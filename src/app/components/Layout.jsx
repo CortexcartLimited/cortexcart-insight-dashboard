@@ -278,9 +278,7 @@ const SidebarContent = () => {
         </ul>
     )}
 </li>                <li className="pt-4 border-t border-gray-700 mt-4"><span className="px-2 text-xs font-semibold text-gray-400">Help & Support</span></li>
-                <li><a href="/install" className={getLinkClass('/install')}><PuzzlePieceIcon className="h-6 w-6 mr-3" /><span>Install Guides</span></a></li>
-                <li><a href="/faq" className={getLinkClass('/faq')}><QuestionMarkCircleIcon className="h-6 w-6 mr-3" /><span>FAQ</span></a></li>
-                <li><a href="/support" className={getLinkClass('/support')}><LifebuoyIcon className="h-6 w-6 mr-3" /><span>Support Tickets</span></a></li>
+                <li><a href="/support" className={getLinkClass('/support')}><PuzzlePieceIcon className="h-6 w-6 mr-3" /><span>Support</span></a></li>
                 
                 <li className="pt-4 border-t border-gray-700 mt-4"><span className="px-2 text-xs font-semibold text-gray-400">General</span></li>
                 <li><a href="/roadmap" className={getLinkClass('/roadmap')}><MapIcon className="h-6 w-6 mr-3" /><span>Roadmap</span></a></li>
