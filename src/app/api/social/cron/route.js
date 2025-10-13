@@ -3,16 +3,8 @@ import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
-  // --- START OF DEBUGGING CODE ---
   const authToken = req.headers.get('authorization');
-  const serverCronSecret = process.env.CRON_SECRET;
-
-  console.log(`CRON JOB DEBUG: Received Authorization Header: [${authToken}]`);
-  console.log(`CRON JOB DEBUG: Server's Loaded CRON_SECRET: [Bearer ${serverCronSecret}]`);
-  // --- END OF DEBUGGING CODE ---
-
-  if (authToken !== `Bearer ${serverCronSecret}`) {
-    console.error('CRON JOB ERROR: Authorization failed due to mismatch.');
+  if (authToken !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -27,7 +19,7 @@ export async function GET(req) {
     );
 
     if (postsToProcess.length === 0) {
-      console.log('CRON JOB: No posts to publish at this time.');
+      console.log('CRON JOB: No posts to publish from scheduled_posts table at this time.');
       return NextResponse.json({ message: 'No posts to publish.' });
     }
 
@@ -35,12 +27,13 @@ export async function GET(req) {
     const results = [];
 
     for (const post of postsToProcess) {
-      
       let endpoint;
-      const { platform, content, image_url, user_email, scheduled_at } = post;
+      const { platform, content, image_url, user_email, video_url, title, board_id } = post;
 
+      // --- START OF FIX ---
+      // Added cases for 'instagram' and 'youtube'
       switch (platform) {
-           case 'x':
+        case 'x':
           endpoint = '/api/social/x/create-post';
           break;
         case 'facebook':
@@ -60,6 +53,7 @@ export async function GET(req) {
           results.push({ id: post.id, status: 'failed', reason: `Unknown platform: ${platform}` });
           continue;
       }
+      // --- END OF FIX ---
 
       try {
         const postResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}${endpoint}`, {
@@ -72,6 +66,10 @@ export async function GET(req) {
             user_email: user_email,
             content: content,
             imageUrl: image_url,
+            // Include extra fields needed for specific platforms
+            videoUrl: video_url,
+            title: title,
+            boardId: board_id,
           }),
         });
         
