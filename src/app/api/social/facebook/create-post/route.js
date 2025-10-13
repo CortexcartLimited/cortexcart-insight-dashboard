@@ -10,6 +10,14 @@ import axios from 'axios';
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+ // --- START OF SECURITY FIX ---
+  // This checks for the internal secret key passed from our cron job.
+  const internalAuthToken = req.headers.get('authorization');
+  if (internalAuthToken !== `Bearer ${process.env.INTERNAL_API_SECRET}`) {
+    console.error('Unauthorized internal API call to /api/social/x/create-post');
+    return new Response('Unauthorized', { status: 401 });
+  }
+  // --- END OF SECURITY FIX ---
 
     try {
         const { content, imageUrl } = await req.json();
