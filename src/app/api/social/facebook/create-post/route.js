@@ -11,26 +11,20 @@ export async function POST(req) {
         const internalAuthToken = req.headers.get('authorization');
         let userEmail;
 
-        // --- START OF FIX: DUAL AUTHENTICATION ---
         if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
-            // This is an authorized internal call from the cron job
-            const { user_email } = await req.json();
-            if (!user_email) {
+            const body = await req.json();
+            if (!body.user_email) {
                 return NextResponse.json({ error: 'user_email is required for cron job posts' }, { status: 400 });
             }
-            userEmail = user_email;
+            userEmail = body.user_email;
         } else {
-            // This is a regular session-based call from a logged-in user
             const session = await getServerSession(authOptions);
             if (!session) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             userEmail = session.user.email;
         }
-        // --- END OF FIX ---
 
-        // The rest of the logic uses `userEmail` which is now set correctly
-        // for both cron and manual posts.
         const { content, imageUrl } = await req.json();
 
         const [connectRows] = await db.query(
@@ -55,7 +49,12 @@ export async function POST(req) {
 
         let response;
         if (imageUrl) {
-            const absoluteImageUrl = new URL(imageUrl, process.env.NEXTAUTH_URL).href;
+            // --- THIS IS THE FIX ---
+            // We use NEXT_PUBLIC_APP_URL for consistency and add a log.
+            const absoluteImageUrl = new URL(imageUrl, process.env.NEXT_PUBLIC_APP_URL).href;
+            console.log(`Attempting to post image to Facebook with URL: ${absoluteImageUrl}`);
+            // --- END OF FIX ---
+
             response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/photos`, { url: absoluteImageUrl, caption: content, access_token: pageAccessToken });
         } else {
             response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/feed`, { message: content, access_token: pageAccessToken });
