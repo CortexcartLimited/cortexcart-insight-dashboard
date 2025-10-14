@@ -1,5 +1,4 @@
 // src/app/api/social/facebook/create-post/route.js
-
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -8,15 +7,35 @@ import { decrypt } from '@/lib/crypto';
 import axios from 'axios';
 
 export async function POST(req) {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     try {
+        const internalAuthToken = req.headers.get('authorization');
+        let userEmail;
+
+        // --- START OF FIX: DUAL AUTHENTICATION ---
+        if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
+            // This is an authorized internal call from the cron job
+            const { user_email } = await req.json();
+            if (!user_email) {
+                return NextResponse.json({ error: 'user_email is required for cron job posts' }, { status: 400 });
+            }
+            userEmail = user_email;
+        } else {
+            // This is a regular session-based call from a logged-in user
+            const session = await getServerSession(authOptions);
+            if (!session) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+            userEmail = session.user.email;
+        }
+        // --- END OF FIX ---
+
+        // The rest of the logic uses `userEmail` which is now set correctly
+        // for both cron and manual posts.
         const { content, imageUrl } = await req.json();
 
         const [connectRows] = await db.query(
             `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
-            [session.user.email]
+            [userEmail]
         );
 
         if (connectRows.length === 0 || !connectRows[0].active_facebook_page_id) {
@@ -26,7 +45,7 @@ export async function POST(req) {
 
         const [pageRows] = await db.query(
             `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = 'facebook-page' AND page_id = ?`,
-            [session.user.email, activePageId]
+            [userEmail, activePageId]
         );
         
         if (pageRows.length === 0 || !pageRows[0].page_access_token_encrypted) {
