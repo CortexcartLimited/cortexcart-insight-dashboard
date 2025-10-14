@@ -8,34 +8,67 @@ import { decrypt } from '@/lib/crypto';
 import { TwitterApi } from 'twitter-api-v2';
 
 export async function POST(req) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  // --- START OF SECURITY FIX ---
-  // This checks for the internal secret key passed from our cron job.
-  const internalAuthToken = req.headers.get('authorization');
-  if (internalAuthToken !== `Bearer ${process.env.INTERNAL_API_SECRET}`) {
-    console.error('Unauthorized internal API call to /api/social/x/create-post');
-    return new Response('Unauthorized', { status: 401 });
-  }
-  // --- END OF SECURITY FIX ---
     try {
-        const body = await req.json();
-        const { content } = body;
+        const internalAuthToken = req.headers.get('authorization');
+        let userEmail;
+        let requestBody = await req.json(); // Read the body once
 
-        // This is a simplified example for X/Twitter
-        // You would replace this with your actual Twitter API call logic
-        console.log(`Posting to X/Twitter: ${content}`);
-        
-        // --- Your actual Twitter posting logic would go here ---
-        // const twitterClient = new TwitterApi(...);
-        // await twitterClient.v2.tweet(content);
-        
-        // Simulate a successful post for now
-        const postId = `x_${Date.now()}`;
+        // --- START OF FIX: DUAL AUTHENTICATION ---
+        if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
+            // This is an authorized internal call from the cron job.
+            // Get the email from the request body.
+            if (!requestBody.user_email) {
+                return NextResponse.json({ error: 'user_email is required for cron job posts' }, { status: 400 });
+            }
+            userEmail = requestBody.user_email;
+        } else {
+            // This is a regular session-based call from a logged-in user.
+            const session = await getServerSession(authOptions);
+            if (!session) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+            userEmail = session.user.email;
+        }
+        // --- END OF FIX ---
 
-        return NextResponse.json({ success: true, postId }, { status: 200 });
+        const { content, imageUrl } = requestBody;
+
+        if (!userEmail || !content) {
+            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+        }
+
+        const [socialConnect] = await db.query(
+            'SELECT * FROM social_connect WHERE user_email = ? AND platform = ?',
+            [userEmail, 'twitter']
+        );
+
+        if (socialConnect.length === 0) {
+            return NextResponse.json({ message: 'Twitter account not connected' }, { status: 400 });
+        }
+
+        const accessToken = decrypt(socialConnect[0].access_token_encrypted);
+        
+        const twitterClient = new TwitterApi(accessToken);
+        const readWriteClient = twitterClient.readWrite;
+
+        let mediaId;
+        if (imageUrl) {
+            // Ensure the URL is absolute for the fetch call
+            const absoluteImageUrl = new URL(imageUrl, process.env.NEXT_PUBLIC_APP_URL).href;
+            const response = await fetch(absoluteImageUrl);
+            const imageBuffer = await response.arrayBuffer();
+            // Assuming JPEG for now, you might need to make this dynamic later
+            mediaId = await twitterClient.v1.uploadMedia(Buffer.from(imageBuffer), { mimeType: 'image/jpeg' });
+        }
+
+        const postData = { text: content };
+        if (mediaId) {
+            postData.media = { media_ids: [mediaId] };
+        }
+
+        await readWriteClient.v2.tweet(postData);
+
+        return NextResponse.json({ message: 'Post created successfully on X' }, { status: 201 });
 
     } catch (error) {
         console.error("CRITICAL Error posting to X/Twitter:", error);
