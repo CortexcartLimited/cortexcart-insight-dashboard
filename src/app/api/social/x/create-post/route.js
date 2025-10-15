@@ -38,9 +38,10 @@ export async function POST(req) {
         }
 
         const [socialConnect] = await db.query(
-            'SELECT * FROM social_connect WHERE user_email = ? AND platform = ?',
-            [userEmail, 'twitter']
+            'SELECT * FROM social_connect WHERE user_email = ? AND platform IN (?, ?)',
+            [userEmail, 'twitter', 'x']
         );
+
 
         if (socialConnect.length === 0) {
             return NextResponse.json({ message: 'Twitter account not connected' }, { status: 400 });
