@@ -1,108 +1,50 @@
+// src/app/components/ImageManager.js
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { XCircleIcon, TrashIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
+import { useState, useRef } from 'react';
+import { PhotoIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import Image from 'next/image';
 
-// This sub-component is for displaying a single image
-function DisplayImage({ image, onDelete, onSelect }) {
-    const [imageError, setImageError] = useState(false);
-    const handleError = () => setImageError(true);
-    const handleDeleteClick = (e) => {
-        e.stopPropagation(); 
-        onDelete(image.id);
-    };
-
-    return (
-        <div 
-            onClick={() => onSelect(image)}
-            className="relative group aspect-square bg-gray-200 rounded-md overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-            aria-label="Select this image"
-        >
-            {imageError ? (
-                <div className="flex items-center justify-center h-full w-full bg-red-100 text-red-600"><XCircleIcon className="h-8 w-8" /></div>
-            ) : (
-                <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={image.image_url} alt={image.filename || 'User image'} className="w-full h-full object-cover" onError={handleError} />
-                    <button onClick={handleDeleteClick} className="absolute bottom-1 right-1 bg-gray-900/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10" aria-label="Delete image">
-                        <TrashIcon className="h-4 w-4" />
-                    </button>
-                </>
-            )}
-        </div>
-    );
-}
-
-export default function ImageManager({ onImageAdd }) {
-    const [images, setImages] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState('');
+const ImageManager = ({ onImageSelect, onImageRemove }) => {
+    const [selectedImage, setSelectedImage] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [error, setError] = useState('');
+    const fileInputRef = useRef(null);
 
-    const fetchImages = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const response = await fetch('/api/images');
-            if (!response.ok) throw new Error('Failed to fetch images.');
-            setImages(await response.json());
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    useEffect(() => {
-        fetchImages();
-    }, [fetchImages]);
+        setError('');
+        setIsUploading(true);
 
-    
-    // ✅ THIS WAS THE MISSING FUNCTION
-    const handleDeleteImage = async (imageId) => {
-        if (!confirm('Are you sure you want to permanently delete this image?')) {
+        // --- FIX: File validation now includes PNG ---
+        const allowedTypes = ['image/jpeg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            setError('Only JPG or PNG images are allowed.');
+            setIsUploading(false);
             return;
         }
-        setError('');
+
+        // --- FIX: Upload the file to the server ---
         try {
-            const response = await fetch(`/api/images/${imageId}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                const result = await response.json();
-                throw new Error(result.message || 'Failed to delete image.');
-            }
-            // Refresh images after delete
-            await fetchImages();
-        } catch (err) {
-            setError(err.message);
-        }
-    };
+            const formData = new FormData();
+            formData.append('file', file);
 
-    const handleFileUpload = async () => {
-        if (!selectedFile) return;
-        setIsUploading(true);
-        setError('');
-
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-
-        try {
             const response = await fetch('/api/images/upload', {
                 method: 'POST',
                 body: formData,
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const result = await response.json();
                 throw new Error(result.message || 'File upload failed.');
             }
 
-            await fetchImages();
-            setSelectedFile(null);
-            
-            const fileInput = document.getElementById('file-upload');
-            if (fileInput) fileInput.value = '';
+            const permanentUrl = result.image_url;
+            setSelectedImage(permanentUrl);
+            onImageSelect(permanentUrl); // Pass the permanent URL to the parent
 
         } catch (err) {
             setError(err.message);
@@ -110,62 +52,55 @@ export default function ImageManager({ onImageAdd }) {
             setIsUploading(false);
         }
     };
-    
-const handleFileSelected = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        setSelectedFile(file); // Keep for uploading to the manager
-        if (onImageAdd) {
-            // Create a temporary URL for the preview and pass the raw file up
-            const localImageUrl = URL.createObjectURL(file);
-            onImageAdd({ image_url: localImageUrl, file: file });
-        }
-    }
-};
 
-    const handleSelectExistingImage = (image) => {
-        if (onImageAdd) {
-            onImageAdd({ image_url: image.image_url, file: null });
+    const handleRemoveImage = () => {
+        setSelectedImage(null);
+        onImageRemove();
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''; // Reset the file input
         }
     };
 
     return (
-        <div className="p-6 bg-white shadow-md rounded-lg mt-8 border border-gray-200">
-            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Image Manager</h3>
-            <div className="space-y-4 mb-4">
-                {/* Input for adding image by URL (functionality removed for brevity, can be added back) */}
-                  <div className="flex items-center gap-2">
-                    <input
-    id="file-upload"
-    type="file"
-    accept="image/png, image/jpeg, image/gif, image/webp"
-    onChange={handleFileSelected} // Use the new handler here
-    className="flex-grow w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-
-/>
-                    <button 
-                        onClick={handleFileUpload}
-                        disabled={!selectedFile || isUploading}
-                        className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 disabled:bg-gray-400 flex items-center whitespace-nowrap"
+        <div className="p-4 border rounded-lg bg-white">
+            <h3 className="text-sm font-semibold mb-2">Image Manager</h3>
+            
+            {selectedImage ? (
+                <div className="relative group">
+                    <Image src={selectedImage} alt="Selected preview" width={200} height={120} className="w-full h-auto rounded-md" />
+                    <button
+                        onClick={handleRemoveImage}
+                        className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove image"
                     >
-                        <ArrowUpTrayIcon className="h-5 w-5 mr-2"/>
-                        {isUploading ? 'Uploading...' : 'Upload'}
+                        <XCircleIcon className="h-5 w-5" />
                     </button>
                 </div>
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {isLoading ? <p>Loading images...</p> : (
-                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto pt-4 border-t">
-                    {images.map(image => (
-                        <DisplayImage 
-                            key={image.id} 
-                            image={image} 
-                            onDelete={handleDeleteImage} 
-                            onSelect={handleSelectExistingImage} 
+            ) : (
+                <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            onChange={handleFileChange}
+                            accept="image/jpeg, image/png"
+                            disabled={isUploading}
                         />
-                    ))}
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current.click()}
+                            disabled={isUploading}
+                            className="flex-1 text-center text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md disabled:opacity-50"
+                        >
+                            {isUploading ? 'Uploading...' : 'Choose File'}
+                        </button>
+                    </div>
+                    {error && <p className="text-xs text-red-600">{error}</p>}
                 </div>
             )}
         </div>
     );
-}
+};
+
+export default ImageManager;

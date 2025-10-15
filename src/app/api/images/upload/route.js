@@ -21,18 +21,17 @@ export async function POST(request) {
         }
 
         const fileExtension = path.extname(file.name).toLowerCase();
-        if (fileExtension !== '.jpeg' && fileExtension !== '.jpg' && fileExtension !== '.png') {
+        // --- FIX: Allow PNG files ---
+        if (!['.jpeg', '.jpg', '.png'].includes(fileExtension)) {
             return NextResponse.json({ message: 'Only JPEG, JPG, or PNG files are allowed.' }, { status: 400 });
         }
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // --- THIS IS THE FIX ---
-        // Sanitize the filename to make it URL-safe
+        // --- FIX: Sanitize the filename to make it URL-safe ---
         const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '-');
         const uniqueFilename = `${Date.now()}-${sanitizedFilename}`;
-        // --- END OF FIX ---
         
         const uploadPath = path.join(process.cwd(), 'public/uploads', uniqueFilename);
         
