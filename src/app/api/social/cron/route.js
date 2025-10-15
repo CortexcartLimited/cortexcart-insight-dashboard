@@ -83,7 +83,7 @@ export async function GET(req) {
           [post.id]
         );
         await connection.query(
-          "UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social' WHERE id = ?",
+          `UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social', created_at = ${post.scheduled_at}, is_read = 0 WHERE id = ?`,
           [post.id]
         );
         console.log(`CRON JOB: Successfully posted scheduled post ID ${post.id} to ${platform}.`);
