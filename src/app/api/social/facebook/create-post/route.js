@@ -10,7 +10,7 @@ export async function POST(req) {
     try {
         const internalAuthToken = req.headers.get('authorization');
         let userEmail;
-        const requestBody = await req.json(); // <-- FIX: Read the body only once here
+        const requestBody = await req.json();
 
         if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
             // This is an authorized internal call from the cron job
@@ -29,12 +29,12 @@ export async function POST(req) {
 
         const { content, imageUrl } = requestBody; // Use the stored requestBody
 
-        // ... (The rest of your existing, correct code)
+        
         const [connectRows] = await db.query(
             `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
             [userEmail]
         );
-        // ... and so on ...
+        
 
         if (connectRows.length === 0 || !connectRows[0].active_facebook_page_id) {
             return NextResponse.json({ error: 'No active Facebook Page is set. Please select one in settings.' }, { status: 400 });
