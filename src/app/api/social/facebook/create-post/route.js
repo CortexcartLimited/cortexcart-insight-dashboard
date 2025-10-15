@@ -10,14 +10,16 @@ export async function POST(req) {
     try {
         const internalAuthToken = req.headers.get('authorization');
         let userEmail;
+        const requestBody = await req.json(); // <-- FIX: Read the body only once here
 
         if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
-            const body = await req.json();
-            if (!body.user_email) {
+            // This is an authorized internal call from the cron job
+            if (!requestBody.user_email) {
                 return NextResponse.json({ error: 'user_email is required for cron job posts' }, { status: 400 });
             }
-            userEmail = body.user_email;
+            userEmail = requestBody.user_email;
         } else {
+            // This is a regular session-based call from a logged-in user
             const session = await getServerSession(authOptions);
             if (!session) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,12 +27,14 @@ export async function POST(req) {
             userEmail = session.user.email;
         }
 
-        const { content, imageUrl } = await req.json();
+        const { content, imageUrl } = requestBody; // Use the stored requestBody
 
+        // ... (The rest of your existing, correct code)
         const [connectRows] = await db.query(
             `SELECT active_facebook_page_id FROM social_connect WHERE user_email = ? AND platform = 'facebook' LIMIT 1`,
             [userEmail]
         );
+        // ... and so on ...
 
         if (connectRows.length === 0 || !connectRows[0].active_facebook_page_id) {
             return NextResponse.json({ error: 'No active Facebook Page is set. Please select one in settings.' }, { status: 400 });
@@ -49,19 +53,19 @@ export async function POST(req) {
 
         let response;
         if (imageUrl) {
-            // --- THIS IS THE FIX ---
-            // We use NEXT_PUBLIC_APP_URL for consistency and add a log.
             const absoluteImageUrl = new URL(imageUrl, process.env.NEXT_PUBLIC_APP_URL).href;
-            console.log(`Attempting to post image to Facebook with URL: ${absoluteImageUrl}`);
-            // --- END OF FIX ---
-
             response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/photos`, { url: absoluteImageUrl, caption: content, access_token: pageAccessToken });
         } else {
             response = await axios.post(`https://graph.facebook.com/v19.0/${activePageId}/feed`, { message: content, access_token: pageAccessToken });
         }
 
         return NextResponse.json({ success: true, postId: response.data.id });
+
     } catch (error) {
+        if (error instanceof TypeError && error.message.includes('Body has already been read')) {
+             console.error("Error posting to Facebook: The request body was read more than once.");
+             return NextResponse.json({ error: 'Internal server error processing the request.' }, { status: 500 });
+        }
         console.error("Error posting to Facebook:", error.response?.data || error.message);
         return NextResponse.json({ error: 'Failed to post to Facebook.', details: error.response?.data?.error?.message }, { status: 500 });
     }

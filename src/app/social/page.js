@@ -19,6 +19,8 @@ import PlatformPostsChart from '@/app/components/PlatformPostsChart';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import MailchimpTabContent from '@/app/components/social/MailchimpTabContent';
 import dynamic from 'next/dynamic';
+import CalenderModal from '@/app/components/CalanderModal';
+
 
 const PinterestIcon = (props) => (
     <svg {...props} fill="#E60023" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.14 2.686 7.66 6.357 8.94.02-.19.03-.4.05-.61l.33-1.4a.12.12 0 0 1 .1-.1c.36-.18 1.15-.56 1.15-.56s-.3-.91-.25-1.79c.06-.9.65-2.12 1.46-2.12.68 0 1.2.51 1.2 1.12 0 .68-.43 1.7-.65 2.64-.18.78.38 1.42.92 1.42 1.58 0 2.63-2.1 2.63-4.22 0-1.8-.95-3.26-2.7-3.26-2.12 0-3.32 1.58-3.32 3.16 0 .6.22 1.25.5 1.62.03.04.04.05.02.13l-.15.65c-.05.2-.14.24-.32.08-1.05-.9-1.5-2.3-1.5-3.82 0-2.78 2.04-5.38 5.8-5.38 3.1 0 5.2 2.25 5.2 4.67 0 3.1-1.95 5.42-4.62 5.42-.9 0-1.75-.46-2.05-1l-.52 2.1c-.24 1-.92 2.25-.92 2.25s-.28.1-.32.08c-.46-.38-.68-1.2-.55-1.88l.38-1.68c.12-.55-.03-1.2-.5-1.52-1.32-.9-1.9-2.6-1.9-4.22 0-2.28 1.6-4.3 4.6-4.3 2.5 0 4.2 1.8 4.2 4.15 0 2.5-1.55 4.5-3.8 4.5-.75 0-1.45-.38-1.7-.82l-.28-.9c-.1-.4-.2-.8-.2-1.22 0-.9.42-1.68 1.12-1.68.9 0 1.5.8 1.5 1.88 0 .8-.25 1.88-.58 2.8-.25.7-.5 1.4-.5 1.4s-.3.12-.35.1c-.2-.1-.3-.2-.3-.4l.02-1.12z"/></svg>
@@ -309,7 +311,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         setError('');
 
         try {
-            const scheduledAt = moment(`${scheduleDate}T${scheduleTime}`).toISOString();
+            const scheduledAt = `${scheduleDate}T${scheduleTime}:00.000Z`;
             if (moment(scheduledAt).isBefore(moment())) {
                 throw new Error('You cannot schedule a post in the past.');
             }
@@ -487,7 +489,11 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
                     </div>
                     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="font-semibold text-lg mb-4">Upcoming Posts</h3>
+                       
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-semibold text-lg">Upcoming Posts</h3>
+                            
+                        </div>
                         <div className="space-y-3 max-h-96 overflow-y-auto">
                             {scheduledPosts.length > 0 ? scheduledPosts.slice(0, 5).map(post => {
                                 const platform = PLATFORMS[post.resource.platform];
@@ -512,6 +518,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                     <ImageManager onImageAdd={handleImageAdded} />
                 </div>
             </div>
+            
         </>
     );
 };
@@ -1187,7 +1194,9 @@ export default function SocialMediaManagerPage() {
 
             {activeTab === 'Demographics' && <DemographicsTabContent />} 
             {activeTab === 'Mailchimp' && <MailchimpTabContent />}
-            
+          <CalenderModal id="CalenderModal" />
+
+
         </Layout>
     );
 }
