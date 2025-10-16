@@ -306,7 +306,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
 
-   const handleSchedulePost = async (e) => {
+  const handleSchedulePost = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -325,7 +325,8 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 platform: selectedPlatform,
                 content: postContent,
                 imageUrl: selectedImageUrl, // Send the permanent URL
-                // ... other platform-specific fields like boardId, instagramUserId etc.
+                scheduledAt: scheduledAt, // This was missing
+                hashtags: [], // Sending an empty array for hashtags
             }),
         });
 
@@ -334,11 +335,10 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
             throw new Error(errorData.message || 'Failed to schedule the post.');
         }
         onPostScheduled(); // This should close the modal and refresh
-    } catch (err) { 
-        setError(err.message); 
+    } catch (err) {
+        setError(err.message);
     }
 };
-
     const isOverLimit = postContent.length > currentPlatform.maxLength;
 
     return (
