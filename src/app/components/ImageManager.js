@@ -21,7 +21,7 @@ const DisplayImage = ({ image, onDelete, onSelect, isSelected }) => {
                 <div className="flex items-center justify-center h-full w-full bg-red-100 text-red-600"><XCircleIcon className="h-8 w-8" /></div>
             ) : (
                 <>
-                    <Image src={image.image_url} alt={image.filename || 'User image'} width={150} height={150} className="w-full h-full object-cover" onError={() => setImageError(true)} />
+                    <Image src={image.image_url} alt={image.filename || 'User upload'} width={150} height={150} className="w-full h-full object-cover" onError={() => setImageError(true)} />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity"></div>
                     <button onClick={handleDeleteClick} className="absolute bottom-1 right-1 bg-gray-900/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10" aria-label="Delete image">
                         <TrashIcon className="h-4 w-4" />
@@ -37,7 +37,7 @@ const DisplayImage = ({ image, onDelete, onSelect, isSelected }) => {
     );
 };
 
-export default function ImageManager({ onImageSelect }) {
+export default function ImageManager({ onImageSelect, selectedImageUrl }) {
     const [images, setImages] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -68,26 +68,21 @@ export default function ImageManager({ onImageSelect }) {
             const response = await fetch(`/api/images/${imageId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error((await response.json()).message || 'Failed to delete image.');
             await fetchImages();
+            // If the deleted image was the selected one, unselect it
+            if (images.find(img => img.id === imageId)?.image_url === selectedImageUrl) {
+                onImageSelect(''); 
+            }
         } catch (err) {
             setError(err.message);
         }
     };
     
-    // --- THIS IS THE MAIN FIX ---
-    // This function now automatically uploads the file when selected.
     const handleFileSelectedAndUpload = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
         setIsUploading(true);
         setError('');
-
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        if (!allowedTypes.includes(file.type)) {
-            setError('Only JPG or PNG images are allowed.');
-            setIsUploading(false);
-            return;
-        }
 
         const formData = new FormData();
         formData.append('file', file);
@@ -104,11 +99,9 @@ export default function ImageManager({ onImageSelect }) {
             }
 
             const newImage = await response.json();
-            // Add new image to the top of the list and automatically select it
             setImages(prev => [newImage, ...prev]);
-            onImageSelect(newImage.image_url); // Pass permanent URL to parent
+            onImageSelect(newImage.image_url);
             
-            // Clear the file input for the next upload
             if (fileInputRef.current) fileInputRef.current.value = '';
 
         } catch (err) {
@@ -122,7 +115,7 @@ export default function ImageManager({ onImageSelect }) {
         <div className="p-6 bg-white shadow-md rounded-lg mt-8 border border-gray-200">
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Image Manager</h3>
             <div className="space-y-4 mb-4">
-                  <div>
+                <div>
                     <input
                         id="file-upload"
                         ref={fileInputRef}
@@ -146,13 +139,14 @@ export default function ImageManager({ onImageSelect }) {
             <div className="border-t pt-4">
                 <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase">Your Library</h4>
                 {isLoading ? <p>Loading images...</p> : (
-                    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto pt-4 border-top">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 max-h-60 overflow-y-auto pt-2">
                         {images.map(image => (
                             <DisplayImage 
                                 key={image.id} 
                                 image={image} 
                                 onDelete={handleDeleteImage} 
-                                onSelect={onImageSelect} // Pass the permanent URL up
+                                onSelect={onImageSelect}
+                                isSelected={selectedImageUrl === image.image_url}
                             />
                         ))}
                     </div>

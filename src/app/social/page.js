@@ -306,32 +306,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
 
-    const handleSchedulePost = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        try {
-            const scheduledAt = `${scheduleDate}T${scheduleTime}:00.000Z`;
-            if (moment(scheduledAt).isBefore(moment())) {
-                throw new Error('You cannot schedule a post in the past.');
-            }
-            const response = await fetch('/api/social/schedule/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    platform: selectedPlatform,
-                    content: postContent,
-                    hashtags: [], 
-                    scheduledAt: scheduledAt,
-                }),
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to schedule the post.');
-            }
-            onPostScheduled();
-        } catch (err) { setError(err.message); }
-    };
+    handleSchedulePost
 
     const isOverLimit = postContent.length > currentPlatform.maxLength;
 
@@ -515,7 +490,10 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                             )}
                         </div>
                     </div>
-                    <ImageManager onImageAdd={handleImageAdded} />
+                    <ImageManager 
+    onImageSelect={(url) => setSelectedImageUrl(url)} 
+    selectedImageUrl={selectedImageUrl}
+/>
                 </div>
             </div>
             
@@ -1068,6 +1046,7 @@ export default function SocialMediaManagerPage() {
     const [activeTab, setActiveTab] = useState('Composer');
     const [scheduledPosts, setScheduledPosts] = useState([]);
     const [optimalTimes, setOptimalTimes] = useState([]);
+     const [selectedImageUrl, setSelectedImageUrl] = useState('');
 
     // --- LIFTED STATE ---
     const [postContent, setPostContent] = useState('');
