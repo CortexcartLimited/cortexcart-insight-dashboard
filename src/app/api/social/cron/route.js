@@ -19,7 +19,7 @@ export async function GET(req) {
     );
 
     if (postsToProcess.length === 0) {
-      console.log('CRON JOB: No posts to publish from scheduled_posts table at this time.');
+      console.log('CRON JOB: No posts to publish at this time.');
       return NextResponse.json({ message: 'No posts to publish.' });
     }
 
@@ -28,46 +28,58 @@ export async function GET(req) {
 
     for (const post of postsToProcess) {
       let endpoint;
+      let payload = {}; // Define payload object
       const { platform, content, image_url, user_email, video_url, title, board_id } = post;
 
-      switch (platform) {
-        case 'x':
-          endpoint = '/api/social/x/create-post';
-          break;
-        case 'facebook':
-          endpoint = '/api/social/facebook/create-post';
-          break;
-        case 'pinterest':
-          endpoint = '/api/social/pinterest/post';
-          break;
-        case 'instagram':
-          endpoint = '/api/social/instagram/accounts/post';
-          break;
-        case 'youtube':
-          endpoint = '/api/social/youtube/upload-video';
-          break;
-        default:
-          console.error(`CRON JOB: Unknown platform for post ID ${post.id}: ${platform}`);
-          results.push({ id: post.id, status: 'failed', reason: `Unknown platform: ${platform}` });
-          continue;
-      }
-
       try {
+        // --- START OF FIX ---
+        // Build the payload based on the platform
+        switch (platform) {
+          case 'x':
+            endpoint = '/api/social/x/create-post';
+            payload = { user_email, content, imageUrl: image_url };
+            break;
+          case 'facebook':
+            endpoint = '/api/social/facebook/create-post';
+            payload = { user_email, content, imageUrl: image_url };
+            break;
+          case 'pinterest':
+            endpoint = '/api/social/pinterest/post';
+            payload = { user_email, description: content, imageUrl: image_url, title: title, boardId: board_id };
+            break;
+          case 'instagram':
+            endpoint = '/api/social/instagram/accounts/post';
+            // Fetch the active instagram_user_id for this user
+            const [igRows] = await connection.query(
+              `SELECT active_instagram_user_id FROM social_connect WHERE user_email = ? AND platform = 'instagram'`,
+              [user_email]
+            );
+            if (!igRows.length || !igRows[0].active_instagram_user_id) {
+              throw new Error(`No active Instagram account found for user ${user_email}`);
+            }
+            payload = { 
+              user_email, 
+              caption: content, 
+              imageUrl: image_url, 
+              instagramUserId: igRows[0].active_instagram_user_id 
+            };
+            break;
+          case 'youtube':
+            endpoint = '/api/social/youtube/upload-video';
+            payload = { user_email, description: content, videoUrl: video_url, title: title };
+            break;
+          default:
+            throw new Error(`Unknown platform: ${platform}`);
+        }
+        // --- END OF FIX ---
+
         const postResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}${endpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`,
           },
-          body: JSON.stringify({
-            user_email: user_email,
-            content: content,
-            imageUrl: image_url,
-            // Include extra fields needed for specific platforms
-            videoUrl: video_url,
-            title: title,
-            boardId: board_id,
-          }),
+          body: JSON.stringify(payload), // Send the constructed payload
         });
         
         if (!postResponse.ok) {
@@ -91,6 +103,11 @@ export async function GET(req) {
       } catch (error) {
         console.error(`CRON JOB: FAILED to post scheduled post ID ${post.id} to ${platform}. Reason: ${error.message}`);
         results.push({ id: post.id, status: 'failed', reason: error.message });
+        // Optional: Update post status to 'failed' in DB
+        await connection.query(
+          "UPDATE scheduled_posts SET status = 'failed' WHERE id = ?",
+          [post.id]
+        );
       }
     }
 

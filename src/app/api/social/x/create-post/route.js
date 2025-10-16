@@ -1,75 +1,63 @@
 // src/app/api/social/x/create-post/route.js
-
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { decrypt } from '@/lib/crypto';
 import { TwitterApi } from 'twitter-api-v2';
+import { decrypt } from '@/lib/crypto';
 
 export async function POST(req) {
+    let userEmail;
+    const requestBody = await req.json();
+
     try {
         const internalAuthToken = req.headers.get('authorization');
-        let userEmail;
-        let requestBody = await req.json(); // Read the body once
 
-        // --- START OF FIX: DUAL AUTHENTICATION ---
+        // --- START OF FIX ---
         if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
-            // This is an authorized internal call from the cron job.
-            // Get the email from the request body.
+            // Authorized internal call from the cron job
             if (!requestBody.user_email) {
                 return NextResponse.json({ error: 'user_email is required for cron job posts' }, { status: 400 });
             }
             userEmail = requestBody.user_email;
         } else {
-            // This is a regular session-based call from a logged-in user.
+            // Regular session-based call from a logged-in user
             const session = await getServerSession(authOptions);
             if (!session) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             userEmail = session.user.email;
         }
-        // --- END OF FIX ---
 
-        const { content, imageUrl } = requestBody;
+        const { content } = requestBody;
 
-        if (!userEmail || !content) {
-            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+        if (!content) {
+            return NextResponse.json({ error: 'Content is required.' }, { status: 400 });
         }
 
-        const [socialConnect] = await db.query(
-            'SELECT * FROM social_connect WHERE user_email = ? AND platform IN (?, ?)',
-            [userEmail, 'twitter', 'x']
+        const [userRows] = await db.query(
+            'SELECT x_oauth_token_encrypted, x_oauth_token_secret_encrypted FROM social_connect WHERE user_email = ?',
+            [userEmail]
         );
 
-
-        if (socialConnect.length === 0) {
-            return NextResponse.json({ message: 'Twitter account not connected' }, { status: 400 });
+        if (userRows.length === 0 || !userRows[0].x_oauth_token_encrypted || !userRows[0].x_oauth_token_secret_encrypted) {
+            return NextResponse.json({ error: 'X/Twitter credentials not found.' }, { status: 404 });
         }
 
-        const accessToken = decrypt(socialConnect[0].access_token_encrypted);
-        
-        const twitterClient = new TwitterApi(accessToken);
-        const readWriteClient = twitterClient.readWrite;
+        const accessToken = decrypt(userRows[0].x_oauth_token_encrypted);
+        const accessSecret = decrypt(userRows[0].x_oauth_token_secret_encrypted);
 
-        let mediaId;
-        if (imageUrl) {
-            // Ensure the URL is absolute for the fetch call
-            const absoluteImageUrl = new URL(imageUrl, process.env.NEXT_PUBLIC_APP_URL).href;
-            const response = await fetch(absoluteImageUrl);
-            const imageBuffer = await response.arrayBuffer();
-            // Assuming JPEG for now, you might need to make this dynamic later
-            mediaId = await twitterClient.v1.uploadMedia(Buffer.from(imageBuffer), { mimeType: 'image/jpeg' });
-        }
+        const client = new TwitterApi({
+            appKey: process.env.X_API_KEY,
+            appSecret: process.env.X_API_SECRET_KEY,
+            accessToken: accessToken,
+            accessSecret: accessSecret,
+        });
 
-        const postData = { text: content };
-        if (mediaId) {
-            postData.media = { media_ids: [mediaId] };
-        }
+        const { data: createdTweet } = await client.v2.tweet(content);
+        // --- END OF FIX ---
 
-        await readWriteClient.v2.tweet(postData);
-
-        return NextResponse.json({ message: 'Post created successfully on X' }, { status: 201 });
+        return NextResponse.json({ success: true, tweetId: createdTweet.id });
 
     } catch (error) {
         console.error("CRITICAL Error posting to X/Twitter:", error);
