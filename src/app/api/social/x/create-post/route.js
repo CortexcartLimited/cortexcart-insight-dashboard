@@ -13,7 +13,6 @@ export async function POST(req) {
     try {
         const internalAuthToken = req.headers.get('authorization');
 
-        // --- START OF FIX ---
         if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
             // Authorized internal call from the cron job
             if (!requestBody.user_email) {
@@ -35,17 +34,21 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Content is required.' }, { status: 400 });
         }
 
+        // --- START OF FIX ---
+        // Corrected the query to use the columns that are already in use.
         const [userRows] = await db.query(
-            'SELECT x_oauth_token_encrypted, x_oauth_token_secret_encrypted FROM social_connect WHERE user_email = ?',
+            "SELECT access_token_encrypted, refresh_token_encrypted FROM social_connect WHERE user_email = ? AND platform = 'x'",
             [userEmail]
         );
 
-        if (userRows.length === 0 || !userRows[0].x_oauth_token_encrypted || !userRows[0].x_oauth_token_secret_encrypted) {
+        if (userRows.length === 0 || !userRows[0].access_token_encrypted || !userRows[0].refresh_token_encrypted) {
             return NextResponse.json({ error: 'X/Twitter credentials not found.' }, { status: 404 });
         }
 
-        const accessToken = decrypt(userRows[0].x_oauth_token_encrypted);
-        const accessSecret = decrypt(userRows[0].x_oauth_token_secret_encrypted);
+        // Use the correct columns to decrypt the tokens.
+        const accessToken = decrypt(userRows[0].access_token_encrypted);
+        const accessSecret = decrypt(userRows[0].refresh_token_encrypted);
+        // --- END OF FIX ---
 
         const client = new TwitterApi({
             appKey: process.env.X_API_KEY,
@@ -55,7 +58,6 @@ export async function POST(req) {
         });
 
         const { data: createdTweet } = await client.v2.tweet(content);
-        // --- END OF FIX ---
 
         return NextResponse.json({ success: true, tweetId: createdTweet.id });
 
