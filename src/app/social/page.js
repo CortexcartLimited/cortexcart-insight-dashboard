@@ -435,20 +435,23 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                             </select>
                         </div>
                     )}
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-gap-8" style={{ minHeight: '250px' }}>
-                        <div className="w-full h-full border-2 border-dashed rounded-lg bg-gray-50 flex items-center justify-center relative overflow-hidden">
-                            {postImages.length > 0 ? (
-                                <>
-                                    <Image src={postImages[0].image_url} alt="Staged post preview" layout="fill" className="object-cover" />
-                                    <button onClick={() => handleRemoveImage(postImages[0].id)} title="Remove image" className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/50 text-white transition-colors hover:bg-red-600">
-                                        <XCircleIcon className="h-5 w-5" />
-                                    </button>
-                                </>
-                            ) : (
-                                <p className="text-sm text-gray-400">Your social image or video thumbnail will appear here</p>
-                            )}
-                        </div>
-                    </div>
+                   {/* --- IMAGE STAGING AREA (PREVIEW) --- */}
+{selectedImageUrl && (
+    <div className="mb-4 relative group">
+        <p className="text-xs text-gray-500 mb-1">Attached Image:</p>
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
+            <Image src={selectedImageUrl} alt="Selected image preview" layout="fill" objectFit="cover" />
+        </div>
+        <button
+            type="button"
+            onClick={() => setSelectedImageUrl('')} // This clears the image
+            className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Remove image"
+        >
+            <XCircleIcon className="h-5 w-5" />
+        </button>
+    </div>
+)}
                     <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder={currentPlatform.placeholder} className="mt-4 w-full h-64 p-4 border border-gray-200 rounded-md"/>
                     <div className="mt-4 flex justify-between items-center">
                         <span className={`text-sm font-medium ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>{postContent.length}/{currentPlatform.maxLength}</span>
