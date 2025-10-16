@@ -139,7 +139,7 @@ export default function ImageManager({ onImageSelect, selectedImageUrl }) {
             <div className="border-t pt-4">
                 <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase">Your Library</h4>
                 {isLoading ? <p>Loading images...</p> : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 max-h-60 overflow-y-auto pt-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-4 max-h-60 overflow-y-auto pt-2">
                         {images.map(image => (
                             <DisplayImage 
                                 key={image.id} 
