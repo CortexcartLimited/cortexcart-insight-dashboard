@@ -306,7 +306,38 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
 
-    handleSchedulePost
+   const handleSchedulePost = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+        // The timezone fix is included here
+        const scheduledAt = `${scheduleDate}T${scheduleTime}:00.000Z`;
+
+        if (moment(scheduledAt).isBefore(moment())) {
+            throw new Error('You cannot schedule a post in the past.');
+        }
+
+        const response = await fetch('/api/social/schedule/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                platform: selectedPlatform,
+                content: postContent,
+                imageUrl: selectedImageUrl, // Send the permanent URL
+                // ... other platform-specific fields like boardId, instagramUserId etc.
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to schedule the post.');
+        }
+        onPostScheduled(); // This should close the modal and refresh
+    } catch (err) { 
+        setError(err.message); 
+    }
+};
 
     const isOverLimit = postContent.length > currentPlatform.maxLength;
 
