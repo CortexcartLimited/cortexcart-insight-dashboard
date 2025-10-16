@@ -90,7 +90,7 @@ export async function GET(req) {
         );
        const formattedScheduledAt = formatForMySQL(post.scheduled_at);
         await connection.query(
-          `UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social', created_at = ?, is_read = 0 WHERE id = ?`,
+          `UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social', is_read = 0 WHERE id = ?`,
           [formattedScheduledAt, post.id]
         );
         console.log(`CRON JOB: Successfully posted scheduled post ID ${post.id} to ${platform}.`);
