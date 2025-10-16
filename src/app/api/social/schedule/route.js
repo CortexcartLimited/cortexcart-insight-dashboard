@@ -37,7 +37,10 @@ export async function POST(request) {
     const userEmail = session.user.email;
 
     try {
-        const { platform, content, hashtags, scheduledAt } = await request.json();
+        // --- FIX START ---
+        // Destructure imageUrl along with the other fields
+        const { platform, content, hashtags, scheduledAt, imageUrl } = await request.json();
+        // --- FIX END ---
 
         if (!platform || !content || !scheduledAt) {
             return NextResponse.json({ message: 'Missing required fields.' }, { status: 400 });
@@ -47,21 +50,22 @@ export async function POST(request) {
             return NextResponse.json({ message: 'Scheduled time cannot be in the past.' }, { status: 400 });
         }
 
-        // *** THIS IS THE FIX ***
         const mysqlFormattedDateTime = formatForMySQL(scheduledAt);
 
+        // --- FIX START ---
+        // Updated the query to include the image_url column
         const query = `
-            INSERT INTO scheduled_posts (user_email, platform, content, hashtags, scheduled_at)
-            VALUES (?, ?, ?, ?, ?);
+            INSERT INTO scheduled_posts (user_email, platform, content, hashtags, scheduled_at, image_url)
+            VALUES (?, ?, ?, ?, ?, ?);
         `;
-        // Use the formatted date in the query
-        await db.query(query, [userEmail, platform, content, JSON.stringify(hashtags), mysqlFormattedDateTime]);
+        // Pass imageUrl as the last parameter
+        await db.query(query, [userEmail, platform, content, JSON.stringify(hashtags), mysqlFormattedDateTime, imageUrl]);
+        // --- FIX END ---
         
         return NextResponse.json({ message: 'Post scheduled successfully!' }, { status: 201 });
 
     } catch (error) {
         console.error('Error scheduling post:', error);
-        // Provide the original error message for better debugging
         return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }

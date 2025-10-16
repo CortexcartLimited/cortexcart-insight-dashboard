@@ -306,13 +306,15 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     };
 
-  const handleSchedulePost = async (e) => {
+ const handleSchedulePost = async (e) => {
     e.preventDefault();
     setError('');
 
     try {
-        // The timezone fix is included here
-        const scheduledAt = `${scheduleDate}T${scheduleTime}:00.000Z`;
+        // --- THIS IS THE FIX ---
+        // Use moment to parse the local date/time and convert it to a UTC ISO string
+        const scheduledAt = moment(`${scheduleDate} ${scheduleTime}`).toISOString();
+        // --- END OF FIX ---
 
         if (moment(scheduledAt).isBefore(moment())) {
             throw new Error('You cannot schedule a post in the past.');
@@ -324,9 +326,9 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
             body: JSON.stringify({
                 platform: selectedPlatform,
                 content: postContent,
-                imageUrl: selectedImageUrl, // Send the permanent URL
-                scheduledAt: scheduledAt, // This was missing
-                hashtags: [], // Sending an empty array for hashtags
+                imageUrl: selectedImageUrl,
+                scheduledAt: scheduledAt,
+                hashtags: [], // Maintained from previous fix
             }),
         });
 
@@ -334,9 +336,9 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
             const errorData = await response.json();
             throw new Error(errorData.message || 'Failed to schedule the post.');
         }
-        onPostScheduled(); // This should close the modal and refresh
-    } catch (err) {
-        setError(err.message);
+        onPostScheduled();
+    } catch (err) { 
+        setError(err.message); 
     }
 };
     const isOverLimit = postContent.length > currentPlatform.maxLength;
