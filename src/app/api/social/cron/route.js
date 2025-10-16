@@ -2,12 +2,6 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
-// Helper function to format a date for MySQL DATETIME
-function formatForMySQL(date) {
-    if (!date) return null;
-    return new Date(date).toISOString().slice(0, 19).replace('T', ' ');
-}
-
 export async function GET(req) {
   const authToken = req.headers.get('authorization');
   if (authToken !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -36,8 +30,6 @@ export async function GET(req) {
       let endpoint;
       const { platform, content, image_url, user_email, video_url, title, board_id } = post;
 
-      // --- START OF FIX ---
-      // Added cases for 'instagram' and 'youtube'
       switch (platform) {
         case 'x':
           endpoint = '/api/social/x/create-post';
@@ -59,7 +51,6 @@ export async function GET(req) {
           results.push({ id: post.id, status: 'failed', reason: `Unknown platform: ${platform}` });
           continue;
       }
-      // --- END OF FIX ---
 
       try {
         const postResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}${endpoint}`, {
@@ -88,11 +79,12 @@ export async function GET(req) {
           "UPDATE scheduled_posts SET status = 'posted' WHERE id = ?",
           [post.id]
         );
-       const formattedScheduledAt = formatForMySQL(post.scheduled_at);
+        
         await connection.query(
-          `UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social', is_read = 0 WHERE id = ?`,
-          [formattedScheduledAt, post.id]
+          `UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social', is_read = '0' WHERE id = ?`,
+          [post.id]
         );
+
         console.log(`CRON JOB: Successfully posted scheduled post ID ${post.id} to ${platform}.`);
         results.push({ id: post.id, status: 'success' });
 
