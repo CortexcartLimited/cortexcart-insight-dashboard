@@ -2,6 +2,12 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+// Helper function to format a date for MySQL DATETIME
+function formatForMySQL(date) {
+    if (!date) return null;
+    return new Date(date).toISOString().slice(0, 19).replace('T', ' ');
+}
+
 export async function GET(req) {
   const authToken = req.headers.get('authorization');
   if (authToken !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -82,9 +88,10 @@ export async function GET(req) {
           "UPDATE scheduled_posts SET status = 'posted' WHERE id = ?",
           [post.id]
         );
+       const formattedScheduledAt = formatForMySQL(post.scheduled_at);
         await connection.query(
-          `UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social', created_at = ${post.scheduled_at}, is_read = 0 WHERE id = ?`,
-          [post.id]
+          `UPDATE notifications SET message = 'A scheduled post has been posted', link = '/social', created_at = ?, is_read = 0 WHERE id = ?`,
+          [formattedScheduledAt, post.id]
         );
         console.log(`CRON JOB: Successfully posted scheduled post ID ${post.id} to ${platform}.`);
         results.push({ id: post.id, status: 'success' });
