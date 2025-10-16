@@ -127,7 +127,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadMessage, setUploadMessage] = useState('');
-
+    const [selectedImageUrl, setSelectedImageUrl] = useState('');
     useEffect(() => {
         // Set default selection when data becomes available
         if (selectedPlatform === 'pinterest' && pinterestBoards && pinterestBoards.length > 0 && !selectedBoardId) {
@@ -1073,11 +1073,12 @@ const ScheduleTabWithNoSSR = dynamic(
 );
 
 export default function SocialMediaManagerPage() {
+     
      const { status } = useSession();
     const [activeTab, setActiveTab] = useState('Composer');
     const [scheduledPosts, setScheduledPosts] = useState([]);
     const [optimalTimes, setOptimalTimes] = useState([]);
-     const [selectedImageUrl, setSelectedImageUrl] = useState('');
+    
 
     // --- LIFTED STATE ---
     const [postContent, setPostContent] = useState('');
