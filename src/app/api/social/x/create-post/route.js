@@ -66,12 +66,16 @@ export async function POST(req) {
 
         const accessToken = decrypt(userRows[0].access_token_encrypted);
         const accessSecret = decrypt(userRows[0].refresh_token_encrypted);
+const appKey = requestBody.x_api_key || process.env.X_API_KEY;
+const appSecret = requestBody.x_api_secret_key || process.env.X_API_SECRET_KEY;
 
         const client = new TwitterApi({
             appKey: appKeyFromEnv,
             appSecret: appSecretFromEnv,
             accessToken: accessToken,
             accessSecret: accessSecret,
+            appKey: appKey,
+            appSecret: appSecret,
         });
 
         const { data: createdTweet } = await client.v2.tweet(content);

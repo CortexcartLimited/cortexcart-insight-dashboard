@@ -35,10 +35,17 @@ export async function GET(req) {
         // --- START OF FIX ---
         // Build the payload based on the platform
         switch (platform) {
-          case 'x':
-            endpoint = '/api/social/x/create-post';
-            payload = { user_email, content, imageUrl: image_url };
-            break;
+        case 'x':
+    endpoint = '/api/social/x/create-post';
+    payload = {
+        user_email,
+        content,
+        imageUrl: image_url,
+        // --- Add App Keys for testing ---
+        x_api_key: process.env.X_API_KEY,
+        x_api_secret_key: process.env.X_API_SECRET_KEY
+    };
+    break;
           case 'facebook':
             endpoint = '/api/social/facebook/create-post';
             payload = { user_email, content, imageUrl: image_url };
