@@ -7,13 +7,19 @@ import { TwitterApi } from 'twitter-api-v2';
 import { decrypt } from '@/lib/crypto';
 
 export async function POST(req) {
+    // --- START OF DETAILED ENVIRONMENT LOGGING ---
     console.log("--- X/Twitter Post API Endpoint Triggered ---");
-    // Read directly from process.env using corrected names
+    console.log("--- Dumping process.env ---");
+    // Log the entire process.env object to see what's available
+    console.log(process.env);
+    console.log("--- End of process.env dump ---");
+
     const appKeyFromEnv = process.env.x_client_id;
     const appSecretFromEnv = process.env.x_client_secret;
 
-    console.log(`Is x_client_id present? ${!!appKeyFromEnv}`);
-    console.log(`Is x_client_secret present? ${!!appSecretFromEnv}`);
+    console.log(`Is x_client_id present in dumped env? ${!!appKeyFromEnv}`);
+    console.log(`Is x_client_secret present in dumped env? ${!!appSecretFromEnv}`);
+    // --- END OF DETAILED ENVIRONMENT LOGGING ---
 
     let userEmail;
     const requestBody = await req.json();
@@ -21,6 +27,8 @@ export async function POST(req) {
     try {
         if (!appKeyFromEnv || !appSecretFromEnv) {
             console.error("CRITICAL ERROR: x_client_id or x_client_secret environment variables are missing or empty.");
+            // Log again just before throwing
+            console.log("process.env keys available right before error:", Object.keys(process.env).sort());
             throw new Error("Application is not configured correctly for X/Twitter API. Consumer keys (client ID/secret) are missing.");
         }
 
