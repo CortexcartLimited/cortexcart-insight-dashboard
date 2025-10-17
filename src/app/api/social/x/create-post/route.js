@@ -16,6 +16,7 @@ export async function POST(req) {
 
     let userEmail;
     const requestBody = await req.json();
+    let accessToken, accessSecret; // Define outside try block for wider scope in error logging
 
     try {
         if (!appKeyFromEnv || !appSecretFromEnv) {
@@ -45,6 +46,7 @@ export async function POST(req) {
         if (!content) {
             return NextResponse.json({ error: 'Content is required.' }, { status: 400 });
         }
+         console.log(`Tweet content: "${content}"`); // Log the content
 
         const [userRows] = await db.query(
             "SELECT access_token_encrypted, refresh_token_encrypted FROM social_connect WHERE user_email = ? AND platform = 'x'",
@@ -56,23 +58,16 @@ export async function POST(req) {
             return NextResponse.json({ error: 'X/Twitter credentials not found for this user.' }, { status: 404 });
         }
 
-        // --- START OF TOKEN DEBUGGING ---
-        let accessToken, accessSecret;
         try {
             console.log("Attempting to decrypt tokens...");
             accessToken = decrypt(userRows[0].access_token_encrypted);
             accessSecret = decrypt(userRows[0].refresh_token_encrypted);
-
-            // Log partial decrypted tokens FOR DEBUGGING ONLY
             console.log(`Decrypted Access Token (first 5): ${accessToken ? accessToken.substring(0, 5) : 'null or empty'}...`);
             console.log(`Decrypted Access Secret (first 5): ${accessSecret ? accessSecret.substring(0, 5) : 'null or empty'}...`);
-
         } catch (decryptionError) {
             console.error("CRITICAL Error decrypting user tokens:", decryptionError.message);
             throw new Error("Failed to decrypt user credentials.");
         }
-        // --- END OF TOKEN DEBUGGING ---
-
 
         if (!accessToken || !accessSecret) {
              console.error("Decrypted tokens are missing or empty.");
@@ -87,21 +82,42 @@ export async function POST(req) {
             accessSecret: accessSecret,
         });
 
-        console.log("Sending tweet...");
-        const { data: createdTweet } = await client.v2.tweet(content);
-        console.log(`Successfully posted tweet ID: ${createdTweet.id}`);
+        // --- START OF DETAILED TWEET ERROR HANDLING ---
+        let createdTweet;
+        try {
+            console.log("Sending tweet via client.v2.tweet...");
+            const response = await client.v2.tweet(content);
+            createdTweet = response.data; // Assuming success structure
+            console.log(`Successfully posted tweet ID: ${createdTweet.id}`);
+        } catch (tweetError) {
+            console.error("Error occurred during client.v2.tweet call:");
+            // Log everything about the error from twitter-api-v2
+            console.error("tweetError object:", JSON.stringify(tweetError, null, 2));
+            // Specifically log rate limit info if available
+            if (tweetError.rateLimit) {
+                 console.error("Rate limit info:", tweetError.rateLimit);
+            }
+             // Specifically log response body if available (might not be JSON)
+            if (tweetError.response?.data) {
+                 console.error("Twitter API raw response data:", tweetError.response.data);
+            }
+            // Re-throw the error to be caught by the outer catch block
+            throw tweetError;
+        }
+        // --- END OF DETAILED TWEET ERROR HANDLING ---
 
         return NextResponse.json({ success: true, tweetId: createdTweet.id });
 
     } catch (error) {
-        console.error("CRITICAL Error posting to X/Twitter:", error.message);
-         // Add detailed logging for 401 errors specifically
-        if (error.code === 401 || (error.response && error.response.status === 401)) {
-            console.error("Received 401 Unauthorized from Twitter API. User tokens may be invalid or expired.");
-            // Log partial tokens again right before the error
-            console.error(`Tokens used (partial): AccessToken=${accessToken ? accessToken.substring(0, 5) : 'N/A'}..., AccessSecret=${accessSecret ? accessSecret.substring(0, 5) : 'N/A'}...`);
-        } else if (error.response?.data) {
-             console.error("X/Twitter API Response Error:", error.response.data);
+        // This outer catch block now handles errors from setup OR re-thrown errors from tweet attempt
+        console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.message);
+        // Log partial tokens if available and the error happened after decryption
+        if (accessToken || accessSecret) {
+             console.error(`Tokens used (partial): AccessToken=${accessToken ? accessToken.substring(0, 5) : 'N/A'}..., AccessSecret=${accessSecret ? accessSecret.substring(0, 5) : 'N/A'}...`);
+        }
+        // Log specific API response data if available from the error object
+        if (error.response?.data) {
+             console.error("X/Twitter API Response Error (outer catch):", error.response.data);
         }
         return NextResponse.json({ error: 'Failed to post to X/Twitter.', details: error.message }, { status: 500 });
     }
