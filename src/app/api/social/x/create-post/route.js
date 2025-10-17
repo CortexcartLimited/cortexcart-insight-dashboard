@@ -7,32 +7,18 @@ import { TwitterApi } from 'twitter-api-v2';
 import { decrypt } from '@/lib/crypto';
 
 export async function POST(req) {
-    // --- Start of Debugging / Correction ---
     console.log("--- X/Twitter Post API Endpoint Triggered ---");
-    // Corrected to match .env.production and ecosystem.config.js
+    // Read directly from process.env using corrected names
     const appKeyFromEnv = process.env.x_client_id;
     const appSecretFromEnv = process.env.x_client_secret;
 
     console.log(`Is x_client_id present? ${!!appKeyFromEnv}`);
     console.log(`Is x_client_secret present? ${!!appSecretFromEnv}`);
 
-    if (appKeyFromEnv) {
-        console.log(`x_client_id (first 5 chars): ${appKeyFromEnv.substring(0, 5)}...`);
-    } else {
-        console.log("x_client_id is MISSING from environment variables!");
-    }
-     if (appSecretFromEnv) {
-        console.log(`x_client_secret (first 5 chars): ${appSecretFromEnv.substring(0, 5)}...`);
-    } else {
-        console.log("x_client_secret is MISSING from environment variables!");
-    }
-    // --- End of Debugging / Correction ---
-
     let userEmail;
     const requestBody = await req.json();
 
     try {
-        // Corrected the check to use the new variable names
         if (!appKeyFromEnv || !appSecretFromEnv) {
             console.error("CRITICAL ERROR: x_client_id or x_client_secret environment variables are missing or empty.");
             throw new Error("Application is not configured correctly for X/Twitter API. Consumer keys (client ID/secret) are missing.");
@@ -74,7 +60,6 @@ export async function POST(req) {
         const accessToken = decrypt(userRows[0].access_token_encrypted);
         const accessSecret = decrypt(userRows[0].refresh_token_encrypted);
 
-        // Corrected the TwitterApi instantiation to use the new variable names
         const client = new TwitterApi({
             appKey: appKeyFromEnv,
             appSecret: appSecretFromEnv,
@@ -89,9 +74,8 @@ export async function POST(req) {
 
     } catch (error) {
         console.error("CRITICAL Error posting to X/Twitter:", error.message);
-        // Add more detailed error logging if available
         if (error.response?.data) {
-             console.error("X/Twitter API Response Error:", error.response.data);
+            console.error("X/Twitter API Response Error:", error.response.data);
         }
         return NextResponse.json({ error: 'Failed to post to X/Twitter.', details: error.message }, { status: 500 });
     }
