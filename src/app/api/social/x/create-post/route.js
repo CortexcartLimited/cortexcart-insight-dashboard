@@ -7,28 +7,23 @@ import { TwitterApi } from 'twitter-api-v2';
 import { decrypt } from '@/lib/crypto';
 
 export async function POST(req) {
-    // --- START OF DETAILED ENVIRONMENT LOGGING ---
     console.log("--- X/Twitter Post API Endpoint Triggered ---");
-    console.log("--- Dumping process.env ---");
-    // Log the entire process.env object to see what's available
-    console.log(process.env);
-    console.log("--- End of process.env dump ---");
+    // --- START OF FIX ---
+    // Corrected to use UPPERCASE variable names from process.env
+    const appKeyFromEnv = process.env.X_CLIENT_ID;
+    const appSecretFromEnv = process.env.X_CLIENT_SECRET;
+    // --- END OF FIX ---
 
-    const appKeyFromEnv = process.env.x_client_id;
-    const appSecretFromEnv = process.env.x_client_secret;
-
-    console.log(`Is x_client_id present in dumped env? ${!!appKeyFromEnv}`);
-    console.log(`Is x_client_secret present in dumped env? ${!!appSecretFromEnv}`);
-    // --- END OF DETAILED ENVIRONMENT LOGGING ---
+    console.log(`Is X_CLIENT_ID present? ${!!appKeyFromEnv}`);
+    console.log(`Is X_CLIENT_SECRET present? ${!!appSecretFromEnv}`);
 
     let userEmail;
     const requestBody = await req.json();
 
     try {
+        // Corrected the check to use UPPERCASE variable names
         if (!appKeyFromEnv || !appSecretFromEnv) {
-            console.error("CRITICAL ERROR: x_client_id or x_client_secret environment variables are missing or empty.");
-            // Log again just before throwing
-            console.log("process.env keys available right before error:", Object.keys(process.env).sort());
+            console.error("CRITICAL ERROR: X_CLIENT_ID or X_CLIENT_SECRET environment variables are missing or empty.");
             throw new Error("Application is not configured correctly for X/Twitter API. Consumer keys (client ID/secret) are missing.");
         }
 
@@ -68,6 +63,7 @@ export async function POST(req) {
         const accessToken = decrypt(userRows[0].access_token_encrypted);
         const accessSecret = decrypt(userRows[0].refresh_token_encrypted);
 
+        // Corrected the TwitterApi instantiation to use UPPERCASE variable names
         const client = new TwitterApi({
             appKey: appKeyFromEnv,
             appSecret: appSecretFromEnv,
@@ -83,7 +79,7 @@ export async function POST(req) {
     } catch (error) {
         console.error("CRITICAL Error posting to X/Twitter:", error.message);
         if (error.response?.data) {
-            console.error("X/Twitter API Response Error:", error.response.data);
+             console.error("X/Twitter API Response Error:", error.response.data);
         }
         return NextResponse.json({ error: 'Failed to post to X/Twitter.', details: error.message }, { status: 500 });
     }
