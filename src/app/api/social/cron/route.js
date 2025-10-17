@@ -41,9 +41,6 @@ export async function GET(req) {
         user_email,
         content,
         imageUrl: image_url,
-        // --- Add App Keys for testing ---
-        x_api_key: process.env.X_API_KEY,
-        x_api_secret_key: process.env.X_API_SECRET_KEY
     };
     break;
           case 'facebook':

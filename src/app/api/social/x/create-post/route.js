@@ -7,28 +7,35 @@ import { TwitterApi } from 'twitter-api-v2';
 import { decrypt } from '@/lib/crypto';
 
 export async function POST(req) {
-    // --- Start of Debugging ---
+    // --- Start of Debugging / Correction ---
     console.log("--- X/Twitter Post API Endpoint Triggered ---");
-    const appKeyFromEnv = process.env.X_API_KEY;
-    const appSecretFromEnv = process.env.X_API_SECRET_KEY;
+    // Corrected to match .env.production and ecosystem.config.js
+    const appKeyFromEnv = process.env.x_client_id;
+    const appSecretFromEnv = process.env.x_client_secret;
 
-    // This will tell us definitively if the keys are loaded.
-    console.log(`Is X_API_KEY present? ${!!appKeyFromEnv}`);
-    console.log(`Is X_API_SECRET_KEY present? ${!!appSecretFromEnv}`);
+    console.log(`Is x_client_id present? ${!!appKeyFromEnv}`);
+    console.log(`Is x_client_secret present? ${!!appSecretFromEnv}`);
 
-    // For security, we'll log only a small part of the key.
     if (appKeyFromEnv) {
-        console.log(`X_API_KEY (first 5 chars): ${appKeyFromEnv.substring(0, 5)}...`);
+        console.log(`x_client_id (first 5 chars): ${appKeyFromEnv.substring(0, 5)}...`);
+    } else {
+        console.log("x_client_id is MISSING from environment variables!");
     }
-    // --- End of Debugging ---
+     if (appSecretFromEnv) {
+        console.log(`x_client_secret (first 5 chars): ${appSecretFromEnv.substring(0, 5)}...`);
+    } else {
+        console.log("x_client_secret is MISSING from environment variables!");
+    }
+    // --- End of Debugging / Correction ---
 
     let userEmail;
     const requestBody = await req.json();
 
     try {
+        // Corrected the check to use the new variable names
         if (!appKeyFromEnv || !appSecretFromEnv) {
-            console.error("CRITICAL ERROR: X_API_KEY or X_API_SECRET_KEY environment variables are missing or empty.");
-            throw new Error("Application is not configured correctly for X/Twitter API. Consumer keys are missing.");
+            console.error("CRITICAL ERROR: x_client_id or x_client_secret environment variables are missing or empty.");
+            throw new Error("Application is not configured correctly for X/Twitter API. Consumer keys (client ID/secret) are missing.");
         }
 
         const internalAuthToken = req.headers.get('authorization');
@@ -66,16 +73,13 @@ export async function POST(req) {
 
         const accessToken = decrypt(userRows[0].access_token_encrypted);
         const accessSecret = decrypt(userRows[0].refresh_token_encrypted);
-const appKey = requestBody.x_api_key || process.env.X_API_KEY;
-const appSecret = requestBody.x_api_secret_key || process.env.X_API_SECRET_KEY;
 
+        // Corrected the TwitterApi instantiation to use the new variable names
         const client = new TwitterApi({
             appKey: appKeyFromEnv,
             appSecret: appSecretFromEnv,
             accessToken: accessToken,
             accessSecret: accessSecret,
-            appKey: appKey,
-            appSecret: appSecret,
         });
 
         const { data: createdTweet } = await client.v2.tweet(content);
@@ -85,6 +89,10 @@ const appSecret = requestBody.x_api_secret_key || process.env.X_API_SECRET_KEY;
 
     } catch (error) {
         console.error("CRITICAL Error posting to X/Twitter:", error.message);
+        // Add more detailed error logging if available
+        if (error.response?.data) {
+             console.error("X/Twitter API Response Error:", error.response.data);
+        }
         return NextResponse.json({ error: 'Failed to post to X/Twitter.', details: error.message }, { status: 500 });
     }
 }
