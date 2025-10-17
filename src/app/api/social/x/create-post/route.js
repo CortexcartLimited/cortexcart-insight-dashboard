@@ -7,7 +7,7 @@ import { TwitterApi } from 'twitter-api-v2';
 import { decrypt } from '@/lib/crypto';
 
 export async function POST(req) {
-    console.log("--- X/Twitter Post API Endpoint Triggered ---");
+    console.log("--- X/Twitter Post API Endpoint Triggered (Using v2 API) ---"); // Updated log
     const appKeyFromEnv = process.env.X_CLIENT_ID;
     const appSecretFromEnv = process.env.X_CLIENT_SECRET;
 
@@ -85,16 +85,16 @@ export async function POST(req) {
         // Use the readWrite client suitable for user actions
         const readWriteClient = client.readWrite;
 
-        let createdTweetData; // Variable for v1.1 response
+        let createdTweet;
         try {
-            // --- CHANGE: Use v1.1 endpoint ---
-            console.log("Attempting to send tweet via readWriteClient.v1.tweet (API v1.1)...");
-            const response = await readWriteClient.v1.tweet(content);
-            createdTweetData = response;
-            console.log(`Successfully posted tweet via v1.1! Response ID: ${createdTweetData.id_str}`);
-            // --- END CHANGE ---
+            // --- REVERTED: Use v2 endpoint ---
+            console.log("Sending tweet via readWriteClient.v2.tweet...");
+            const response = await readWriteClient.v2.tweet(content);
+            createdTweet = response.data;
+            console.log(`Successfully posted tweet ID: ${createdTweet.id}`);
+            // --- END REVERT ---
         } catch (tweetError) {
-            console.error("Error occurred during tweet attempt (v1.1):"); // Updated log
+            console.error("Error occurred during readWriteClient.v2.tweet call:"); // Keep v2 in log
             console.error("tweetError object:", JSON.stringify(tweetError, null, 2));
             if (tweetError.rateLimit) {
                 console.error("Rate limit info:", tweetError.rateLimit);
@@ -102,23 +102,23 @@ export async function POST(req) {
             if (tweetError.response?.data) {
                 console.error("Twitter API raw response data:", tweetError.response.data);
             }
-            // Check for v1.1 invalid token error code
-            if (tweetError.code === 89) {
-                 console.error("Twitter API v1.1 returned error code 89: Invalid or expired token.");
-            }
             throw tweetError;
         }
 
-        // Adjust response for v1.1 structure
-        return NextResponse.json({ success: true, tweetId_v1: createdTweetData.id_str, tweetData_v1: createdTweetData });
+        return NextResponse.json({ success: true, tweetId: createdTweet.id });
 
     } catch (error) {
         console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.message);
         if (accessToken || accessSecret) {
             console.error(`Tokens used (partial): AccessToken=${accessToken ? accessToken.substring(0, 5) : 'N/A'}..., AccessSecret=${accessSecret ? accessSecret.substring(0, 5) : 'N/A'}...`);
         }
+         // Log specific API response data if available from the error object
         if (error.response?.data) {
             console.error("X/Twitter API Response Error (outer catch):", error.response.data);
+        }
+        // Log 401 specifically
+        if (error.code === 401 || (error.response && error.response.status === 401)) {
+             console.error("Received 401 Unauthorized from Twitter API. Check App/Token Permissions & Server Clock.");
         }
         return NextResponse.json({ error: 'Failed to post to X/Twitter.', details: error.message }, { status: 500 });
     }
