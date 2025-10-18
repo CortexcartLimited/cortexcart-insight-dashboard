@@ -479,7 +479,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                         {Object.values(PLATFORMS).map(platform => {
                             const Icon = platform.icon;
                             // Generate a stable key for the platform button
-                            const platformKey = platform.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const platformKey = platform.name.toLowerCase().split(' ')[0].replace('(twitter)', '');
                             return (
                                 <button
                                     key={platformKey}
