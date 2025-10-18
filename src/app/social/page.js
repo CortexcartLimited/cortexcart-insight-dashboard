@@ -134,7 +134,9 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
             setSelectedBoardId(pinterestBoards[0].board_id);
         }
         if (selectedPlatform === 'instagram' && instagramAccounts && instagramAccounts.length > 0 && !selectedInstagramId) {
+            console.log("Setting default Instagram ID:", instagramAccounts[0]?.instagram_user_id);
             setSelectedInstagramId(instagramAccounts[0].instagram_user_id);
+            setTimeout(() => console.log("selectedInstagramId state after default set:", selectedInstagramId), 0);
         }
     }, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]);
 
@@ -268,6 +270,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 description: postContent
             };
         } else if (selectedPlatform === 'instagram') {
+            console.log("Attempting Instagram post. selectedInstagramId:", selectedInstagramId);
             if (!postImages[0]?.image_url || !selectedInstagramId) {
                 setPostStatus({ message: 'An image and a selected Instagram account are required.', type: 'error' });
                 setIsPosting(false);
@@ -1140,6 +1143,8 @@ export default function SocialMediaManagerPage() {
 
                 if (igRes.ok) {
                     setInstagramAccounts(await igRes.json());
+                    console.log("Fetched Instagram Accounts:", igAccountsData); // Log fetched data
+                    setInstagramAccounts(igAccountsData);
                 }
                 if (pinRes.ok) {
                     setPinterestBoards(await pinRes.json());
