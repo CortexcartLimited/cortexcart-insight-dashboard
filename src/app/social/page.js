@@ -270,8 +270,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 description: postContent
             };
         } else if (selectedPlatform === 'instagram') {
-            console.log("Attempting Instagram post. selectedInstagramId:", selectedInstagramId);
-            if (!postImages[0]?.image_url || !selectedInstagramId) {
+                console.log("Checking image URL:", postImages[0]?.image_url); // Add this log            if (!postImages[0]?.image_url || !selectedInstagramId) {
                 setPostStatus({ message: 'An image and a selected Instagram account are required.', type: 'error' });
                 setIsPosting(false);
                 return;
@@ -288,7 +287,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 imageUrl: postImages[0]?.image_url,
             };
         }
-
+        apiEndpoint = '/api/social/instagram/accounts/post'; // Ensure this is the endpoint used
         try {
             const res = await fetch(apiEndpoint, {
                 method: 'POST',
@@ -1141,10 +1140,12 @@ export default function SocialMediaManagerPage() {
                     fetch('/api/social/pinterest/boards') // We will create this API route next
                 ]);
 
-                if (igRes.ok) {
-                    setInstagramAccounts(await igRes.json());
-                    console.log("Fetched Instagram Accounts:", igAccountsData); // Log fetched data
-                    setInstagramAccounts(igAccountsData);
+               if (igRes.ok) {
+                    const igAccountsData = await igRes.json(); // Assign value FIRST
+                    console.log("Fetched Instagram Accounts:", igAccountsData); // THEN log it
+                    setInstagramAccounts(igAccountsData);     // THEN set state
+                } else {
+                    console.error("Failed to fetch Instagram accounts:", igRes.status, await igRes.text());
                 }
                 if (pinRes.ok) {
                     setPinterestBoards(await pinRes.json());
