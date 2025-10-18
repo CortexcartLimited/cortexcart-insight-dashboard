@@ -41,7 +41,7 @@ const DragAndDropCalendar = withDragAndDrop(Calendar);
 
 const PLATFORMS = {
     x: {
-        name: 'X (Twitter)',
+        name: 'X',
         maxLength: 280,
         icon: (props) => ( <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M13.682 10.623 20.239 3h-1.64l-5.705 6.44L7.65 3H3l6.836 9.753L3 21h1.64l6.082-6.885L16.351 21H21l-7.318-10.377zM14.78 13.968l-.87-1.242L6.155 4.16h2.443l4.733 6.742.87 1.242 7.03 9.98h-2.443l-5.045-7.143z" /></svg>),
         placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags",
