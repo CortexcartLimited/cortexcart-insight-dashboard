@@ -44,16 +44,16 @@ const PLATFORMS = {
         name: 'X (Twitter)',
         maxLength: 280,
         icon: (props) => ( <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M13.682 10.623 20.239 3h-1.64l-5.705 6.44L7.65 3H3l6.836 9.753L3 21h1.64l6.082-6.885L16.351 21H21l-7.318-10.377zM14.78 13.968l-.87-1.242L6.155 4.16h2.443l4.733 6.742.87 1.242 7.03 9.98h-2.443l-5.045-7.143z" /></svg>),
-        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags", // FIX: Escaped apostrophe
+        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags",
         disabled: false,
         color: '#000000',
-        apiEndpoint: '/api/social/post' // Assuming this is correct for X, might need updating to /api/social/x/create-post
+        apiEndpoint: '/api/social/x/create-post' // Updated for consistency
     },
     facebook: {
         name: 'Facebook',
         maxLength: 5000,
         icon: (props) => (<svg {...props} fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.77-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.028C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" /></svg>),
-        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags", // FIX: Escaped apostrophe
+        placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags",
         disabled: false,
         color: '#1877F2',
         apiEndpoint: '/api/social/facebook/create-post'
@@ -83,7 +83,7 @@ const PLATFORMS = {
         placeholder: "Enter a video description or generate with AI including video tags...",
         disabled: false,
         color: '#FF0000',
-        apiEndpoint: '/api/social/youtube/upload-video' // Assuming this is correct
+        apiEndpoint: '/api/social/youtube/upload-video' // Corrected endpoint assumption
     }
 };
 
@@ -106,6 +106,7 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
     );
 };
 
+// --- START: MODIFIED ComposerTabContent ---
 const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setPostContent, selectedPlatform, setSelectedPlatform, instagramAccounts, pinterestBoards, loading, ...props }) => {
 
     const [topic, setTopic] = useState('');
@@ -140,7 +141,8 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         }
     }, [selectedPlatform, pinterestBoards, instagramAccounts, selectedBoardId, selectedInstagramId]);
 
-    const currentPlatform = PLATFORMS[selectedPlatform];
+    // UseMemo to get the current platform config reliably
+    const currentPlatform = useMemo(() => PLATFORMS[selectedPlatform], [selectedPlatform]);
 
     // Handles both YouTube uploads and standard posts
     const handleSubmit = () => {
@@ -152,6 +154,10 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     };
 
     const handleUploadToYouTube = async () => {
+        if (!currentPlatform || !currentPlatform.apiEndpoint) {
+             setPostStatus({ message: 'YouTube API endpoint not configured.', type: 'error' });
+             return;
+        }
         if (!videoFile || !videoTitle) {
             setPostStatus({ message: 'A video file and title are required.', type: 'error' });
             return;
@@ -170,29 +176,44 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
 
             // Use selectedImageUrl for thumbnail if available
             if (selectedImageUrl) {
+                console.log("Fetching thumbnail image:", selectedImageUrl);
                 const response = await fetch(selectedImageUrl);
-                if (!response.ok) throw new Error('Failed to load thumbnail image.');
+                if (!response.ok) throw new Error(`Failed to load thumbnail image. Status: ${response.status}`);
                 const blob = await response.blob();
                 formData.append('thumbnail', blob, 'thumbnail.jpg'); // Adjust filename as needed
+                console.log("Thumbnail added to form data.");
             }
 
             const result = await new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
-                // ... (rest of XHR logic is fine) ...
                  xhr.upload.addEventListener('progress', (event) => {
                     if (event.lengthComputable) {
                         const percentComplete = (event.loaded / event.total) * 100;
                         setUploadProgress(percentComplete);
-                        setUploadMessage('Uploading video file...');
+                        setUploadMessage(`Uploading video file... ${Math.round(percentComplete)}%`);
                     }
                 });
 
                 xhr.onload = () => {
                     setUploadMessage('Processing video and setting thumbnail...');
+                    console.log("XHR Status:", xhr.status);
+                    console.log("XHR Response:", xhr.responseText);
                     if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(JSON.parse(xhr.responseText));
+                        try {
+                           resolve(JSON.parse(xhr.responseText));
+                        } catch (parseError) {
+                            console.error("Failed to parse YouTube upload response:", parseError);
+                            reject(new Error("Received invalid response from server after upload."));
+                        }
                     } else {
-                        reject(new Error(xhr.statusText));
+                        let errorMsg = `Upload failed with status ${xhr.status}`;
+                        try {
+                             const errorJson = JSON.parse(xhr.responseText);
+                             errorMsg += `: ${errorJson.message || errorJson.error || 'Unknown error'}`;
+                        } catch {
+                             errorMsg += `: ${xhr.statusText}`;
+                        }
+                        reject(new Error(errorMsg));
                     }
                 };
 
@@ -201,21 +222,28 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 };
 
                 xhr.open('POST', currentPlatform.apiEndpoint, true); // Use apiEndpoint from PLATFORMS
+                // Note: Don't set Content-Type header when sending FormData, browser does it.
+                // Include auth headers if your YouTube API requires them
+                // xhr.setRequestHeader('Authorization', `Bearer YOUR_AUTH_TOKEN`);
                 xhr.send(formData);
+                console.log("XHR request sent to:", currentPlatform.apiEndpoint);
             });
 
 
-            setPostStatus({ message: result.message, type: 'success' });
+            setPostStatus({ message: result.message || 'YouTube video uploaded successfully!', type: 'success' });
+            // Clear form
             setVideoFile(null);
             setVideoTitle('');
             setPostContent('');
-            setSelectedImageUrl(''); // Clear selected image
+            setSelectedImageUrl('');
 
         } catch (err) {
             setPostStatus({ message: err.message, type: 'error' });
             console.error("YouTube upload process failed:", err);
         } finally {
             setIsUploading(false);
+            setUploadProgress(0); // Reset progress
+             setUploadMessage('');
         }
     };
 
@@ -223,7 +251,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
     // REMOVED: handleRemoveImage function
 
     const handleGeneratePost = async () => {
-        if (!topic.trim()) return;
+        if (!topic.trim() || !currentPlatform) return; // Check if currentPlatform exists
         setIsGenerating(true);
         setError('');
         try {
@@ -248,7 +276,8 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
 
     // --- MODIFIED handlePostNow ---
     const handlePostNow = async () => {
-        if (!postContent && selectedPlatform !== 'pinterest') { // Pinterest might only need image/title/board
+        // Content check, allow Pinterest without content initially
+        if (!postContent && selectedPlatform !== 'pinterest') {
              setPostStatus({ message: 'Post content is required.', type: 'error' });
              return;
         }
@@ -260,6 +289,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
         let apiEndpoint = currentPlatform?.apiEndpoint;
         let requestBody = {};
 
+        // Platform specific checks and body construction
         if (selectedPlatform === 'pinterest') {
             console.log("Checking Pinterest requirements: Board=", selectedBoardId, "Image=", selectedImageUrl, "Title=", pinTitle);
             if (!selectedBoardId || !selectedImageUrl || !pinTitle) {
@@ -271,7 +301,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 boardId: selectedBoardId,
                 imageUrl: selectedImageUrl,
                 title: pinTitle,
-                description: postContent // Description is optional but good to include
+                description: postContent // Description is optional but included
             };
         } else if (selectedPlatform === 'instagram') {
             console.log("Attempting Instagram post. selectedInstagramId:", selectedInstagramId);
@@ -287,20 +317,25 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 caption: postContent,
             };
         } else if (selectedPlatform === 'youtube') {
-           // YouTube uses handleSubmit -> handleUploadToYouTube, so this shouldn't be reached via Post Now
-           console.warn("handlePostNow called for YouTube, should use handleSubmit.");
+           // YouTube uses handleSubmit -> handleUploadToYouTube
+           console.warn("handlePostNow called for YouTube, should use handleSubmit via Upload button.");
+           setPostStatus({ message: 'Please use the Upload Now button for YouTube.', type: 'info'});
            setIsPosting(false);
            return;
-        }
-        else { // For platforms like X, Facebook
+        } else if (currentPlatform) { // For other platforms like X, Facebook
             requestBody = {
                 platform: selectedPlatform, // Include platform for generic endpoints if needed
                 content: postContent,
                 imageUrl: selectedImageUrl || null, // Use selectedImageUrl (can be null/empty)
             };
+        } else {
+             console.error("No valid platform selected or configured.");
+             setPostStatus({ message: `Cannot post: Platform "${selectedPlatform}" is not recognized or configured.`, type: 'error'});
+             setIsPosting(false);
+             return;
         }
 
-        // Check if apiEndpoint is defined for the selected platform
+        // Check if apiEndpoint is defined for the selected platform before proceeding
         if (!apiEndpoint) {
             console.error("API endpoint is not defined for platform:", selectedPlatform);
             setPostStatus({ message: `Cannot post: API endpoint not configured for ${currentPlatform?.name || selectedPlatform}.`, type: 'error'});
@@ -308,7 +343,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
             return;
         }
 
-        console.log(`Sending POST request to ${apiEndpoint} with body:`, requestBody);
+        console.log(`Sending POST request to ${apiEndpoint} with body:`, JSON.stringify(requestBody));
 
         try {
             const res = await fetch(apiEndpoint, {
@@ -320,16 +355,21 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
             const result = await res.json();
             // Check based on status code first, then look for error/message in body
             if (!res.ok) {
-                 console.error(`API Error (${res.status}):`, result);
-                 throw new Error(result.error || result.message || `Request failed with status ${res.status}`);
+                 console.error(`API Error (${res.status}) from ${apiEndpoint}:`, result);
+                 // Try to get a meaningful message
+                 let errorMsg = result.details || result.error || result.message || `Request failed with status ${res.status}`;
+                 throw new Error(errorMsg);
             }
 
             setPostStatus({ message: `Post published to ${currentPlatform.name} successfully!`, type: 'success' });
             setPostContent('');
             setSelectedImageUrl(''); // Clear the selected image URL
+            // Clear platform specific fields if needed
+            if (selectedPlatform === 'pinterest') setPinTitle('');
+
         } catch (err) {
             setPostStatus({ message: err.message, type: 'error' });
-            console.error(`Error posting to ${selectedPlatform}:`, err);
+            console.error(`Error posting to ${selectedPlatform} at ${apiEndpoint}:`, err);
         } finally {
             setIsPosting(false);
         }
@@ -339,7 +379,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
 
     const handleSchedulePost = async (e) => {
         e.preventDefault();
-        setError('');
+        setError(''); // Clear previous schedule errors
 
         try {
             const scheduledAt = moment(`${scheduleDate} ${scheduleTime}`).toISOString();
@@ -348,46 +388,63 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 throw new Error('You cannot schedule a post in the past.');
             }
 
-            // Ensure content exists unless it's Pinterest (which might rely on image/title)
+            // --- Robust validation before scheduling ---
+             if (!currentPlatform) {
+                 throw new Error(`Platform "${selectedPlatform}" is not recognized.`);
+             }
              if (!postContent && selectedPlatform !== 'pinterest') {
                   throw new Error('Post content is required to schedule.');
              }
-             // Ensure image exists if platform requires it (Instagram, Pinterest)
              if ((selectedPlatform === 'instagram' || selectedPlatform === 'pinterest') && !selectedImageUrl) {
-                 throw new Error(`An image is required to schedule a post for ${currentPlatform.name}.`);
+                 throw new Error(`An image is required to schedule for ${currentPlatform.name}.`);
              }
-              // Ensure Pinterest has board and title
-             if (selectedPlatform === 'pinterest' && (!selectedBoardId || !pinTitle)) {
+              if (selectedPlatform === 'pinterest' && (!selectedBoardId || !pinTitle)) {
                   throw new Error('A board and title are required to schedule a Pin.');
              }
-             // Ensure Instagram has account selected
               if (selectedPlatform === 'instagram' && !selectedInstagramId) {
                   throw new Error('An Instagram account must be selected to schedule.');
              }
+             if (isOverLimit) {
+                 throw new Error(`Content exceeds the maximum length of ${currentPlatform.maxLength} for ${currentPlatform.name}.`);
+             }
+             // Add YouTube specific validation if scheduling is supported
+             // if (selectedPlatform === 'youtube' && (!videoFile || !videoTitle)) { etc... }
+            // --- End validation ---
 
+
+            const schedulePayload = {
+                platform: selectedPlatform,
+                content: postContent,
+                imageUrl: selectedImageUrl || null,
+                scheduledAt: scheduledAt,
+                hashtags: [], // Maintained from previous fix
+                // Include platform-specific fields for the backend to save
+                boardId: selectedPlatform === 'pinterest' ? selectedBoardId : undefined, // Send only if pinterest
+                pinTitle: selectedPlatform === 'pinterest' ? pinTitle : undefined,     // Send only if pinterest
+                instagramUserId: selectedPlatform === 'instagram' ? selectedInstagramId : undefined, // Send only if instagram
+                // Add fields for YouTube if schedule API supports it
+                // videoUrl: selectedPlatform === 'youtube' ? 'some_identifier_or_url' : undefined,
+                // videoTitle: selectedPlatform === 'youtube' ? videoTitle : undefined,
+                // privacyStatus: selectedPlatform === 'youtube' ? privacyStatus : undefined,
+            };
+
+             console.log("Sending schedule request with payload:", JSON.stringify(schedulePayload));
 
             const response = await fetch('/api/social/schedule/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    platform: selectedPlatform,
-                    content: postContent,
-                    imageUrl: selectedImageUrl || null, // Send null if no image selected
-                    scheduledAt: scheduledAt,
-                    hashtags: [], // Maintained from previous fix
-                    // Include platform-specific fields if needed by backend schedule API
-                    boardId: selectedPlatform === 'pinterest' ? selectedBoardId : null,
-                    pinTitle: selectedPlatform === 'pinterest' ? pinTitle : null,
-                    instagramUserId: selectedPlatform === 'instagram' ? selectedInstagramId : null,
-                    // videoUrl, videoTitle, privacyStatus for YouTube if scheduling is supported
-                }),
+                body: JSON.stringify(schedulePayload),
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
+                 console.error("Schedule API Error:", errorData);
                 throw new Error(errorData.message || 'Failed to schedule the post.');
             }
-            onPostScheduled(); // This should trigger refresh/close modal etc.
+
+             console.log("Post scheduled successfully!");
+            onPostScheduled(); // Trigger refresh/callback
+
              // Clear form after successful schedule
              setPostContent('');
              setSelectedImageUrl('');
@@ -395,12 +452,16 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
              // Optionally reset date/time or leave them for next post
              setScheduleDate(moment().add(1, 'day').format('YYYY-MM-DD'));
              setScheduleTime('10:00');
+             setError(''); // Clear error message on success
+
 
         } catch (err) {
-            setError(err.message);
+            console.error("Error scheduling post:", err);
+            setError(err.message); // Set error state to display in the form
         }
     };
 
+    // Use currentPlatform safely for maxLength check
     const isOverLimit = currentPlatform && postContent.length > currentPlatform.maxLength;
 
     return (
@@ -411,21 +472,21 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 message={uploadMessage}
             />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column (Composer) */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    {/* Platform Tabs */}
                     <div className="flex items-center border-b pb-4 overflow-x-auto whitespace-nowrap">
                         {Object.values(PLATFORMS).map(platform => {
-                            // Decide if the platform should be shown in the composer tabs
-                            // Example: Hide Pinterest if you handle it separately or it needs special UI
-                            // if (platform.name === 'Pinterest') return null;
-
                             const Icon = platform.icon;
-                            const platformKey = platform.name.toLowerCase().split(' ')[0].replace('(twitter)', ''); // Get 'x', 'facebook', etc.
+                            // Generate a stable key for the platform button
+                            const platformKey = platform.name.toLowerCase().replace(/[^a-z0-9]/g, '');
                             return (
                                 <button
-                                    key={platform.name}
+                                    key={platformKey}
+                                    // Use the platform key for setting state and checking active
                                     onClick={() => setSelectedPlatform(platformKey)}
                                     className={`flex items-center px-4 py-2 text-sm font-medium rounded-md mr-2 ${selectedPlatform === platformKey ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                    disabled={platform.disabled} // Use disabled flag from PLATFORMS
+                                    disabled={platform.disabled}
                                 >
                                     {Icon && <Icon className="h-5 w-5 mr-2" />} {platform.name}
                                 </button>
@@ -434,7 +495,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                     </div>
 
                     {/* Platform Specific Inputs */}
-                    {selectedPlatform === 'youtube' && (
+                     {selectedPlatform === 'youtube' && (
                          <div className="mt-4 space-y-4 p-4 border bg-gray-50 rounded-lg">
                              <div>
                                  <label htmlFor="video-file" className="block text-sm font-medium text-gray-700">Select Video File <span className="text-red-500">*</span></label>
@@ -444,11 +505,9 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                                  <label htmlFor="video-title" className="block text-sm font-medium text-gray-700">Video Title <span className="text-red-500">*</span></label>
                                  <input type="text" id="video-title" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required/>
                              </div>
-                             {/* Thumbnail Selection via ImageManager - handled below */}
                               <div>
                                  <label className="block text-sm font-medium text-gray-700">Video Thumbnail (Optional)</label>
                                  <p className="text-xs text-gray-500">Select an image below using the Image Manager.</p>
-                                 {/* ImageManager handles selection, preview shown below */}
                              </div>
                              <div>
                                  <label htmlFor="privacy-status" className="block text-sm font-medium text-gray-700">Privacy</label>
@@ -476,7 +535,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                                     {loading ? (
                                         <option disabled>Loading boards...</option>
                                     ) : !Array.isArray(pinterestBoards) || pinterestBoards.length === 0 ? (
-                                        <option disabled>No boards found or not connected</option>
+                                        <option disabled>No boards found</option>
                                     ) : (
                                         pinterestBoards.map((board) => (
                                             <option key={board.board_id} value={board.board_id}>
@@ -493,7 +552,6 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Pin Image <span className="text-red-500">*</span></label>
                                 <p className="text-xs text-gray-500">Select an image below using the Image Manager.</p>
-                                {/* ImageManager handles selection, preview shown below */}
                              </div>
                         </div>
                     )}
@@ -510,7 +568,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                                 >
                                     <option value="" disabled>-- Select Account --</option>
                                     {instagramAccounts.length === 0 ? (
-                                        <option disabled>No Instagram accounts connected.</option>
+                                        <option disabled>No accounts connected.</option>
                                     ) : (
                                         instagramAccounts.map((acc) => (
                                             <option key={acc.instagram_user_id} value={acc.instagram_user_id}>
@@ -523,12 +581,11 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Image <span className="text-red-500">*</span></label>
                                  <p className="text-xs text-gray-500">Select an image below using the Image Manager.</p>
-                                {/* ImageManager handles selection, preview shown below */}
                              </div>
                          </div>
                     )}
 
-                   {/* --- IMAGE PREVIEW AREA --- */}
+                    {/* Image Preview Area */}
                     {selectedImageUrl && (
                         <div className="mt-4 mb-4 relative group">
                             <p className="text-xs text-gray-500 mb-1">Attached Image:</p>
@@ -537,7 +594,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                             </div>
                             <button
                                 type="button"
-                                onClick={() => setSelectedImageUrl('')} // Clears the image
+                                onClick={() => setSelectedImageUrl('')}
                                 className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                 aria-label="Remove image"
                             >
@@ -552,27 +609,25 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                         onChange={(e) => setPostContent(e.target.value)}
                         placeholder={currentPlatform?.placeholder || "Write your post content here..."}
                         className="mt-4 w-full h-64 p-4 border border-gray-200 rounded-md"
-                        maxLength={currentPlatform?.maxLength} // Apply maxLength
+                        maxLength={currentPlatform?.maxLength < Infinity ? currentPlatform?.maxLength : undefined} // Apply maxLength unless Infinity
                     />
 
                     {/* Character Count and Post Buttons */}
                     <div className="mt-4 flex justify-between items-center">
                         <span className={`text-sm font-medium ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>
-                            {postContent.length}/{currentPlatform?.maxLength < Infinity ? currentPlatform?.maxLength : '∞'}
+                           {currentPlatform?.maxLength ? `${postContent.length}/${currentPlatform.maxLength < Infinity ? currentPlatform.maxLength : '∞'}` : ''}
                         </span>
                         <div className="flex items-center gap-x-2">
-                             {/* Add Copy Button Functionality if needed */}
-                            {/* <button className="flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm bg-white text-gray-700 border-gray-300 hover:bg-gray-50"><ClipboardDocumentIcon className="h-5 w-5 mr-2" />Copy</button> */}
+                             {/* Copy button can be added here if needed */}
                             <button
                                 onClick={handleSubmit}
-                                // More robust disabled check
                                 disabled={
                                     isPosting || isUploading ||
-                                    (selectedPlatform !== 'pinterest' && !postContent) || // Content required unless Pinterest
+                                    (selectedPlatform !== 'pinterest' && !postContent.trim()) || // Check trimmed content
                                     isOverLimit ||
                                     (selectedPlatform === 'instagram' && (!selectedImageUrl || !selectedInstagramId)) ||
-                                    (selectedPlatform === 'pinterest' && (!selectedImageUrl || !selectedBoardId || !pinTitle)) ||
-                                    (selectedPlatform === 'youtube' && (!videoFile || !videoTitle))
+                                    (selectedPlatform === 'pinterest' && (!selectedImageUrl || !selectedBoardId || !pinTitle.trim())) || // Check trimmed title
+                                    (selectedPlatform === 'youtube' && (!videoFile || !videoTitle.trim())) // Check trimmed title
                                 }
                                 className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                              >
@@ -589,64 +644,68 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                         </div>
                     )}
 
-                    {/* Schedule Form */}
-                    <form onSubmit={handleSchedulePost} className="mt-6 border-t pt-4">
-                        <h4 className="text-lg font-semibold text-gray-800 mb-4">Schedule Post</h4>
-                        {error && <p className="text-sm text-red-600 mb-2">{error}</p>} {/* Show schedule error here */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="scheduleDate" className="block text-sm font-medium text-gray-700">Date</label>
-                                <input type="date" id="scheduleDate" name="scheduleDate" onChange={(e) => setScheduleDate(e.target.value)} value={scheduleDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" min={moment().format('YYYY-MM-DD')} required/>
+                    {/* Schedule Form - Only show if not YouTube (or if YouTube scheduling is added later) */}
+                    {selectedPlatform !== 'youtube' && (
+                        <form onSubmit={handleSchedulePost} className="mt-6 border-t pt-4">
+                            <h4 className="text-lg font-semibold text-gray-800 mb-4">Schedule Post</h4>
+                            {error && <p className="text-sm text-red-600 mb-2">{error}</p>} {/* Show schedule error */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="scheduleDate" className="block text-sm font-medium text-gray-700">Date</label>
+                                    <input type="date" id="scheduleDate" name="scheduleDate" onChange={(e) => setScheduleDate(e.target.value)} value={scheduleDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" min={moment().format('YYYY-MM-DD')} required/>
+                                </div>
+                                <div>
+                                    <label htmlFor="scheduleTime" className="block text-sm font-medium text-gray-700">Time</label>
+                                    <input type="time" id="scheduleTime" name="scheduleTime" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required/>
+                                </div>
                             </div>
-                            <div>
-                                <label htmlFor="scheduleTime" className="block text-sm font-medium text-gray-700">Time</label>
-                                <input type="time" id="scheduleTime" name="scheduleTime" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required/>
+                            <div className="mt-6">
+                                <button
+                                    type="submit"
+                                    disabled={
+                                        isPosting || isUploading || // Disable if posting/uploading
+                                        (selectedPlatform !== 'pinterest' && !postContent.trim()) ||
+                                        isOverLimit || !scheduleDate || !scheduleTime ||
+                                        (selectedPlatform === 'instagram' && (!selectedImageUrl || !selectedInstagramId)) ||
+                                        (selectedPlatform === 'pinterest' && (!selectedImageUrl || !selectedBoardId || !pinTitle.trim()))
+                                    }
+                                    className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    <CalendarIcon className="h-5 w-5 mr-2" />Schedule Post
+                                </button>
                             </div>
-                        </div>
-                        <div className="mt-6">
-                            <button
-                                type="submit"
-                                // More robust disabled check for scheduling
-                                disabled={
-                                    isPosting || isUploading ||
-                                     (selectedPlatform !== 'pinterest' && !postContent) ||
-                                     isOverLimit || !scheduleDate || !scheduleTime ||
-                                     (selectedPlatform === 'instagram' && (!selectedImageUrl || !selectedInstagramId)) ||
-                                     (selectedPlatform === 'pinterest' && (!selectedImageUrl || !selectedBoardId || !pinTitle))
-                                     // Add YouTube check if scheduling is supported
-                                }
-                                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                            >
-                                <CalendarIcon className="h-5 w-5 mr-2" />Schedule Post
-                            </button>
-                        </div>
-                    </form>
+                        </form>
+                    )}
                 </div>
 
                 {/* Right Column */}
                 <div className="lg:col-span-1 space-y-8">
                     {/* AI Assistant */}
-                    <div className="bg-white p-6 rounded-lg shadow-md space-y-4 border border-gray-200">
-                        <h3 className="font-semibold text-lg">AI Assistant</h3>
-                        <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g., 'New Summer T-Shirt Sale'" className="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"/>
-                        <button onClick={handleGeneratePost} disabled={isGenerating || !topic.trim() || !currentPlatform} className="w-full flex items-center justify-center px-4 py-2 border rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400">
-                            <SparklesIcon className="h-5 w-5 mr-2" />
-                            {isGenerating ? 'Generating...' : `Generate for ${currentPlatform?.name || 'Platform'}`}
-                        </button>
-                         {/* Display AI error */}
-                         {/* Consider moving schedule error from above to here if preferred */}
-                    </div>
+                    {currentPlatform && ( // Only show AI if a platform is selected
+                        <div className="bg-white p-6 rounded-lg shadow-md space-y-4 border border-gray-200">
+                            <h3 className="font-semibold text-lg">AI Assistant</h3>
+                            <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g., 'New Summer T-Shirt Sale'" className="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"/>
+                            <button onClick={handleGeneratePost} disabled={isGenerating || !topic.trim()} className="w-full flex items-center justify-center px-4 py-2 border rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400">
+                                <SparklesIcon className="h-5 w-5 mr-2" />
+                                {isGenerating ? 'Generating...' : `Generate for ${currentPlatform.name}`}
+                            </button>
+                             {/* Display AI generation error if needed */}
+                        </div>
+                    )}
 
                     {/* Upcoming Posts */}
                     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-semibold text-lg">Upcoming Posts</h3>
+                             {/* Link to full schedule view? */}
+                             <Link href="#" onClick={(e) => { e.preventDefault(); setActiveTab('Schedule'); }} className="text-sm text-blue-600 hover:underline">
+                                View Calendar
+                            </Link>
                         </div>
                         <div className="space-y-3 max-h-96 overflow-y-auto">
-                           {/* Keep existing upcoming posts logic */}
                            {scheduledPosts.length > 0 ? scheduledPosts.slice(0, 5).map(post => {
-                                const postPlatformKey = post.resource?.platform; // Get platform key directly
-                                const platformConfig = PLATFORMS[postPlatformKey]; // Find config
+                                const postPlatformKey = post.resource?.platform;
+                                const platformConfig = PLATFORMS[postPlatformKey];
                                 const Icon = platformConfig?.icon;
                                 return (
                                     <div key={post.id} className={`p-3 bg-gray-50 rounded-lg border-l-4`} style={{ borderColor: platformConfig?.color || '#9CA3AF' }}>
@@ -657,8 +716,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                                             </div>
                                             <span className="text-xs text-blue-600 font-medium">{moment(post.start).format('MMM D, h:mm a')}</span>
                                         </div>
-                                        {/* Ensure post.title exists and is a string before splitting */}
-                                        <p className="text-sm text-gray-600 truncate mt-1">{post.title && typeof post.title === 'string' ? post.title.split(': ')[1] : 'No title'}</p>
+                                        <p className="text-sm text-gray-600 truncate mt-1">{post.title && typeof post.title === 'string' ? post.title.split(': ')[1] || post.title : '(No Content/Title)'}</p>
                                     </div>
                                 );
                             }) : (
@@ -674,27 +732,24 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                             setSelectedImageUrl(url);
                         }}
                         selectedImageUrl={selectedImageUrl}
-                        // Pass any other necessary props to ImageManager
+                        // Add required props like user_email or userId if needed by ImageManager API calls
                     />
                 </div>
             </div>
         </>
     );
 };
+// --- END: MODIFIED ComposerTabContent ---
 
-
-// --- Rest of the file (AnalyticsTabContent, ScheduleTabContent, etc.) remains the same ---
-// --- Ensure SocialMediaManagerPage correctly fetches data and passes props ---
 
 const AnalyticsTabContent = () => {
-    // ... (Existing Analytics Code) ...
+    // ... (Existing Analytics Code - Should be OK) ...
      const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [isSyncing, setIsSyncing] = useState({ x: false, facebook: false, pinterest: false, youtube: false});
     const [syncMessage, setSyncMessage] = useState('');
     const [syncMessageType, setSyncMessageType] = useState('info');
-  // Define the colors for each platform to match your sync buttons
        const platformColors = {
         x: 'rgba(0, 0, 0, 0.7)',
         facebook: 'rgba(37, 99, 235, 0.7)', // blue-600
@@ -733,7 +788,7 @@ const AnalyticsTabContent = () => {
             }
             setSyncMessageType('success');
             setSyncMessage(result.message);
-            fetchAnalytics();
+            fetchAnalytics(); // Refresh analytics after sync
         } catch (err) {
             setSyncMessageType('error');
             setSyncMessage(err.message);
@@ -750,319 +805,346 @@ const AnalyticsTabContent = () => {
     const reachChartData = (dailyReach || []).map(item => ({ date: item.date, pageviews: item.reach, conversions: 0 }));
 
     const platformLabels = (platformStats || []).map(p => p.platform);
-      const backgroundColors = (platformStats || []).map(p => platformColors[p.platform] || platformColors.default);
+    const backgroundColors = (platformStats || []).map(p => platformColors[p.platform] || platformColors.default);
 
      const postsByPlatformData = {
         labels: platformStats.map(item => PLATFORMS[item.platform]?.name || item.platform),
         datasets: [{
             label: 'Number of Posts',
-            data: platformStats.map(item => item.postCount),
-             backgroundColor: backgroundColors, // Use the dynamic color array
-            //borderColor: borderColor,         // Use the dynamic border color array
+            data: platformStats.map(item => item.postCount || 0), // Default to 0 if null
+             backgroundColor: backgroundColors,
             borderWidth: 1,
         }]
     };
 
     const engagementByPlatformData = {
-        labels: platformLabels,
+        labels: platformLabels.map(label => PLATFORMS[label]?.name || label), // Use platform name for labels
         datasets: [{
             label: 'Engagement Rate',
-            data: (platformStats || []).map(p => p.engagementRate),
-              backgroundColor: backgroundColors, // Use the dynamic color array
-           // borderColor: borderColor,         // Use the dynamic border color array
+            data: (platformStats || []).map(p => p.engagementRate || 0), // Default to 0
+              backgroundColor: backgroundColors,
         }],
     };
 
     return (
         <div className="space-y-8">
-            {/* Card 1: Overview and Sync Buttons */}
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-4">Analytics Overview</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                         <button onClick={() => handleSync('x')} disabled={isSyncing.x} className="inline-flex items-center rounded-md bg-black px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 disabled:bg-gray-400">
-                            <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.x ? 'animate-spin' : ''}`} />
-                            {isSyncing.x ? 'Syncing...' : 'Sync with X'}
-                        </button>
-                        <button onClick={() => handleSync('facebook')} disabled={isSyncing.facebook} className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:bg-blue-400">
-                            <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.facebook ? 'animate-spin' : ''}`} />
-                            {isSyncing.facebook ? 'Syncing...' : 'Sync with Facebook'}
-                        </button>
-                        <button onClick={() => handleSync('pinterest')} disabled={isSyncing.pinterest} className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:bg-red-400">
-                            <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.pinterest ? 'animate-spin' : ''}`} />
-                            {isSyncing.pinterest ? 'Syncing...' : 'Sync with Pinterest'}
-                        </button>
-                        <button onClick={() => handleSync('youtube')} disabled={isSyncing.youtube} className="inline-flex items-center rounded-md bg-red-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-600 disabled:bg-red-400">
-                            <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.youtube ? 'animate-spin' : ''}`} />
-                            {isSyncing.youtube ? 'Syncing...' : 'Sync with YouTube'}
-                        </button>
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Analytics Overview</h3>
+                 <div className="flex flex-wrap gap-2">
+                     {/* Dynamically create sync buttons based on PLATFORMS might be better */}
+                      <button onClick={() => handleSync('x')} disabled={isSyncing.x} className="inline-flex items-center rounded-md bg-black px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 disabled:bg-gray-400">
+                         <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.x ? 'animate-spin' : ''}`} />
+                         {isSyncing.x ? 'Syncing...' : 'Sync with X'}
+                     </button>
+                     <button onClick={() => handleSync('facebook')} disabled={isSyncing.facebook} className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:bg-blue-400">
+                         <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.facebook ? 'animate-spin' : ''}`} />
+                         {isSyncing.facebook ? 'Syncing...' : 'Sync with Facebook'}
+                     </button>
+                     <button onClick={() => handleSync('pinterest')} disabled={isSyncing.pinterest} className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:bg-red-400">
+                         <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.pinterest ? 'animate-spin' : ''}`} />
+                         {isSyncing.pinterest ? 'Syncing...' : 'Sync with Pinterest'}
+                     </button>
+                     <button onClick={() => handleSync('youtube')} disabled={isSyncing.youtube} className="inline-flex items-center rounded-md bg-red-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-600 disabled:bg-red-400">
+                         <ArrowPathIcon className={`-ml-0.5 mr-1.5 h-5 w-5 ${isSyncing.youtube ? 'animate-spin' : ''}`} />
+                         {isSyncing.youtube ? 'Syncing...' : 'Sync with YouTube'}
+                     </button>
+                 </div>
+                 {syncMessage && (
+                     <div className={`text-center text-sm p-3 rounded-md mt-4 ${syncMessageType === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                         {syncMessage}
+                     </div>
+                 )}
+             </div>
 
+             {/* Key Metrics */}
+             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                 <h3 className="text-xl font-bold text-gray-800 mb-4">Key Metrics</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <div className="bg-blue-50 p-5 rounded-lg border border-blue-200">
+                         <p className="text-sm font-medium text-blue-600">Total Posts</p>
+                         <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalPosts || 0}</p>
+                     </div>
+                     <div className="bg-green-50 p-5 rounded-lg border border-green-200">
+                         <p className="text-sm font-medium text-green-600">Total Reach (Impressions)</p>
+                         <p className="text-3xl font-bold text-gray-900 mt-1">{(stats.totalReach || 0).toLocaleString()}</p>
+                     </div>
+                     <div className="bg-purple-50 p-5 rounded-lg border border-purple-200">
+                         <p className="text-sm font-medium text-purple-600">Avg. Engagement Rate</p>
+                         <p className="text-3xl font-bold text-gray-900 mt-1">{parseFloat(stats.engagementRate || 0).toFixed(2)}%</p>
+                     </div>
+                 </div>
+             </div>
 
-                </div>
-                {syncMessage && (
-                    <div className={`text-center text-sm p-3 rounded-md mt-4 ${syncMessageType === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {syncMessage}
-                    </div>
-                )}
-            </div>
-
-            {/* Card 2: Key Metrics */}
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Key Metrics</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-blue-50 p-5 rounded-lg border border-blue-200">
-                        <p className="text-sm font-medium text-blue-600">Total Posts</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalPosts || 0}</p>
-                    </div>
-                    <div className="bg-green-50 p-5 rounded-lg border border-green-200">
-                        <p className="text-sm font-medium text-green-600">Total Reach (Impressions)</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-1">{(stats.totalReach || 0).toLocaleString()}</p>
-                    </div>
-                    <div className="bg-purple-50 p-5 rounded-lg border border-purple-200">
-                        <p className="text-sm font-medium text-purple-600">Avg. Engagement Rate</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-1">{parseFloat(stats.engagementRate || 0).toFixed(2)}%</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* --- Charts --- */}
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h4 className="text-xl font-semibold text-gray-800 mb-4">Daily Reach (Last 30 Days)</h4>
-                <div className="h-80"><Ga4LineChart data={reachChartData} /></div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h4 className="text-xl font-semibold text-gray-800 mb-4">Posts by Platform</h4>
-                    <div className="h-80">
-                         <PlatformPostsChart chartData={postsByPlatformData} />
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <h4 className="text-xl font-semibold text-gray-800 mb-4">Engagement Rate by Platform</h4>
-                    <div className="h-80 flex justify-center"><EngagementByPlatformChart data={engagementByPlatformData} /></div>
-                </div>
-            </div>
+            {/* Charts */}
+             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                 <h4 className="text-xl font-semibold text-gray-800 mb-4">Daily Reach (Last 30 Days)</h4>
+                 <div className="h-80"><Ga4LineChart data={reachChartData} /></div>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200"> {/* Added border */}
+                     <h4 className="text-xl font-semibold text-gray-800 mb-4">Posts by Platform</h4>
+                     <div className="h-80 flex justify-center"> {/* Centering might affect bar chart */}
+                          <PlatformPostsChart chartData={postsByPlatformData} />
+                     </div>
+                 </div>
+                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                     <h4 className="text-xl font-semibold text-gray-800 mb-4">Engagement Rate by Platform</h4>
+                     <div className="h-80 flex justify-center"><EngagementByPlatformChart data={engagementByPlatformData} /></div>
+                 </div>
+             </div>
 
             <RecentPostsCard />
-
         </div>
     );
 };
 
+
 const CustomEvent = ({ event }) => (
-    // ... (Existing CustomEvent Code) ...
-     <div className="flex flex-col text-xs">
+    // ... (Existing CustomEvent Code - Should be OK) ...
+      <div className="flex flex-col text-xs p-1"> {/* Added padding */}
         <strong className="font-semibold">{moment(event.start).format('h:mm a')}</strong>
-        <span className="truncate">{event.title}</span>
+        <span className="truncate whitespace-normal text-wrap">{event.title}</span> {/* Allow wrapping */}
     </div>
 );
 
+
 const ScheduleTabContent = ({ scheduledPosts, setScheduledPosts, calendarDate, setCalendarDate, view, setView, optimalTimes }) => {
-    // ... (Existing ScheduleTabContent Code) ...
+    // ... (Existing ScheduleTabContent Code - Should be OK) ...
       console.log('Optimal times received by calendar:', optimalTimes);
 
-    const onEventDrop = useCallback(async ({ event, start }) => {
+    const onEventDrop = useCallback(async ({ event, start, end }) => { // Added end
         if (moment(start).isBefore(moment())) {
-            alert("Cannot move events to a past date.");
+            alert("Cannot move events to a past date/time.");
             return;
         }
 
-        // Check if the event is being dropped on an optimal day
-
         const originalEvents = [...scheduledPosts];
+        // Update end time based on new start time, maintaining duration if possible
+        const duration = moment(event.end).diff(moment(event.start));
+        const newEnd = moment(start).add(duration).toDate();
+
         const updatedEvents = scheduledPosts.map(e =>
-            e.id === event.id ? { ...e, start, end: moment(start).add(1, 'hour').toDate() } : e
+            e.id === event.id ? { ...e, start, end: newEnd } : e // Use newEnd
         );
-        setScheduledPosts(updatedEvents);
+        setScheduledPosts(updatedEvents); // Optimistic update
 
         try {
+            console.log(`Updating event ${event.id} to start at ${start.toISOString()}`);
             const res = await fetch(`/api/social/schedule/${event.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scheduled_at: start.toISOString() }),
+                body: JSON.stringify({ scheduled_at: start.toISOString() }), // Send new start time
             });
-            if (!res.ok) throw new Error('Failed to update on server');
+            if (!res.ok) {
+                 const errorData = await res.json();
+                 throw new Error(errorData.message || `Failed to update schedule: ${res.status}`);
+            }
+             console.log(`Event ${event.id} updated successfully.`);
         } catch (error) {
             console.error("Failed to update schedule:", error);
-            alert('Failed to update schedule. Reverting changes.');
-            setScheduledPosts(originalEvents);
+            alert(`Failed to update schedule: ${error.message}. Reverting changes.`);
+            setScheduledPosts(originalEvents); // Revert on error
         }
 
     }, [scheduledPosts, setScheduledPosts]);
 
-    const eventPropGetter = useCallback((event) => ({
-        style: {
-            backgroundColor: PLATFORMS[event.resource?.platform]?.color || '#9CA3AF', // Use color from PLATFORMS
-            borderRadius: '5px',
-            border: 'none',
-            color: 'white'
-        }
-    }), []); // Added PLATFORMS as dependency if needed, but likely fine
+    const eventPropGetter = useCallback((event) => {
+         const platformConfig = PLATFORMS[event.resource?.platform];
+         return {
+             style: {
+                 backgroundColor: platformConfig?.color || '#9CA3AF',
+                 borderRadius: '5px',
+                 border: 'none',
+                 color: 'white',
+                 opacity: 0.8, // Slight transparency
+                 fontSize: '0.75rem', // Smaller font
+             }
+         };
+    }, []);
 
 
     const dayPropGetter = useCallback((date) => {
-           // Get the day of the week as a number (0=Sun, 1=Mon, etc.)
-       const dayOfWeekNumber = moment(date).day(); // This gets the day as a number (0-6)
+       const dayOfWeekNumber = moment(date).day();
        const isOptimal = optimalTimes.some(time => time.optimal_day === dayOfWeekNumber);
 
         if (moment(date).isBefore(moment(), 'day')) {
             return {
-                className: 'rbc-off-range-bg-disabled',
-                style: {
-                    backgroundColor: '#f3f4f6',
-                    cursor: 'not-allowed',
-                },
+                className: 'rbc-off-range-bg-disabled', // Use existing class or create custom
+                style: { backgroundColor: '#f3f4f6', cursor: 'not-allowed' },
             }
         }
         if (isOptimal) {
-            return {
-                style: {
-                    backgroundColor: '#ecfdf5', // A light green color
-                },
-            };
+            return { style: { backgroundColor: '#d1fae5' } }; // Slightly darker green
         }
-
         return {};
-    }, [optimalTimes]); // Add optimalTimes as a dependency
+    }, [optimalTimes]);
 
 
     const handleNavigate = (newDate) => setCalendarDate(newDate);
 
-    const handleView = (newView) => {
-        setView(newView);
-        // Optional: Reset date when switching views if desired
-        // if (newView === 'day') {
-        //     setCalendarDate(moment().add(1, 'day').toDate());
-        // }
-    };
+    const handleView = (newView) => setView(newView);
+
 
     return (
- <>
-        <div className="bg-white p-6 rounded-lg shadow-md mb-4 border border-gray-200">
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">Schedule Posts</h3>
-            <p className="mt-1 text-sm text-gray-500">
-                Plan and organize your social media content calendar. Drag and drop posts to easily reschedule them.
-            </p>
-        </div>
-
-        <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-700 p-4 mb-6" role="alert">
-            <div className="flex">
-                <InformationCircleIcon className="h-5 w-5 text-blue-400 mr-3" />
-                <p className="text-sm">You can drag and drop your scheduled posts to a new time or date. For more information, see our FAQs.</p>
+        <>
+            <div className="bg-white p-6 rounded-lg shadow-md mb-4 border border-gray-200">
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Schedule Posts</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                    Plan and organize your social media content calendar. Drag and drop posts to easily reschedule them. Highlighted days indicate optimal posting times based on your settings.
+                </p>
             </div>
-        </div>
-                    <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-400 text-green-800 rounded-r-lg">
-                <div className="flex">
-                    <div className="flex-shrink-0">
-                        <StarIcon className="h-5 w-5 text-green-500" aria-hidden="true" />
-                    </div>
-                    <div className="ml-3">
-                        <p className="text-sm">
-                            We have highlighted the best days to post for your target audience in green.
-                        </p>
+
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-2"> {/* Added flex layout */}
+                <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-700 p-3 rounded-r-lg" role="alert"> {/* Reduced padding */}
+                    <div className="flex items-center">
+                        <InformationCircleIcon className="h-5 w-5 text-blue-400 mr-2" />
+                        <p className="text-sm">Drag & drop posts to reschedule.</p>
                     </div>
                 </div>
-            </div>
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200" style={{ height: '80vh' }}>
-            <DragAndDropCalendar
-                localizer={localizer}
-                events={scheduledPosts}
-                startAccessor="start"
-                endAccessor="end"
-                style={{ height: '100%' }}
-                eventPropGetter={eventPropGetter}
-                dayPropGetter={dayPropGetter}
-                onEventDrop={onEventDrop}
-                views={['month', 'week', 'day', 'agenda']}
-                date={calendarDate}
-                view={view}
-                onNavigate={handleNavigate}
-                onView={handleView}
-                resizable
-                components={{ event: CustomEvent }}
+                 <div className="bg-green-50 border-l-4 border-green-400 text-green-800 p-3 rounded-r-lg"> {/* Reduced padding */}
+                    <div className="flex items-center">
+                        <StarIcon className="h-5 w-5 text-green-500 mr-2" aria-hidden="true" />
+                        <p className="text-sm">Green days are optimal posting times.</p>
+                    </div>
+                </div>
+             </div>
 
-            />
-        </div>
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200" style={{ height: '75vh' }}> {/* Adjusted padding and height */}
+                <DragAndDropCalendar
+                    localizer={localizer}
+                    events={scheduledPosts}
+                    startAccessor="start"
+                    endAccessor="end"
+                    style={{ height: '100%' }}
+                    eventPropGetter={eventPropGetter}
+                    dayPropGetter={dayPropGetter}
+                    onEventDrop={onEventDrop}
+                    onEventResize={undefined} // Disable resize if not needed/implemented
+                    resizable={false} // Disable resize
+                    selectable // Allow selecting time slots (optional)
+                    // onSelectSlot={handleSelectSlot} // Handler for selecting slots
+                    views={['month', 'week', 'day', 'agenda']}
+                    defaultView={Views.MONTH} // Set default view
+                    date={calendarDate}
+                    view={view}
+                    onNavigate={handleNavigate}
+                    onView={handleView}
+                    components={{ event: CustomEvent }}
+                    min={moment().startOf('day').toDate()} // Prevent navigating to past days in day/week view (optional)
+                />
+            </div>
         </>
     );
 };
 
+
 const DemographicsTabContent = () => {
-    // ... (Existing Demographics Code) ...
-      const [ageRange, setAgeRange] = useState('');
+    // ... (Existing Demographics Code - Should be OK) ...
+     const [ageRange, setAgeRange] = useState('');
     const [sex, setSex] = useState('');
     const [country, setCountry] = useState('');
     const [currentDemographics, setCurrentDemographics] = useState(null);
+    const [saveStatus, setSaveStatus] = useState({ message: '', type: '' }); // For save feedback
 
     useEffect(() => {
         const fetchDemographics = async () => {
+             setSaveStatus({ message: '', type: '' }); // Clear status on load
             try {
                 const res = await fetch('/api/social/demographics');
                 if (!res.ok) throw new Error('Failed to fetch demographics.');
                 const data = await res.json();
                 setCurrentDemographics(data);
+                // Set initial form state from fetched data
                 setAgeRange(data.age_range || '');
                 setSex(data.sex || '');
                 setCountry(data.country || '');
-            } catch (error) { console.error('Error fetching demographics:', error); }
+            } catch (error) {
+                 console.error('Error fetching demographics:', error);
+                 setSaveStatus({ message: 'Could not load current settings.', type: 'error'});
+            }
         };
         fetchDemographics();
     }, []);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        fetch('/api/social/demographics', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ageRange, sex, country }),
-        })
-        .then(response => response.json())
-        .then(data => {
+        setSaveStatus({ message: 'Saving...', type: 'info' }); // Indicate saving
+        try {
+            const response = await fetch('/api/social/demographics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ageRange, sex, country }),
+            });
+             const data = await response.json();
+            if (!response.ok) {
+                 throw new Error(data.message || 'Failed to save preferences.');
+            }
             console.log('Success:', data);
-            alert('Demographic preferences saved successfully!');
-            setCurrentDemographics({ age_range: ageRange, sex, country }); // Update current demographics after successful save
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-            alert('Failed to save demographic preferences.');
-        });
+            setSaveStatus({ message: 'Preferences saved successfully!', type: 'success' });
+            // Update current demographics display immediately
+            setCurrentDemographics({ age_range: ageRange, sex, country });
+        } catch (error) {
+            console.error('Error saving demographics:', error);
+            setSaveStatus({ message: error.message, type: 'error' });
+        }
     };
+
+
+    // Function to format age range display
+     const formatAgeRangeDisplay = (range) => {
+         if (!range) return 'Not set';
+         if (range.endsWith('+')) return range; // Handle '65+'
+         const parts = range.split('-');
+         if (parts.length === 2 && parts[1] === parts[0]) return parts[0]; // If range is single year e.g., "18-18"
+         return range;
+     };
+
+     // Function to update age range state based on slider value
+     const handleAgeSliderChange = (e) => {
+         const startAge = parseInt(e.target.value, 10);
+         let displayRange;
+         // Define age buckets matching slider ticks/labels if possible
+         if (startAge >= 65) displayRange = '65+';
+         else if (startAge >= 55) displayRange = '55-64';
+         else if (startAge >= 45) displayRange = '45-54';
+         else if (startAge >= 35) displayRange = '35-44';
+         else if (startAge >= 25) displayRange = '25-34';
+         else if (startAge >= 18) displayRange = '18-24';
+         else displayRange = '13-17';
+         setAgeRange(displayRange); // Update state with the bucket string
+     };
+
 
     return (
         <div className="space-y-8">
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">Demographics Insights</h3>
+                <h3 className="text-2xl font-bold text-gray-800 mb-6">Audience Demographics</h3>
                 <p className="text-gray-600 mb-6">
-                    Select demographic filters to gain insights into your audience. This feature allows you to tailor your content and campaigns more effectively.
+                    Set your target audience demographics. This information helps tailor AI suggestions and identify optimal posting times.
                 </p>
             </div>
 
+            {/* Display Current Settings */}
             {currentDemographics && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Current Demographic Settings</h3> {/* Changed from h4 to h3 */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> {/* Added grid layout */}
-                        {/* Age Range Card */}
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Current Settings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 flex items-center">
-                            <CakeIcon className="h-8 w-8 text-blue-600 mr-3" />
+                            <CakeIcon className="h-8 w-8 text-blue-600 mr-3 flex-shrink-0" />
                             <div>
                                 <p className="text-sm font-medium text-blue-600">Age Range</p>
-                                <p className="text-xl font-bold text-gray-900">{currentDemographics.age_range || 'Not set'}</p>
+                                <p className="text-xl font-bold text-gray-900">{formatAgeRangeDisplay(currentDemographics.age_range)}</p>
                             </div>
                         </div>
-                        {/* Sex Card */}
                         <div className="bg-green-50 p-5 rounded-lg border border-green-200 flex items-center">
-                            <UserIcon className="h-8 w-8 text-green-600 mr-3" />
+                            <UserIcon className="h-8 w-8 text-green-600 mr-3 flex-shrink-0" />
                             <div>
                                 <p className="text-sm font-medium text-green-600">Sex</p>
-                                <p className="text-xl font-bold text-gray-900">{currentDemographics.sex || 'Not set'}</p>
+                                <p className="text-xl font-bold text-gray-900 capitalize">{currentDemographics.sex || 'Not set'}</p>
                             </div>
                         </div>
-                        {/* Country Card */}
                         <div className="bg-purple-50 p-5 rounded-lg border border-purple-200 flex items-center">
-                            <GlobeAltIcon className="h-8 w-8 text-purple-600 mr-3" />
+                            <GlobeAltIcon className="h-8 w-8 text-purple-600 mr-3 flex-shrink-0" />
                             <div>
                                 <p className="text-sm font-medium text-purple-600">Country</p>
                                 <p className="text-xl font-bold text-gray-900">{currentDemographics.country || 'Not set'}</p>
@@ -1072,123 +1154,89 @@ const DemographicsTabContent = () => {
                 </div>
             )}
 
+            {/* Form to Update Settings */}
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Apply New Filters</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Update Target Audience</h3>
+                 {/* Display Save Status */}
+                {saveStatus.message && (
+                    <div className={`mb-4 text-sm p-3 rounded-md text-center ${
+                        saveStatus.type === 'success' ? 'bg-green-100 text-green-800' :
+                        saveStatus.type === 'error' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800' // Info
+                    }`}>
+                        {saveStatus.message}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Age Range Card (Largest) */}
-                        <div className="md:col-span-2 bg-gray-50 p-5 rounded-lg border border-gray-200">
-                            <label htmlFor="ageRange" className="block text-sm font-medium text-gray-700">Age Range: {ageRange || 'Not set'}</label>
-                            <input
-                                type="range"
-                                id="ageRange"
-                                name="ageRange"
-                                min="13"
-                                max="65"
-                                step="1"
-                                value={ageRange.split('-')[0] || 13} // Use the start of the range for the slider value
-                                onChange={(e) => {
-                                    const startAge = parseInt(e.target.value, 10);
-                                    let endAge;
-                                    if (startAge >= 65) {
-                                        endAge = '65+';
-                                    } else if (startAge >= 55) {
-                                        endAge = '64';
-                                    } else if (startAge >= 45) {
-                                        endAge = '54';
-                                    } else if (startAge >= 35) {
-                                        endAge = '44';
-                                    } else if (startAge >= 25) {
-                                        endAge = '34';
-                                    } else if (startAge >= 18) {
-                                        endAge = '24';
-                                    } else {
-                                        endAge = '17';
-                                    }
-                                    setAgeRange(`${startAge}-${endAge}`);
-                                }}
-                                className="mt-1 block w-full"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1"><span>13</span><span>18</span><span>25</span><span>35</span><span>45</span><span>55</span><span>65+</span></div>
-                        </div>
+                     {/* Age Range Slider */}
+                    <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                        <label htmlFor="ageRangeSlider" className="block text-sm font-medium text-gray-700">Target Age Range: {formatAgeRangeDisplay(ageRange)}</label>
+                         <input
+                            type="range"
+                            id="ageRangeSlider" // Changed ID
+                            name="ageRangeSlider"
+                            min="13" // Corresponds to '13-17'
+                            max="65" // Corresponds to '65+'
+                            step="1" // Fine-grained steps, logic maps to buckets
+                             // Determine slider value based on the start of the ageRange string
+                             value={ageRange ? (ageRange === '65+' ? 65 : parseInt(ageRange.split('-')[0], 10)) : 13}
+                            onChange={handleAgeSliderChange} // Use the new handler
+                            className="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                        />
+                         <div className="flex justify-between text-xs text-gray-500 mt-1 px-1">
+                             <span>13</span><span>18</span><span>25</span><span>35</span><span>45</span><span>55</span><span>65+</span>
+                         </div>
+                    </div>
 
-                        {/* Sex Card */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Sex Selection */}
                         <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                            <label htmlFor="sex" className="block text-sm font-medium text-gray-700">Sex</label>
-                            <div className="mt-1 space-y-2">
-                                <div className="flex items-center">
-                                    <input
-                                        id="sex-male"
-                                        name="sex"
-                                        type="checkbox"
-                                        value="male"
-                                        checked={sex === 'male'}
-                                        onChange={() => setSex('male')}
-                                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                                    />
-                                    <label htmlFor="sex-male" className="ml-2 block text-sm text-gray-900">
-                                        Male
-                                    </label>
-                                </div>
-                                <div className="flex items-center">
-                                    <input
-                                        id="sex-female"
-                                        name="sex"
-                                        type="checkbox"
-                                        value="female"
-                                        checked={sex === 'female'}
-                                        onChange={() => setSex('female')}
-                                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                                    />
-                                    <label htmlFor="sex-female" className="ml-2 block text-sm text-gray-900">
-                                        Female
-                                    </label>
-                                </div>
-                                <div className="flex items-center">
-                                    <input
-                                        id="sex-other"
-                                        name="sex"
-                                        type="checkbox"
-                                        value="other"
-                                        checked={sex === 'other'}
-                                        onChange={() => setSex('other')}
-                                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                                    />
-                                    <label htmlFor="sex-other" className="ml-2 block text-sm text-gray-900">
-                                        Other
-                                    </label>
-                                </div>
+                            <label className="block text-sm font-medium text-gray-700">Target Sex</label>
+                            <div className="mt-2 space-y-2">
+                                {['any', 'male', 'female', 'other'].map((option) => ( // Added 'any'
+                                    <div key={option} className="flex items-center">
+                                        <input
+                                            id={`sex-${option}`}
+                                            name="sex"
+                                            type="radio" // Use radio buttons for single selection
+                                            value={option}
+                                            checked={sex === option}
+                                            onChange={() => setSex(option)}
+                                            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                                        />
+                                        <label htmlFor={`sex-${option}`} className="ml-2 block text-sm text-gray-900 capitalize">
+                                            {option === 'any' ? 'Any' : option}
+                                        </label>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Country Card */}
+                        {/* Country Selection */}
                         <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                            <label htmlFor="country" className="block text-sm font-medium text-gray-700">Country</label>
+                            <label htmlFor="country" className="block text-sm font-medium text-gray-700">Target Country</label>
+                            {/* Consider using a searchable dropdown component for better UX */}
                             <input
                                 type="text"
                                 id="country"
                                 name="country"
                                 value={country}
                                 onChange={(e) => setCountry(e.target.value)}
-                                placeholder="e.g., United States"
+                                placeholder="e.g., United States (or leave blank for Any)"
                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             />
-                            {/* Simplified Country Select */}
-                            {/* <select
-                                id="country-select" // Different ID needed if input is also present
-                                value={country}
-                                onChange={(e) => setCountry(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                            >
-                                 <option value="">Select a country</option>
-                                 <option value="United States">United States</option>
-                                 Add other common countries
-                            </select> */}
-
+                             {/* Basic datalist example for suggestions */}
+                             {/* <datalist id="country-suggestions">
+                                 <option value="United States"/>
+                                 <option value="United Kingdom"/>
+                                 <option value="Canada"/>
+                                 Add more common countries
+                             </datalist>
+                             <input list="country-suggestions" ... /> */}
                         </div>
                     </div>
                     <button type="submit" className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Apply Filters
+                        Save Preferences
                     </button>
                 </form>
             </div>
@@ -1196,117 +1244,146 @@ const DemographicsTabContent = () => {
     );
 };
 
+
 const ScheduleTabWithNoSSR = dynamic(
     () => Promise.resolve(ScheduleTabContent),
     { ssr: false }
 );
 
+// --- START: MODIFIED SocialMediaManagerPage ---
 export default function SocialMediaManagerPage() {
 
-     const { status } = useSession();
+    const { data: session, status } = useSession(); // Get session data too
     const [activeTab, setActiveTab] = useState('Composer');
     const [scheduledPosts, setScheduledPosts] = useState([]);
     const [optimalTimes, setOptimalTimes] = useState([]);
 
-
-    // --- LIFTED STATE ---
+    // Composer state needs to be managed here if ComposerTabContent is conditionally rendered
+    // or passed down if Layout handles tabs differently. Assuming it's passed down:
     const [postContent, setPostContent] = useState('');
-    // REMOVED: const [postImages, setPostImages] = useState([]); // Removed
-    const [selectedPlatform, setSelectedPlatform] = useState('x');
+    const [selectedPlatform, setSelectedPlatform] = useState('x'); // Default platform
 
-    const [userImages] = useState([]); // Keep if used by ImageManager directly
-    const [isLoadingImages, setIsLoadingImages] = useState(true); // Keep if used by ImageManager
-    const [activeDragId, setActiveDragId] = useState(null); // Keep if used by ImageManager
+    // State for data fetching
+    const [instagramAccounts, setInstagramAccounts] = useState([]);
+    const [pinterestBoards, setPinterestBoards] = useState([]);
+    const [loadingSocialData, setLoadingSocialData] = useState(true); // Renamed for clarity
 
-    // --- Calendar State ---
+    // Calendar State
     const [calendarDate, setCalendarDate] = useState(new Date());
     const [view, setView] = useState(Views.MONTH);
 
-    const [instagramAccounts, setInstagramAccounts] = useState([]);
-    const [pinterestBoards, setPinterestBoards] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-
+    // Fetch scheduled posts
     const fetchScheduledPosts = useCallback(async () => {
+        if (status !== 'authenticated') return; // Don't fetch if not logged in
         try {
             const res = await fetch('/api/social/schedule');
              if (!res.ok) {
-                 throw new Error(`Failed to fetch scheduled posts: ${res.status}`);
+                 console.error(`Failed to fetch scheduled posts: ${res.status}`);
+                 setScheduledPosts([]); // Clear posts on error
+                 return; // Exit if fetch failed
              }
             const data = await res.json();
-            const formattedEvents = data.map(post => ({
+             // Ensure data is an array before mapping
+            const posts = Array.isArray(data) ? data : [];
+            const formattedEvents = posts.map(post => ({
                 id: post.id,
-                // Ensure post.content exists before substring
-                title: `${PLATFORMS[post.platform]?.name || 'Post'}: ${post.content ? post.content.substring(0, 30) + '...' : '(No Content)'}`,
+                title: `${PLATFORMS[post.platform]?.name || post.platform || 'Post'}: ${post.content ? post.content.substring(0, 30) + '...' : '(No Content)'}`,
                 start: new Date(post.scheduled_at),
-                end: moment(post.scheduled_at).add(30, 'minutes').toDate(), // Or adjust duration
+                end: moment(post.scheduled_at).add(30, 'minutes').toDate(),
                 resource: { platform: post.platform },
             }));
             setScheduledPosts(formattedEvents);
-        } catch (error) { console.error("Failed to fetch posts:", error); }
-    }, []);
+        } catch (error) {
+             console.error("Error processing scheduled posts:", error);
+             setScheduledPosts([]); // Clear posts on error
+        }
+    }, [status]); // Add status dependency
 
+    // Fetch optimal times
     const fetchOptimalTimes = useCallback(async () => {
+         if (status !== 'authenticated') return;
         try {
             const res = await fetch('/api/social/optimal-times');
             if (res.ok) {
                 const data = await res.json();
-                setOptimalTimes(data || []); // Ensure it's an array
+                setOptimalTimes(Array.isArray(data) ? data : []);
             } else {
                  console.error("Failed to fetch optimal times:", res.status);
+                 setOptimalTimes([]);
             }
         } catch (error) {
             console.error("Failed to fetch optimal times:", error);
+            setOptimalTimes([]);
         }
-    }, []);
+    }, [status]); // Add status dependency
 
+
+    // Fetch Instagram accounts and Pinterest boards
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchSocialConnectionData = async () => {
+             if (status !== 'authenticated') {
+                 setLoadingSocialData(false); // Stop loading if not logged in
+                 return;
+             }
             try {
-                setLoading(true);
+                setLoadingSocialData(true);
                 const [igRes, pinRes] = await Promise.all([
                     fetch('/api/social/instagram/accounts'),
                     fetch('/api/social/pinterest/boards')
                 ]);
 
                 if (igRes.ok) {
-                    const igAccountsData = await igRes.json(); // Assign value FIRST
-                    console.log("Fetched Instagram Accounts:", igAccountsData); // THEN log it
-                    setInstagramAccounts(igAccountsData || []); // Ensure array
+                    const igAccountsData = await igRes.json();
+                    console.log("Fetched Instagram Accounts:", igAccountsData);
+                    setInstagramAccounts(Array.isArray(igAccountsData) ? igAccountsData : []);
                 } else {
                     console.error("Failed to fetch Instagram accounts:", igRes.status, await igRes.text());
-                     setInstagramAccounts([]); // Set empty array on failure
+                     setInstagramAccounts([]);
                 }
 
                 if (pinRes.ok) {
                     const pinBoardsData = await pinRes.json();
-                    setPinterestBoards(pinBoardsData || []); // Ensure array
+                     console.log("Fetched Pinterest Boards:", pinBoardsData);
+                    setPinterestBoards(Array.isArray(pinBoardsData) ? pinBoardsData : []);
                 } else {
                      console.error("Failed to fetch Pinterest boards:", pinRes.status, await pinRes.text());
-                     setPinterestBoards([]); // Set empty array on failure
+                     setPinterestBoards([]);
                 }
             } catch (error) {
-                console.error("Failed to fetch social data:", error);
-                 // Set empty arrays on catch
+                console.error("Failed to fetch social connection data:", error);
                  setInstagramAccounts([]);
                  setPinterestBoards([]);
             } finally {
-                setLoading(false);
+                setLoadingSocialData(false);
             }
         };
 
-        fetchData();
-    }, []); // Empty dependency array means this runs once on mount
+        fetchSocialConnectionData();
+    }, [status]); // Fetch when authentication status changes
 
 
+    // Fetch dynamic data (schedule, optimal times) when authenticated
     useEffect(() => {
         if (status === 'authenticated') {
             fetchOptimalTimes();
-            fetchScheduledPosts(); // Fetch initially and when status changes
+            fetchScheduledPosts();
+        } else {
+            // Clear data if user logs out
+             setScheduledPosts([]);
+             setOptimalTimes([]);
         }
-    }, [status, fetchScheduledPosts, fetchOptimalTimes]); // Include dependencies
+    }, [status, fetchScheduledPosts, fetchOptimalTimes]);
 
-    if (status === 'loading') return <Layout><p>Loading session...</p></Layout>; // Improved loading message
+
+    if (status === 'loading') {
+        return <Layout><div className="flex justify-center items-center h-screen"><p>Loading session...</p></div></Layout>;
+    }
+     if (status === 'unauthenticated') {
+         // Redirect to login or show message
+         // Example: Use Next.js router or simply show a message
+         return <Layout><div className="text-center p-8"><p>Please <Link href="/login" className="text-blue-600 hover:underline">log in</Link> to access the Social Media Manager.</p></div></Layout>;
+     }
+
 
     return (
         <Layout>
@@ -1316,44 +1393,39 @@ export default function SocialMediaManagerPage() {
             </div>
             <SocialNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-            {activeTab === 'Composer' && (
-                <ComposerTabContent
-                    onPostScheduled={fetchScheduledPosts} // Pass fetch function to refresh list after schedule
-                    scheduledPosts={scheduledPosts} // Pass scheduled posts for the upcoming list
-                    postContent={postContent}
-                    setPostContent={setPostContent}
-                    selectedPlatform={selectedPlatform}
-                    setSelectedPlatform={setSelectedPlatform}
-                    // postImages REMOVED
-                    // setPostImages REMOVED
-                    // userImages={userImages} // Keep if ImageManager needs it
-                    // isLoadingImages={isLoadingImages} // Keep if ImageManager needs it
-                    // setIsLoadingImages={setIsLoadingImages} // Keep if ImageManager needs it
-                    // activeDragId={activeDragId} // Keep if ImageManager needs it
-                    // setActiveDragId={setActiveDragId} // Keep if ImageManager needs it
-                    instagramAccounts={instagramAccounts}
-                    pinterestBoards={pinterestBoards}
-                    loading={loading} // Pass loading state for dropdowns etc.
-                    // Removed fetchScheduledPosts prop as onPostScheduled handles refresh
-                />
-            )}
-            {activeTab === 'Analytics' && <AnalyticsTabContent />}
-            {activeTab === 'Schedule' && (
-                <ScheduleTabWithNoSSR
-                    scheduledPosts={scheduledPosts}
-                    setScheduledPosts={setScheduledPosts} // Allow drag-and-drop updates
-                    // fetchScheduledPosts={fetchScheduledPosts} // Not strictly needed if list updates elsewhere
-                    calendarDate={calendarDate}
-                    setCalendarDate={setCalendarDate}
-                    view={view}
-                    setView={setView}
-                    optimalTimes={optimalTimes}
-                    // Pass other props if needed by ScheduleTabContent
-                />
-            )}
-            {activeTab === 'Demographics' && <DemographicsTabContent />}
-            {activeTab === 'Mailchimp' && <MailchimpTabContent />}
+            {/* Render Tab Content Based on activeTab */}
+            <div className="mt-8"> {/* Add margin top for content */}
+                {activeTab === 'Composer' && (
+                    <ComposerTabContent
+                        // Pass necessary props
+                        onPostScheduled={fetchScheduledPosts} // Callback to refresh schedule
+                        scheduledPosts={scheduledPosts}
+                        postContent={postContent}
+                        setPostContent={setPostContent}
+                        selectedPlatform={selectedPlatform}
+                        setSelectedPlatform={setSelectedPlatform}
+                        instagramAccounts={instagramAccounts}
+                        pinterestBoards={pinterestBoards}
+                        loading={loadingSocialData} // Use renamed loading state
+                    />
+                )}
+                {activeTab === 'Analytics' && <AnalyticsTabContent />}
+                {activeTab === 'Schedule' && (
+                    <ScheduleTabWithNoSSR
+                        scheduledPosts={scheduledPosts}
+                        setScheduledPosts={setScheduledPosts}
+                        calendarDate={calendarDate}
+                        setCalendarDate={setCalendarDate}
+                        view={view}
+                        setView={setView}
+                        optimalTimes={optimalTimes}
+                    />
+                )}
+                {activeTab === 'Demographics' && <DemographicsTabContent />}
+                {activeTab === 'Mailchimp' && <MailchimpTabContent />}
+            </div>
             <CalenderModal id="CalenderModal" />
         </Layout>
     );
 }
+// --- END: MODIFIED SocialMediaManagerPage ---
