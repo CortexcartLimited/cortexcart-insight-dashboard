@@ -1,85 +1,141 @@
 // src/app/api/social/instagram/accounts/post/route.js
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import axios from 'axios';
 
+// Helper function for delays
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function POST(req) {
+    // 1. Check for internal API secret
+    const authToken = req.headers.get('authorization');
+    if (authToken !== `Bearer ${process.env.INTERNAL_API_SECRET}`) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let connection;
+    let containerId = null; // Define containerId here for error logging
+
     try {
-        const internalAuthToken = req.headers.get('authorization');
-        let userEmail;
-        let requestBody;
+        // 2. Get payload from the cron job
+        const { user_email, caption, imageUrl, instagramUserId } = await req.json();
 
-        // --- START OF FIX: DUAL AUTHENTICATION ---
-        if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
-            // This is an authorized internal call from the cron job
-            requestBody = await req.json();
-            if (!requestBody.user_email) {
-                return NextResponse.json({ error: 'user_email is required for cron job posts' }, { status: 400 });
-            }
-            userEmail = requestBody.user_email;
-        } else {
-            // This is a regular session-based call from a logged-in user
-            const session = await getServerSession(authOptions);
-            if (!session) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-            userEmail = session.user.email;
-            requestBody = await req.json();
-        }
-        // --- END OF FIX ---
+        // 3. Get the correct Page Access Token for this user
+        connection = await db.getConnection();
 
-        const { instagramUserId, imageUrl, caption } = requestBody;
-        if (!instagramUserId || !imageUrl) {
-            return NextResponse.json({ error: 'Image and Instagram account are required.' }, { status: 400 });
-        }
-
-        const [accountRows] = await db.query(
+        // 3a. Find the page_id linked to this instagram_id
+        const [igAccountRows] = await db.query(
             `SELECT page_id FROM instagram_accounts WHERE instagram_id = ? AND user_email = ?`,
-            [instagramUserId, userEmail]
+            [instagramUserId, user_email]
         );
 
-        if (accountRows.length === 0) {
-            return NextResponse.json({ error: 'Could not find the linked Facebook page for this Instagram account.' }, { status: 404 });
+        if (!igAccountRows.length) {
+            throw new Error(`No instagram_account entry found for user ${user_email} with IG ID ${instagramUserId}`);
         }
-        const linkedPageId = accountRows[0].page_id;
+        const pageId = igAccountRows[0].page_id;
 
+        // 3b. Use the page_id to get the encrypted page_access_token
         const [pageRows] = await db.query(
-            `SELECT page_access_token_encrypted FROM social_connect WHERE user_email = ? AND platform = 'facebook-page' AND page_id = ?`,
-            [userEmail, linkedPageId]
+            `SELECT page_access_token_encrypted FROM social_connect WHERE page_id = ? AND user_email = ? AND platform = 'facebook-page'`,
+            [pageId, user_email]
         );
 
-        if (pageRows.length === 0 || !pageRows[0].page_access_token_encrypted) {
-             return NextResponse.json({ error: 'Could not find credentials for the linked Facebook Page.' }, { status: 404 });
+        if (!pageRows.length || !pageRows[0].page_access_token_encrypted) {
+            throw new Error(`No 'facebook-page' entry found for user ${user_email} with Page ID ${pageId}`);
         }
+
+        // 3c. Decrypt the token
         const accessToken = decrypt(pageRows[0].page_access_token_encrypted);
-
-        // Use the consistent public URL environment variable
-        const absoluteImageUrl = new URL(imageUrl, process.env.NEXT_PUBLIC_APP_URL).href;
-        console.log(`Attempting to post image to Instagram with URL: ${absoluteImageUrl}`);
         
-        const createContainerResponse = await axios.post(
-            `https://graph.facebook.com/v19.0/${instagramUserId}/media`,
-            { image_url: absoluteImageUrl, caption: caption, access_token: accessToken }
-        );
+        // Ensure you are constructing the full, publicly accessible URL for the image
+        const fullImageUrl = `${process.env.NEXTAUTH_URL}/uploads/${imageUrl}`;
 
-        const creationId = createContainerResponse.data?.id;
-        if (!creationId) {
-            throw new Error(`Failed to create media container. API response: ${JSON.stringify(createContainerResponse.data)}`);
+
+        // --- START INSTAGRAM 3-STEP POSTING LOGIC ---
+
+        // --- STEP 1: Create Media Container ---
+        console.log(`[IG POST] 1/3: Creating media container for image: ${fullImageUrl}`);
+        const containerUrl = `https://graph.facebook.com/v19.0/${instagramUserId}/media`;
+        const containerParams = new URLSearchParams({
+            image_url: fullImageUrl,
+            caption: caption,
+            access_token: accessToken,
+        });
+
+        const containerRes = await axios.post(containerUrl, containerParams);
+        containerId = containerRes.data.id;
+        if (!containerId) {
+            throw new Error('Failed to create media container.');
+        }
+        console.log(`[IG POST] 1/3: Media container created: ${containerId}`);
+
+
+        // --- STEP 2: Poll for Container Status ---
+        console.log(`[IG POST] 2/3: Polling container status...`);
+        let status = '';
+        const maxAttempts = 20; // Poll for a maximum of ~60 seconds
+        const pollDelay = 3000; // Wait 3 seconds between polls
+
+        for (let i = 0; i < maxAttempts; i++) {
+            const statusUrl = `https://graph.facebook.com/v19.0/${containerId}`;
+            const statusParams = new URLSearchParams({
+                fields: 'status_code',
+                access_token: accessToken,
+            });
+
+            const statusRes = await axios.get(`${statusUrl}?${statusParams.toString()}`);
+            status = statusRes.data.status_code;
+
+            if (status === 'FINISHED') {
+                console.log(`[IG POST] 2/3: Media container is FINISHED.`);
+                break; // Exit loop, ready to publish
+            } else if (status === 'ERROR') {
+                // Log the specific error if the container fails
+                const errorStatusRes = await axios.get(`${statusUrl}?fields=error_message&access_token=${accessToken}`);
+                throw new Error(`Media container processing failed: ${errorStatusRes.data.error_message}`);
+            }
+
+            // If not finished, wait and try again
+            await sleep(pollDelay);
         }
 
-        await axios.post(
-            `https://graph.facebook.com/v19.0/${instagramUserId}/media_publish`,
-            { creation_id: creationId, access_token: accessToken }
-        );
+        if (status !== 'FINISHED') {
+            throw new Error(`Media container was not ready after ${maxAttempts} attempts. Last status: ${status}`);
+        }
 
-        return NextResponse.json({ success: true, message: 'Posted to Instagram successfully!' });
+        // --- STEP 3: Publish the Media ---
+        console.log(`[IG POST] 3/3: Publishing media...`);
+        const publishUrl = `https://graph.facebook.com/v19.0/${instagramUserId}/media_publish`;
+        const publishParams = new URLSearchParams({
+            creation_id: containerId,
+            access_token: accessToken,
+        });
+
+        const publishRes = await axios.post(publishUrl, publishParams);
+        console.log(`[IG POST] 3/3: Successfully published with media ID: ${publishRes.data.id}`);
+        
+        // --- END INSTAGRAM 3-STEP POSTING LOGIC ---
+
+        return NextResponse.json({ success: true, media_id: publishRes.data.id });
+
     } catch (error) {
-        console.error("Error posting to Instagram:", error.response?.data || error.message);
-        const errorMessage = error.response?.data?.error?.message || error.message || 'An unexpected error occurred.';
-        return NextResponse.json({ error: `Instagram Error: ${errorMessage}` }, { status: 500 });
+        // Log the detailed error from Facebook's API
+        console.error(`[IG POST] Error posting to Instagram (Container ID: ${containerId}):`, error.response?.data || error.message);
+        
+        // Throw a new error to be caught by the main cron handler
+        const apiError = error.response?.data?.error;
+        let errorMessage = error.message;
+
+        if (apiError) {
+            errorMessage = `API Error ${apiError.code} (${apiError.error_subcode}): ${apiError.error_user_title} - ${apiError.error_user_msg}`;
+        }
+        
+        return NextResponse.json({ message: errorMessage }, { status: 500 });
+    } finally {
+        if (connection) connection.release();
     }
 }
