@@ -85,7 +85,7 @@ export const authOptions = {
         TwitterProvider({
             clientId: process.env.X_CLIENT_ID,
             clientSecret: process.env.X_CLIENT_SECRET,
-            version: "1.0",
+            version: "2.0",
         }),
     ],
     // --- DATABASE LOGIC IS NOW RESTORED ---
