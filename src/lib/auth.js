@@ -83,9 +83,15 @@ export const authOptions = {
             }
         }),
         TwitterProvider({
+            id: "x"
             clientId: process.env.X_CLIENT_ID,
             clientSecret: process.env.X_CLIENT_SECRET,
             version: "2.0",
+            authorization: {
+            params: { 
+            scope: "tweet.read tweet.write users.read offline.access" 
+        }
+      }
         }),
     ],
     // --- DATABASE LOGIC IS NOW RESTORED ---
@@ -116,6 +122,7 @@ export const authOptions = {
                 token.email = user.email || `${user.id}@users.twitter.com`;
                 token.name = user.name;
                 token.picture = user.image;
+                
 
                 if (account.access_token) { 
                     try {
