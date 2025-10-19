@@ -13,7 +13,11 @@ const InstagramAccountManager = () => {
             setLoading(true);
             setError('');
             try {
-                const res = await fetch('/api/social/instagram/accounts');
+                // --- START OF FIX 1 ---
+                // Add { cache: 'no-store' } to prevent fetching stale data on load
+                const res = await fetch('/api/social/instagram/accounts', { cache: 'no-store' });
+                // --- END OF FIX 1 ---
+
                 if (!res.ok) {
                     const errorData = await res.json();
                     throw new Error(errorData.error || 'Failed to load your Instagram accounts.');
@@ -36,6 +40,7 @@ const InstagramAccountManager = () => {
 
     const handleSetActiveAccount = async (instagramId) => {
         try {
+            setError(''); // Clear any previous errors
             const res = await fetch('/api/social/instagram/active-account', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -43,12 +48,21 @@ const InstagramAccountManager = () => {
             });
             if (!res.ok) throw new Error('Failed to set active account.');
             
-            const activeAccountRes = await fetch('/api/social/instagram/accounts');
+            // --- START OF FIX 2 ---
+            // Add { cache: 'no-store' } to force-refresh the data
+            const activeAccountRes = await fetch('/api/social/instagram/accounts', { cache: 'no-store' });
+            // --- END OF FIX 2 ---
+            
             if (activeAccountRes.ok) {
                 const data = await activeAccountRes.json();
                 setAccounts(data);
                 const active = data.find(acc => acc.is_active);
-                if(active) setActiveAccount(active);
+                
+                // --- START OF FIX 3 ---
+                // Also update the 'activeAccount' state directly
+                // This ensures the UI updates instantly
+                setActiveAccount(active || null);
+                // --- END OF FIX 3 ---
             }
 
         } catch (err) {
