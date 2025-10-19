@@ -51,14 +51,17 @@ export async function POST(req) {
         // 3c. Decrypt the token
         const accessToken = decrypt(pageRows[0].page_access_token_encrypted);
         
-        // Ensure you are constructing the full, publicly accessible URL for the image
-        const fullImageUrl = `${process.env.NEXTAUTH_URL}/uploads/${imageUrl}`;
+        // --- START OF FIX ---
+        // The 'imageUrl' variable (e.g., "/uploads/image.jpg") already has the path.
+        // We just need to add the domain.
+        const fullImageUrl = `${process.env.NEXTAUTH_URL}${imageUrl}`;
+        // --- END OF FIX ---
 
 
         // --- START INSTAGRAM 3-STEP POSTING LOGIC ---
 
         // --- STEP 1: Create Media Container ---
-        console.log(`[IG POST] 1/3: Creating media container for image: ${fullImageUrl}`);
+        console.log(`[IG POST] 1/3: Creating media container for image: ${fullImageUrl}`); // This will now show the correct URL
         const containerUrl = `https://graph.facebook.com/v19.0/${instagramUserId}/media`;
         const containerParams = new URLSearchParams({
             image_url: fullImageUrl,
@@ -75,6 +78,7 @@ export async function POST(req) {
 
 
         // --- STEP 2: Poll for Container Status ---
+        // (This part is correct, no changes needed)
         console.log(`[IG POST] 2/3: Polling container status...`);
         let status = '';
         const maxAttempts = 20; // Poll for a maximum of ~60 seconds
@@ -94,12 +98,10 @@ export async function POST(req) {
                 console.log(`[IG POST] 2/3: Media container is FINISHED.`);
                 break; // Exit loop, ready to publish
             } else if (status === 'ERROR') {
-                // Log the specific error if the container fails
                 const errorStatusRes = await axios.get(`${statusUrl}?fields=error_message&access_token=${accessToken}`);
                 throw new Error(`Media container processing failed: ${errorStatusRes.data.error_message}`);
             }
 
-            // If not finished, wait and try again
             await sleep(pollDelay);
         }
 
@@ -108,6 +110,7 @@ export async function POST(req) {
         }
 
         // --- STEP 3: Publish the Media ---
+        // (This part is correct, no changes needed)
         console.log(`[IG POST] 3/3: Publishing media...`);
         const publishUrl = `https://graph.facebook.com/v19.0/${instagramUserId}/media_publish`;
         const publishParams = new URLSearchParams({
@@ -118,15 +121,11 @@ export async function POST(req) {
         const publishRes = await axios.post(publishUrl, publishParams);
         console.log(`[IG POST] 3/3: Successfully published with media ID: ${publishRes.data.id}`);
         
-        // --- END INSTAGRAM 3-STEP POSTING LOGIC ---
-
         return NextResponse.json({ success: true, media_id: publishRes.data.id });
 
     } catch (error) {
-        // Log the detailed error from Facebook's API
         console.error(`[IG POST] Error posting to Instagram (Container ID: ${containerId}):`, error.response?.data || error.message);
         
-        // Throw a new error to be caught by the main cron handler
         const apiError = error.response?.data?.error;
         let errorMessage = error.message;
 
