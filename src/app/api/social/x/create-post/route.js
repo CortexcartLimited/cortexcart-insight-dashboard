@@ -112,6 +112,7 @@ export async function POST(req) {
         console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.response?.data || error.message);
         
         let errorMessage = "Failed to post to X/Twitter.";
+        // NOTE: The "AccessSecret" log from your old file is GONE in this new code.
         if (error.response?.data?.status === 401) {
             errorMessage = "401 Unauthorized. The user's token may be revoked. Please re-connect.";
         } else if (error.response?.data?.status === 403) {
