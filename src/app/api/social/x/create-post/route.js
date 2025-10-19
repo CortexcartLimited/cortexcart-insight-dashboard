@@ -1,125 +1,125 @@
 // src/app/api/social/x/create-post/route.js
+
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { decrypt, encrypt } from '@/lib/crypto'; // Import encrypt
 import { TwitterApi } from 'twitter-api-v2';
-import { decrypt } from '@/lib/crypto';
+import axios from 'axios'; // Use axios for the refresh request
 
-export async function POST(req) {
-    console.log("--- X/Twitter Post API Endpoint Triggered (Using v2 API) ---"); // Updated log
-    const appKeyFromEnv = process.env.X_CLIENT_ID;
-    const appSecretFromEnv = process.env.X_CLIENT_SECRET;
+// Helper function to get the user's Twitter tokens from social_connect
+async function getTwitterConnection(connection, userEmail) {
+    const [rows] = await connection.query(
+        `SELECT * FROM social_connect WHERE user_email = ? AND platform = 'twitter'`,
+        [userEmail]
+    );
+    if (!rows.length) {
+        throw new Error(`No 'twitter' connection found for user: ${userEmail}`);
+    }
+    return rows[0];
+}
 
-    console.log(`Is X_CLIENT_ID present? ${!!appKeyFromEnv}`);
-    console.log(`Is X_CLIENT_SECRET present? ${!!appSecretFromEnv}`);
-
-    let userEmail;
-    const requestBody = await req.json();
-    let accessToken, accessSecret;
-
+// Helper function to refresh the token
+async function refreshTwitterToken(connection, connectionRow) {
+    console.log(`[X POST] Token is expired. Refreshing for ${connectionRow.user_email}`);
     try {
-        if (!appKeyFromEnv || !appSecretFromEnv) {
-            console.error("CRITICAL ERROR: X_CLIENT_ID or X_CLIENT_SECRET environment variables are missing or empty.");
-            throw new Error("Application is not configured correctly for X/Twitter API. Consumer keys (client ID/secret) are missing.");
-        }
+        const refreshToken = decrypt(connectionRow.refresh_token_encrypted);
 
-        const internalAuthToken = req.headers.get('authorization');
-
-        if (internalAuthToken === `Bearer ${process.env.INTERNAL_API_SECRET}`) {
-            console.log("Request is from internal cron job.");
-            if (!requestBody.user_email) {
-                return NextResponse.json({ error: 'user_email is required for cron job posts' }, { status: 400 });
+        const response = await axios.post(
+            "https://api.twitter.com/2/oauth2/token",
+            new URLSearchParams({
+                grant_type: "refresh_token",
+                refresh_token: refreshToken,
+                client_id: process.env.X_CLIENT_ID, // Use clientId for refresh
+            }),
+            {
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Authorization": `Basic ${Buffer.from(`${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`).toString("base64")}`,
+                },
             }
-            userEmail = requestBody.user_email;
-        } else {
-            console.log("Request is from a logged-in user session.");
-            const session = await getServerSession(authOptions);
-            if (!session) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-            userEmail = session.user.email;
-        }
-        console.log(`Processing post for user: ${userEmail}`);
-
-        const { content } = requestBody;
-        if (!content) {
-            return NextResponse.json({ error: 'Content is required.' }, { status: 400 });
-        }
-        console.log(`Tweet content: "${content}"`);
-
-        const [userRows] = await db.query(
-            "SELECT access_token_encrypted, refresh_token_encrypted FROM social_connect WHERE user_email = ? AND platform = 'x'",
-            [userEmail]
         );
 
-        if (userRows.length === 0 || !userRows[0].access_token_encrypted || !userRows[0].refresh_token_encrypted) {
-            console.error(`No X/Twitter credentials found in database for ${userEmail}.`);
-            return NextResponse.json({ error: 'X/Twitter credentials not found for this user.' }, { status: 404 });
+        const newTokens = response.data;
+        if (!newTokens.access_token) {
+            throw new Error("Failed to get new access token from refresh response.");
         }
 
-        try {
-            console.log("Attempting to decrypt tokens...");
-            accessToken = decrypt(userRows[0].access_token_encrypted);
-            accessSecret = decrypt(userRows[0].refresh_token_encrypted);
-            console.log(`Decrypted Access Token (first 5): ${accessToken ? accessToken.substring(0, 5) : 'null or empty'}...`);
-            console.log(`Decrypted Access Secret (first 5): ${accessSecret ? accessSecret.substring(0, 5) : 'null or empty'}...`);
-        } catch (decryptionError) {
-            console.error("CRITICAL Error decrypting user tokens:", decryptionError.message);
-            throw new Error("Failed to decrypt user credentials.");
-        }
-
-        if (!accessToken || !accessSecret) {
-            console.error("Decrypted tokens are missing or empty.");
-            throw new Error("Invalid user credentials after decryption.");
-        }
-
-        console.log("Initializing TwitterApi client for OAuth 1.0a...");
-        const client = new TwitterApi({
-            appKey: appKeyFromEnv,
-            appSecret: appSecretFromEnv,
-            accessToken: accessToken,
-            accessSecret: accessSecret,
-        });
-
-        // Use the readWrite client suitable for user actions
-        const readWriteClient = client.readWrite;
-
-        let createdTweet;
-        try {
-            // --- REVERTED: Use v2 endpoint ---
-            console.log("Sending tweet via readWriteClient.v2.tweet...");
-            const response = await readWriteClient.v2.tweet(content);
-            createdTweet = response.data;
-            console.log(`Successfully posted tweet ID: ${createdTweet.id}`);
-            // --- END REVERT ---
-        } catch (tweetError) {
-            console.error("Error occurred during readWriteClient.v2.tweet call:"); // Keep v2 in log
-            console.error("tweetError object:", JSON.stringify(tweetError, null, 2));
-            if (tweetError.rateLimit) {
-                console.error("Rate limit info:", tweetError.rateLimit);
-            }
-            if (tweetError.response?.data) {
-                console.error("Twitter API raw response data:", tweetError.response.data);
-            }
-            throw tweetError;
-        }
-
-        return NextResponse.json({ success: true, tweetId: createdTweet.id });
+        // Save the new tokens back to the database
+        const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
+        await connection.query(
+            `UPDATE social_connect SET
+                access_token_encrypted = ?,
+                refresh_token_encrypted = ?,
+                expires_at = ?
+             WHERE id = ?`,
+            [
+                encrypt(newTokens.access_token),
+                encrypt(newTokens.refresh_token),
+                newExpiresAt,
+                connectionRow.id
+            ]
+        );
+        console.log(`[X POST] Token refreshed and saved successfully for ${connectionRow.user_email}`);
+        return newTokens.access_token; // Return the new, valid access token
 
     } catch (error) {
-        console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.message);
-        if (accessToken || accessSecret) {
-            console.error(`Tokens used (partial): AccessToken=${accessToken ? accessToken.substring(0, 5) : 'N/A'}..., AccessSecret=${accessSecret ? accessSecret.substring(0, 5) : 'N/A'}...`);
+        console.error("CRITICAL: Failed to refresh Twitter token:", error.response?.data || error.message);
+        throw new Error(`Failed to refresh Twitter token: ${error.response?.data?.error_description || error.message}`);
+    }
+}
+
+export async function POST(req) {
+    console.log("--- X/Twitter Post API Endpoint Triggered (OAuth 2.0) ---");
+
+    // 1. Check for internal API secret
+    const authToken = req.headers.get('authorization');
+    if (authToken !== `Bearer ${process.env.INTERNAL_API_SECRET}`) {
+         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let connection;
+    try {
+        // 2. Get the post content and user email
+        const { content, user_email } = await req.json();
+        if (!user_email) {
+            return NextResponse.json({ error: 'user_email is required.' }, { status: 400 });
         }
-         // Log specific API response data if available from the error object
-        if (error.response?.data) {
-            console.error("X/Twitter API Response Error (outer catch):", error.response.data);
+        console.log(`[X POST] Processing post for user: ${user_email}`);
+
+        // 3. Get the user's Twitter account from the 'social_connect' table
+        connection = await db.getConnection();
+        const connectionRow = await getTwitterConnection(connection, user_email);
+
+        let accessToken = decrypt(connectionRow.access_token_encrypted);
+
+        // 4. Check if the token is expired (with a 5-minute buffer)
+        const tokenExpires = new Date(connectionRow.expires_at).getTime();
+        if (Date.now() >= tokenExpires - 300000) {
+            accessToken = await refreshTwitterToken(connection, connectionRow);
         }
-        // Log 401 specifically
-        if (error.code === 401 || (error.response && error.response.status === 401)) {
-             console.error("Received 401 Unauthorized from Twitter API. Check App/Token Permissions & Server Clock.");
+
+        // 5. Initialize the Twitter Client with the OAuth 2.0 Bearer Token
+        const client = new TwitterApi(accessToken);
+
+        // 6. Send the tweet
+        console.log(`[X POST] Sending tweet: "${content}"`);
+        const { data: tweet } = await client.v2.tweet(content);
+        console.log(`[X POST] Tweet sent successfully: ${tweet.id}`);
+
+        return NextResponse.json({ success: true, tweetId: tweet.id });
+
+    } catch (error) {
+        console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.response?.data || error.message);
+        
+        let errorMessage = "Failed to post to X/Twitter.";
+        if (error.response?.data?.status === 401) {
+            errorMessage = "401 Unauthorized. The user's token may be revoked. Please re-connect.";
+        } else if (error.response?.data?.status === 403) {
+             errorMessage = "403 Forbidden. Check your app's permissions in the X Developer Portal.";
         }
-        return NextResponse.json({ error: 'Failed to post to X/Twitter.', details: error.message }, { status: 500 });
+        
+        return NextResponse.json({ error: errorMessage, details: error.response?.data || error.message }, { status: 500 });
+    } finally {
+        if (connection) connection.release();
     }
 }
