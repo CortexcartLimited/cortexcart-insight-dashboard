@@ -83,7 +83,7 @@ export const authOptions = {
             }
         }),
         TwitterProvider({
-            id: "x"
+            id: "x",
             clientId: process.env.X_CLIENT_ID,
             clientSecret: process.env.X_CLIENT_SECRET,
             version: "2.0",
