@@ -57,6 +57,19 @@ export async function GET(req) {
 
             if (page.instagram_business_account) {
                 const ig = page.instagram_business_account;
+
+                // --- START OF FIX ---
+                // We MUST create the main 'instagram' row in social_connect
+                // This is the row the 'active-account' route is looking for.
+                await db.query(
+                    `INSERT INTO social_connect (user_email, platform) 
+                     VALUES (?, 'instagram') 
+                     ON DUPLICATE KEY UPDATE platform = 'instagram'`, // This ensures the 'instagram' row exists
+                    [userEmail]
+                );
+                // --- END OF FIX ---
+
+                // This query is correct and saves the specific IG account details
                 await db.query(
                     `INSERT INTO instagram_accounts (user_email, page_id, instagram_id, username) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE page_id = VALUES(page_id), username = VALUES(username)`,
                     [userEmail, page.id, ig.id, ig.username]

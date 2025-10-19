@@ -19,34 +19,33 @@ export async function POST(req) {
     }
 
     try {
-        console.log(`Setting active Instagram ID for ${userEmail} to ${instagramId}`); // Add logging
+        console.log(`Setting active Instagram ID for ${userEmail} to ${instagramId}`);
 
         // --- START OF FIX ---
-        // Updates the CORRECT 'active_instagram_user_id' column
-        // for the CORRECT 'instagram' platform row.
+        // Use an "UPSERT" (INSERT ... ON DUPLICATE KEY UPDATE)
+        // This creates the row if it doesn't exist OR updates it if it does.
+        // This is safer and prevents the "No social_connect entry found" error.
         const [updateResult] = await db.query(
-            `UPDATE social_connect
-             SET active_instagram_user_id = ?
-             WHERE user_email = ? AND platform = 'instagram'`, // Corrected column and platform
-            [instagramId, userEmail]
+            `INSERT INTO social_connect (user_email, platform, active_instagram_user_id)
+             VALUES (?, 'instagram', ?)
+             ON DUPLICATE KEY UPDATE active_instagram_user_id = VALUES(active_instagram_user_id)`,
+            [userEmail, instagramId]
         );
         // --- END OF FIX ---
 
-        // Check if a row was actually updated
-        if (updateResult.affectedRows === 0) {
-            // Attempt to insert if the row doesn't exist (optional, depends on your connection flow)
-            // For now, we assume the 'instagram' row should exist if they can select an account.
-            console.warn(`No social_connect entry found for user ${userEmail} and platform 'instagram'. Attempting update failed.`);
-            // You might want to return a different error or try an INSERT/UPSERT here
-             // depending on how initial connections are created.
-            throw new Error('Could not find the social_connect entry for Instagram to update. Please ensure the main Instagram connection exists.');
-        }
-
-        console.log(`Successfully updated active Instagram ID for ${userEmail}`);
+        // The old check for affectedRows is no longer needed with an UPSERT,
+        // as the query will no longer fail if the row is missing.
+        
+        console.log(`Successfully set active Instagram ID for ${userEmail}`);
         return NextResponse.json({ success: true, message: 'Active Instagram account updated.' });
 
     } catch (error) {
         console.error("Error setting active Instagram account:", error);
+        // We still keep the original error from your log, in case the UPSERT fails
+        // but this is unlikely to be the "not found" error anymore.
+        if (error.message.includes('Could not find')) {
+             return NextResponse.json({ error: error.message }, { status: 500 });
+        }
         return NextResponse.json({ error: 'An internal server error occurred.', details: error.message }, { status: 500 });
     }
 }
