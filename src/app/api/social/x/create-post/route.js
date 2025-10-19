@@ -2,18 +2,23 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { decrypt, encrypt } from '@/lib/crypto'; // Import encrypt
+import { decrypt, encrypt } from '@/lib/crypto';
 import { TwitterApi } from 'twitter-api-v2';
-import axios from 'axios'; // Use axios for the refresh request
+import axios from 'axios';
 
 // Helper function to get the user's Twitter tokens from social_connect
 async function getTwitterConnection(connection, userEmail) {
+    // --- THIS IS THE FIX ---
+    // We are now querying for platform = 'x' as you suggested.
     const [rows] = await connection.query(
-        `SELECT * FROM social_connect WHERE user_email = ? AND platform = 'twitter'`,
+        `SELECT * FROM social_connect WHERE user_email = ? AND platform = 'x'`,
         [userEmail]
     );
+    // --- END OF FIX ---
+
     if (!rows.length) {
-        throw new Error(`No 'twitter' connection found for user: ${userEmail}`);
+        // This error message will now be more accurate if it ever fails again.
+        throw new Error(`No 'x' connection found for user: ${userEmail}`);
     }
     return rows[0];
 }
@@ -29,7 +34,7 @@ async function refreshTwitterToken(connection, connectionRow) {
             new URLSearchParams({
                 grant_type: "refresh_token",
                 refresh_token: refreshToken,
-                client_id: process.env.X_CLIENT_ID, // Use clientId for refresh
+                client_id: process.env.X_CLIENT_ID,
             }),
             {
                 headers: {
@@ -44,7 +49,6 @@ async function refreshTwitterToken(connection, connectionRow) {
             throw new Error("Failed to get new access token from refresh response.");
         }
 
-        // Save the new tokens back to the database
         const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
         await connection.query(
             `UPDATE social_connect SET
@@ -60,7 +64,7 @@ async function refreshTwitterToken(connection, connectionRow) {
             ]
         );
         console.log(`[X POST] Token refreshed and saved successfully for ${connectionRow.user_email}`);
-        return newTokens.access_token; // Return the new, valid access token
+        return newTokens.access_token;
 
     } catch (error) {
         console.error("CRITICAL: Failed to refresh Twitter token:", error.response?.data || error.message);
@@ -71,7 +75,6 @@ async function refreshTwitterToken(connection, connectionRow) {
 export async function POST(req) {
     console.log("--- X/Twitter Post API Endpoint Triggered (OAuth 2.0) ---");
 
-    // 1. Check for internal API secret
     const authToken = req.headers.get('authorization');
     if (authToken !== `Bearer ${process.env.INTERNAL_API_SECRET}`) {
          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -79,29 +82,24 @@ export async function POST(req) {
 
     let connection;
     try {
-        // 2. Get the post content and user email
         const { content, user_email } = await req.json();
         if (!user_email) {
             return NextResponse.json({ error: 'user_email is required.' }, { status: 400 });
         }
         console.log(`[X POST] Processing post for user: ${user_email}`);
 
-        // 3. Get the user's Twitter account from the 'social_connect' table
         connection = await db.getConnection();
         const connectionRow = await getTwitterConnection(connection, user_email);
 
         let accessToken = decrypt(connectionRow.access_token_encrypted);
 
-        // 4. Check if the token is expired (with a 5-minute buffer)
         const tokenExpires = new Date(connectionRow.expires_at).getTime();
         if (Date.now() >= tokenExpires - 300000) {
             accessToken = await refreshTwitterToken(connection, connectionRow);
         }
 
-        // 5. Initialize the Twitter Client with the OAuth 2.0 Bearer Token
         const client = new TwitterApi(accessToken);
 
-        // 6. Send the tweet
         console.log(`[X POST] Sending tweet: "${content}"`);
         const { data: tweet } = await client.v2.tweet(content);
         console.log(`[X POST] Tweet sent successfully: ${tweet.id}`);
@@ -111,8 +109,8 @@ export async function POST(req) {
     } catch (error) {
         console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.response?.data || error.message);
         
-        let errorMessage = "Failed to post to X/Twitter.";
-        // NOTE: The "AccessSecret" log from your old file is GONE in this new code.
+        let errorMessage = error.message; // Use the specific error from our code
+        
         if (error.response?.data?.status === 401) {
             errorMessage = "401 Unauthorized. The user's token may be revoked. Please re-connect.";
         } else if (error.response?.data?.status === 403) {
