@@ -47,7 +47,7 @@ const PLATFORMS = {
         placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags",
         disabled: false,
         color: '#000000',
-        apiEndpoint: '/api/social/x/create-post' // Updated for consistency
+        apiEndpoint: '/api/social/post' // <-- FIX: Point to the client-facing route
     },
     facebook: {
         name: 'Facebook',
@@ -56,7 +56,7 @@ const PLATFORMS = {
         placeholder: "What is on your mind? or need help ask AI to help you generate your feelings into more engaging content including relevant tags",
         disabled: false,
         color: '#1877F2',
-        apiEndpoint: '/api/social/facebook/create-post'
+        apiEndpoint: '/api/social/post' // <-- FIX: Point to the client-facing route
     },
     pinterest: {
         name: 'Pinterest',
@@ -65,16 +65,16 @@ const PLATFORMS = {
         placeholder: 'Add a Pin description or Generate with AI including pin tags...',
         disabled: false,
         color: '#E60023',
-        apiEndpoint: '/api/social/pinterest/post',
+        apiEndpoint: '/api/social/post', // <-- FIX: Point to the client-facing route
     },
     instagram: {
         name: 'Instagram',
         maxLength: 2200,
-        icon: (props) => (<svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M12 2c1.74 0 2.28.01 3.07.05 1.07.05 1.81.22 2.42.46a4.88 4.88 0 0 1 1.76 1.15 4.88 4.88 0 0 1 1.15 1.76c.24.6.41 1.35.46 2.42.04.79.05 1.33.05 3.07s-.01 2.28-.05 3.07c-.05 1.07-.22 1.81-.46 2.42a4.88 4.88 0 0 1-1.15 1.76 4.88 4.88 0 0 1-1.76 1.15c-.6.24-1.35.41-2.42.46-.79.04-1.33.05-3.07.05s-2.28-.01-3.07-.05c-1.07-.05-1.81-.22-2.42-.46a4.88 4.88 0 0 1-1.76-1.15 4.88 4.88 0 0 1-1.15-1.76c-.24-.6-.41-1.35-.46-2.42a83.3 83.3 0 0 1-.05-3.07s.01-2.28.05-3.07c.05-1.07.22-1.81.46-2.42a4.88 4.88 0 0 1 1.15-1.76A4.88 4.88 0 0 1 6.5 2.51c.6-.24 1.35-.41 2.42-.46.79-.04 1.33-.05 3.07-.05M12 0C9.26 0 8.74.01 7.9.06 6.63.11 5.6.31 4.7.7a6.88 6.88 0 0 0-2.47 2.47c-.4 1-.6 1.93-.65 3.2-.04.84-.05 1.36-.05 4.1s.01 3.26.05 4.1c.05 1.27.25 2.2.65 3.2a6.88 6.88 0 0 0 2.47 2.47c1 .4 1.93.6 3.2.65.84.04 1.36.05 4.1.05s3.26-.01 4.1-.05c1.27-.05 2.2-.25 3.2-.65a6.88 6.88 0 0 0 2.47-2.47c.4-1 .6-1.93.65-3.2.04-.84.05-1.36-.05-4.1s-.01-3.26-.05-4.1c-.05-1.27-.25-2.2-.65-3.2A6.88 6.88 0 0 0 19.3.7c-1-.4-1.93-.6-3.2-.65-.84-.04-1.36-.05-4.1-.05zm0 5.8a6.2 6.2 0 1 0 0 12.4 6.2 6.2 0 0 0 0-12.4zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" /></svg>),
+        icon: (props) => (<svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M12 2c1.74 0 2.28.01 3.07.05 1.07.05 1.81.22 2.42.46a4.88 4.88 0 0 1 1.76 1.15 4.88 4.88 0 0 1 1.15 1.76c.24.6.41 1.35.46 2.42.04.79.05 1.33.05 3.07s-.01 2.28-.05 3.07c-.05 1.07-.22 1.81-.46 2.42a4.88 4.88 0 0 1-1.15 1.76 4.88 4.88 0 0 1-1.76 1.15c-.6.24-1.35.41-2.42.46-.79.04-1.33.05-3.07.05s-2.28-.01-3.07-.05c-1.07-.05-1.81-.22-2.42-.46a4.88 4.88 0 0 1-1.76-1.15 4.88 4.88 0 0 1-1.15-1.76c-.24-.6-.41-1.35-.46-2.42a83.3 83.3 0 0 1-.05-3.07s.01-2.28.05-3.07c.05-1.07.22 1.81.46-2.42a4.88 4.88 0 0 1 1.15-1.76A4.88 4.88 0 0 1 6.5 2.51c.6-.24 1.35-.41 2.42-.46.79-.04 1.33-.05 3.07-.05M12 0C9.26 0 8.74.01 7.9.06 6.63.11 5.6.31 4.7.7a6.88 6.88 0 0 0-2.47 2.47c-.4 1-.6 1.93-.65 3.2-.04.84-.05 1.36-.05 4.1s.01 3.26.05 4.1c.05 1.27.25 2.2.65 3.2a6.88 6.88 0 0 0 2.47 2.47c1 .4 1.93.6 3.2.65.84.04 1.36.05 4.1.05s3.26-.01 4.1-.05c1.27-.05 2.2-.25 3.2-.65a6.88 6.88 0 0 0 2.47-2.47c.4-1 .6-1.93.65-3.2.04-.84.05-1.36-.05-4.1s-.01-3.26-.05-4.1c-.05-1.27-.25-2.2-.65-3.2A6.88 6.88 0 0 0 19.3.7c-1-.4-1.93-.6-3.2-.65-.84-.04-1.36-.05-4.1-.05zm0 5.8a6.2 6.2 0 1 0 0 12.4 6.2 6.2 0 0 0 0-12.4zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" /></svg>),
         placeholder: 'Add a Image description or Generate with AI including tags...',
         disabled: false,
         color: '#E4405F',
-        apiEndpoint: '/api/social/instagram/accounts/post'
+        apiEndpoint: '/api/social/post' // <-- FIX: Point to the client-facing route
     },
       youtube: {
         name: 'YouTube',
@@ -83,10 +83,9 @@ const PLATFORMS = {
         placeholder: "Enter a video description or generate with AI including video tags...",
         disabled: false,
         color: '#FF0000',
-        apiEndpoint: '/api/social/youtube/upload-video' // Corrected endpoint assumption
+        apiEndpoint: '/api/social/youtube/upload-video' // <-- FIX: Leave this one, as it's a special multipart/form-data upload
     }
 };
-
 const SocialNav = ({ activeTab, setActiveTab }) => {
     const tabs = [{ name: 'Composer', icon: PencilSquareIcon }, { name: 'Analytics', icon: ChartBarIcon }, { name: 'Schedule', icon: CalendarIcon }, { name: 'Demographics', icon: InformationCircleIcon },  { name: 'Mailchimp', icon: ClipboardDocumentIcon }];
     return (
