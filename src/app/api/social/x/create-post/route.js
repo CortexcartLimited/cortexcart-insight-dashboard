@@ -73,21 +73,22 @@ export async function POST(req) {
         // --- START OF FIX ---
         // Manually read the body as text and parse as JSON
         // This is more robust than req.json()
-        let payload;
+       let payload;
+        let bodyText = ''; // Define bodyText in the outer scope
         try {
-            const bodyText = await req.text();
+            bodyText = await req.text(); // Read the body once
             if (!bodyText) {
-                 throw new Error("Request body is empty.");
+            throw new Error("Request body is empty.");
             }
-            payload = JSON.parse(bodyText);
+            payload = JSON.parse(bodyText); // Try to parse
         } catch (e) {
             console.error("[X POST] Failed to parse incoming body as JSON:", e.message);
-            console.error("[X POST] Received body text:", await req.text().catch(() => "Could not read body"));
+            // Safely log the body text we captured, or a fallback message
+            console.error("[X POST] Received body text that failed to parse:", bodyText || "Could not read body");
             return NextResponse.json({ error: 'Invalid request body. Expected JSON.' }, { status: 400 });
         }
-        
+
         const { content, user_email } = payload;
-        // --- END OF FIX ---
 
         if (!user_email) {
             return NextResponse.json({ error: 'user_email is required.' }, { status: 400 });

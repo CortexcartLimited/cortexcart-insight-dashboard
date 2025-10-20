@@ -107,7 +107,7 @@ const SocialNav = ({ activeTab, setActiveTab }) => {
 };
 
 // --- START: MODIFIED ComposerTabContent ---
-const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setPostContent, selectedPlatform, setSelectedPlatform, instagramAccounts, pinterestBoards, loading, ...props }) => {
+const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setPostContent, selectedPlatform, setSelectedPlatform, instagramAccounts, pinterestBoards, userEmail, loading, ...props }) => {
 
     const [topic, setTopic] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
@@ -301,7 +301,8 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 boardId: selectedBoardId,
                 imageUrl: selectedImageUrl,
                 title: pinTitle,
-                description: postContent // Description is optional but included
+                description: postContent, // Description is optional but included
+                user_email: userEmail // <-- ADD THIS LINE
             };
         } else if (selectedPlatform === 'instagram') {
             console.log("Attempting Instagram post. selectedInstagramId:", selectedInstagramId);
@@ -315,24 +316,29 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 instagramUserId: selectedInstagramId,
                 imageUrl: selectedImageUrl,
                 caption: postContent,
+                user_email: userEmail // <-- ADD THIS LINE
             };
         } else if (selectedPlatform === 'youtube') {
-           // YouTube uses handleSubmit -> handleUploadToYouTube
-           console.warn("handlePostNow called for YouTube, should use handleSubmit via Upload button.");
-           setPostStatus({ message: 'Please use the Upload Now button for YouTube.', type: 'info'});
-           setIsPosting(false);
-           return;
+           // ...
         } else if (currentPlatform) { // For other platforms like X, Facebook
             requestBody = {
                 platform: selectedPlatform, // Include platform for generic endpoints if needed
                 content: postContent,
                 imageUrl: selectedImageUrl || null, // Use selectedImageUrl (can be null/empty)
+                user_email: userEmail // <-- ADD THIS LINE
             };
+   
         } else {
              console.error("No valid platform selected or configured.");
              setPostStatus({ message: `Cannot post: Platform "${selectedPlatform}" is not recognized or configured.`, type: 'error'});
              setIsPosting(false);
              return;
+        }
+
+        if (!userEmail) {
+            setPostStatus({ message: 'User session not found. Please refresh and try again.', type: 'error' });
+            setIsPosting(false);
+            return;
         }
 
         // Check if apiEndpoint is defined for the selected platform before proceeding
@@ -1395,7 +1401,7 @@ export default function SocialMediaManagerPage() {
 
             {/* Render Tab Content Based on activeTab */}
             <div className="mt-8"> {/* Add margin top for content */}
-                {activeTab === 'Composer' && (
+               {activeTab === 'Composer' && (
                     <ComposerTabContent
                         // Pass necessary props
                         onPostScheduled={fetchScheduledPosts} // Callback to refresh schedule
@@ -1407,6 +1413,7 @@ export default function SocialMediaManagerPage() {
                         instagramAccounts={instagramAccounts}
                         pinterestBoards={pinterestBoards}
                         loading={loadingSocialData} // Use renamed loading state
+                        userEmail={session?.user?.email} // <-- ADD THIS LINE
                     />
                 )}
                 {activeTab === 'Analytics' && <AnalyticsTabContent />}
