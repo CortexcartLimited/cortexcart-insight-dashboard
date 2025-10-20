@@ -6,35 +6,29 @@ import { decrypt, encrypt } from '@/lib/crypto';
 import { TwitterApi } from 'twitter-api-v2';
 import axios from 'axios';
 
-// Helper function to get the user's Twitter tokens from social_connect
+// Helper function to get the user's Twitter tokens (this is correct)
 async function getTwitterConnection(connection, userEmail) {
-    // --- THIS IS THE FIX ---
-    // We are now querying for platform = 'x' as you suggested.
     const [rows] = await connection.query(
         `SELECT * FROM social_connect WHERE user_email = ? AND platform = 'x'`,
         [userEmail]
     );
-    // --- END OF FIX ---
-
     if (!rows.length) {
-        // This error message will now be more accurate if it ever fails again.
         throw new Error(`No 'x' connection found for user: ${userEmail}`);
     }
     return rows[0];
 }
 
-// Helper function to refresh the token
+// Helper function to refresh the token (this is correct)
 async function refreshTwitterToken(connection, connectionRow) {
     console.log(`[X POST] Token is expired. Refreshing for ${connectionRow.user_email}`);
     try {
         const refreshToken = decrypt(connectionRow.refresh_token_encrypted);
-
         const response = await axios.post(
             "https://api.twitter.com/2/oauth2/token",
             new URLSearchParams({
                 grant_type: "refresh_token",
                 refresh_token: refreshToken,
-                client_id: process.env.X_CLIENT_ID,
+                client_id: process.env.X_CLIENT_ID, 
             }),
             {
                 headers: {
@@ -43,18 +37,13 @@ async function refreshTwitterToken(connection, connectionRow) {
                 },
             }
         );
-
         const newTokens = response.data;
-        if (!newTokens.access_token) {
-            throw new Error("Failed to get new access token from refresh response.");
-        }
+        if (!newTokens.access_token) throw new Error("Failed to get new access token.");
 
         const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
         await connection.query(
             `UPDATE social_connect SET
-                access_token_encrypted = ?,
-                refresh_token_encrypted = ?,
-                expires_at = ?
+                access_token_encrypted = ?, refresh_token_encrypted = ?, expires_at = ?
              WHERE id = ?`,
             [
                 encrypt(newTokens.access_token),
@@ -63,9 +52,8 @@ async function refreshTwitterToken(connection, connectionRow) {
                 connectionRow.id
             ]
         );
-        console.log(`[X POST] Token refreshed and saved successfully for ${connectionRow.user_email}`);
+        console.log(`[X POST] Token refreshed and saved for ${connectionRow.user_email}`);
         return newTokens.access_token;
-
     } catch (error) {
         console.error("CRITICAL: Failed to refresh Twitter token:", error.response?.data || error.message);
         throw new Error(`Failed to refresh Twitter token: ${error.response?.data?.error_description || error.message}`);
@@ -82,7 +70,25 @@ export async function POST(req) {
 
     let connection;
     try {
-        const { content, user_email } = await req.json();
+        // --- START OF FIX ---
+        // Manually read the body as text and parse as JSON
+        // This is more robust than req.json()
+        let payload;
+        try {
+            const bodyText = await req.text();
+            if (!bodyText) {
+                 throw new Error("Request body is empty.");
+            }
+            payload = JSON.parse(bodyText);
+        } catch (e) {
+            console.error("[X POST] Failed to parse incoming body as JSON:", e.message);
+            console.error("[X POST] Received body text:", await req.text().catch(() => "Could not read body"));
+            return NextResponse.json({ error: 'Invalid request body. Expected JSON.' }, { status: 400 });
+        }
+        
+        const { content, user_email } = payload;
+        // --- END OF FIX ---
+
         if (!user_email) {
             return NextResponse.json({ error: 'user_email is required.' }, { status: 400 });
         }
@@ -92,14 +98,12 @@ export async function POST(req) {
         const connectionRow = await getTwitterConnection(connection, user_email);
 
         let accessToken = decrypt(connectionRow.access_token_encrypted);
-
         const tokenExpires = new Date(connectionRow.expires_at).getTime();
-        if (Date.now() >= tokenExpires - 300000) {
+        if (Date.now() >= tokenExpires - 300000) { // 5-min buffer
             accessToken = await refreshTwitterToken(connection, connectionRow);
         }
 
         const client = new TwitterApi(accessToken);
-
         console.log(`[X POST] Sending tweet: "${content}"`);
         const { data: tweet } = await client.v2.tweet(content);
         console.log(`[X POST] Tweet sent successfully: ${tweet.id}`);
@@ -107,17 +111,8 @@ export async function POST(req) {
         return NextResponse.json({ success: true, tweetId: tweet.id });
 
     } catch (error) {
-        console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.response?.data || error.message);
-        
-        let errorMessage = error.message; // Use the specific error from our code
-        
-        if (error.response?.data?.status === 401) {
-            errorMessage = "401 Unauthorized. The user's token may be revoked. Please re-connect.";
-        } else if (error.response?.data?.status === 403) {
-             errorMessage = "403 Forbidden. Check your app's permissions in the X Developer Portal.";
-        }
-        
-        return NextResponse.json({ error: errorMessage, details: error.response?.data || error.message }, { status: 500 });
+        console.error("CRITICAL Error posting to X/Twitter (outer catch):", error.message); 
+        return NextResponse.json({ error: error.message || "Failed to post to X/Twitter." }, { status: 500 });
     } finally {
         if (connection) connection.release();
     }
