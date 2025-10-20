@@ -25,8 +25,22 @@ export async function PUT(request, { params }) {
         const mysqlFormattedDateTime = formatForMySQL(scheduled_at);
 
         await db.query(
-            'UPDATE scheduled_posts SET scheduled_at = ? WHERE id = ? AND user_email = ?',
-            [mysqlFormattedDateTime, id, userEmail]
+            `INSERT INTO scheduled_posts 
+             (user_email, platform, content, image_url, scheduled_at, status, board_id, title, video_url, privacy_status, instagram_user_id)
+             VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, ?)`, // Added one more '?'
+            [
+                userEmail,
+                platform,
+                content,
+                imageUrl,
+                scheduledAt,
+                // Map platform-specific fields
+                platform === 'pinterest' ? boardId : null,
+                platform === 'pinterest' ? pinTitle : (platform === 'youtube' ? videoTitle : null),
+                platform === 'youtube' ? videoUrl : null,
+                platform === 'youtube' ? privacyStatus : null,
+                platform === 'instagram' ? instagramUserId : null // <-- ADD THIS LINE
+            ]
         );
         return NextResponse.json({ message: 'Post schedule updated successfully.' }, { status: 200 });
     } catch (error) {

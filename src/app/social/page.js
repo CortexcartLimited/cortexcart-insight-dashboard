@@ -312,13 +312,138 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                 return;
             }
             requestBody = {
+                platform: selectedPlatform, // <-- ADD THIS LINE
                 instagramUserId: selectedInstagramId,
                 imageUrl: selectedImageUrl,
                 caption: postContent,
-                user_email: userEmail // <-- ADD THIS LINE
+                user_email: userEmail // This was added in our last fix
             };
         } else if (selectedPlatform === 'youtube') {
-           // ...
+            handleUploadToYouTube();
+        } else {
+            handlePostNow();
+        }
+    };
+
+    const handleUploadToYouTube = async () => {
+        if (!videoFile || !videoTitle) {
+            setPostStatus({ message: 'A video file and title are required.', type: 'error' });
+            return;
+        }
+        
+        setIsUploading(true);
+        setUploadProgress(0);
+        setUploadMessage('Preparing upload...');
+
+        try {
+            const formData = new FormData();
+            formData.append('video', videoFile);
+            formData.append('title', videoTitle);
+            formData.append('description', postContent);
+            formData.append('privacyStatus', privacyStatus);
+
+            if (postImages.length > 0 && postImages[0].image_url) {
+                const response = await fetch(postImages[0].image_url);
+                if (!response.ok) throw new Error('Failed to load thumbnail image.');
+                const blob = await response.blob();
+                formData.append('thumbnail', blob, 'thumbnail.jpg');
+            }
+
+            const result = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        setUploadProgress(percentComplete);
+                        setUploadMessage('Uploading video file...');
+                    }
+                });
+
+                xhr.onload = () => {
+                    setUploadMessage('Processing video and setting thumbnail...');
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        reject(new Error(xhr.statusText));
+                    }
+                };
+
+                xhr.onerror = () => {
+                    reject(new Error('Upload failed. Please check your network connection.'));
+                };
+
+                xhr.open('POST', '/api/social/youtube/upload-video', true);
+                xhr.send(formData);
+            });
+
+            setPostStatus({ message: result.message, type: 'success' });
+            setVideoFile(null);
+            setVideoTitle('');
+            setPostContent('');
+            setPostImages([]);
+
+        } catch (err) {
+            setPostStatus({ message: err.message, type: 'error' });
+            console.error("YouTube upload process failed:", err);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+    
+    const handleImageAdded = (newImage) => {
+        setPostImages([newImage]);
+    };
+
+    const handleRemoveImage = () => {
+        setPostImages([]);
+    };
+
+    const handleGeneratePost = async () => {
+        if (!topic.trim()) return;
+        setIsGenerating(true);
+        setError('');
+        try {
+            const res = await fetch('/api/ai/generate-post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: topic,
+                    platform: currentPlatform.name,
+                    maxLength: currentPlatform.maxLength
+                })
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.message || 'Failed to generate post.');
+            setPostContent(result.postContent);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handlePostNow = async () => {
+        if (!postContent) return;
+
+        setIsPosting(true);
+        setPostStatus({ message: '', type: '' });
+
+        let apiEndpoint = currentPlatform.apiEndpoint;
+        let requestBody = {};
+
+        if (selectedPlatform === 'pinterest') {
+            if (!selectedBoardId || !postImages[0]?.image_url || !pinTitle) {
+                setPostStatus({ message: 'A board, image, and title are required for Pinterest.', type: 'error' });
+                setIsPosting(false);
+                return;
+            }
+            requestBody = {
+                boardId: selectedBoardId,
+                imageUrl: postImages[0].image_url,
+                title: pinTitle,
+                description: postContent
+            };
         } else if (currentPlatform) { // For other platforms like X, Facebook
             requestBody = {
                 platform: selectedPlatform, // Include platform for generic endpoints if needed
@@ -630,6 +755,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                                     isPosting || isUploading ||
                                     (selectedPlatform !== 'pinterest' && !postContent.trim()) || // Check trimmed content
                                     isOverLimit ||
+                                    (selectedPlatform === 'facebook' && !selectedImageUrl) ||
                                     (selectedPlatform === 'instagram' && (!selectedImageUrl || !selectedInstagramId)) ||
                                     (selectedPlatform === 'pinterest' && (!selectedImageUrl || !selectedBoardId || !pinTitle.trim())) || // Check trimmed title
                                     (selectedPlatform === 'youtube' && (!videoFile || !videoTitle.trim())) // Check trimmed title
@@ -671,6 +797,7 @@ const ComposerTabContent = ({ scheduledPosts, onPostScheduled, postContent, setP
                                         isPosting || isUploading || // Disable if posting/uploading
                                         (selectedPlatform !== 'pinterest' && !postContent.trim()) ||
                                         isOverLimit || !scheduleDate || !scheduleTime ||
+                                        (selectedPlatform === 'facebook' && !selectedImageUrl) ||
                                         (selectedPlatform === 'instagram' && (!selectedImageUrl || !selectedInstagramId)) ||
                                         (selectedPlatform === 'pinterest' && (!selectedImageUrl || !selectedBoardId || !pinTitle.trim()))
                                     }
