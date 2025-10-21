@@ -45,7 +45,7 @@ export const PLANS = {
       revenueAttributionModels: 0,
       customAiFeatures: 0,
       // Add other features/limits
-      maxHeatmaps: 3, // Example
+      maxHeatmaps: 0, // Example
       maxReports: 5, // Example
       // Add social posts limit if applicable
       // socialPostsPerMonth: 50, // Example
