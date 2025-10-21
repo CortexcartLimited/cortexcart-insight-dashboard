@@ -24,7 +24,7 @@ const PATH_REQUIREMENTS = {
     '/experiments': { limitKey: 'abTesting', minRequired: true },
 
     // Heatmaps (Example path, adjust if needed)
-    '/heatmaps': { limitKey: 'maxHeatmaps', minRequired: 1 },
+    '/heatmaps/:path*': { limitKey: 'maxHeatmaps', minRequired: 1 },
 
     // Recommendations (Example path, adjust if needed)
     '/recommendations': { limitKey: 'recommendationWidgets', minRequired: true },
