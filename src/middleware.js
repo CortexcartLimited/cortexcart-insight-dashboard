@@ -37,7 +37,7 @@ const PATH_REQUIREMENTS = {
     // '/reports/revenue-attribution': { limitKey: 'revenueAttributionModels', minRequired: 1 },
 
     // Custom AI (Example path, adjust if needed)
-    // '/ai/custom-feature': { limitKey: 'customAiFeatures', minRequired: 1 },
+    // '/ai/custom-feature': { limitKey: 'customAiFeatures', minRequired: 1 !},
 
     // support tickets only available to Business Plan (business users only)
     '/support/support-tickets': { limitKey: 'supportTickets', minRequired: false}, //Restrict support tickets to business users only!
