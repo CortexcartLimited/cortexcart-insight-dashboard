@@ -26,19 +26,21 @@ const PATH_REQUIREMENTS = {
     '/experiments': { limitKey: 'abTesting', minRequired: true },
 
     // Heatmaps (Example path, adjust if needed)
-    '/heatmaps': { limitKey: 'maxHeatmaps', minRequired: true },
+    '/heatmaps': { limitKey: 'maxHeatmaps', minRequired: 1 },
 
     // Recommendations (Example path, adjust if needed)
     '/recommendations': { limitKey: 'recommendationWidgets', minRequired: true },
 
     // Reports (Example path, adjust if needed)
-    // '/reports': { limitKey: 'maxReports', minRequired: 1 }, // Basic report access
+    '/reports': { limitKey: 'maxReports', minRequired: true }, // Basic report access
     // '/reports/custom-algo': { limitKey: 'customRecommendationAlgorithms', minRequired: 1 },
     // '/reports/revenue-attribution': { limitKey: 'revenueAttributionModels', minRequired: 1 },
 
     // Custom AI (Example path, adjust if needed)
     // '/ai/custom-feature': { limitKey: 'customAiFeatures', minRequired: 1 },
 
+    // support tickets only available to Business Plan (business users only)
+    '/support/support-tickets': { limitKey: 'supportLevel', minRequired: 1}, //Restrict support tickets to business users only!
     // Add mappings for all features controlled by plan limits...
 };
 
