@@ -44,6 +44,7 @@ export const PLANS = {
       customRecommendationAlgorithms: 0,
       revenueAttributionModels: 0,
       customAiFeatures: 0,
+      supportTickets: 0, //Only for business users
       // Add other features/limits
       maxHeatmaps: 0, // Example
       maxReports: 5, // Example

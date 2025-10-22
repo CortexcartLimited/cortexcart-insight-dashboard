@@ -40,7 +40,7 @@ const PATH_REQUIREMENTS = {
     // '/ai/custom-feature': { limitKey: 'customAiFeatures', minRequired: 1 },
 
     // support tickets only available to Business Plan (business users only)
-    '/support/support-tickets': { limitKey: 'supportLevel', minRequired: 1}, //Restrict support tickets to business users only!
+    '/support/support-tickets': { limitKey: 'supportTickets', minRequired: false}, //Restrict support tickets to business users only!
     // Add mappings for all features controlled by plan limits...
 };
 
