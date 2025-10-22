@@ -54,7 +54,7 @@ export const PLANS = {
   // Add Starter Annual Price ID if it exists and points to the same limits
 
   // --- Growth Plan ---
-  'price_growth_monthly': { // <-- Replace with your actual Stripe Price ID
+  'rice_1S6SAJF6XLY4flzwzQgLGJIq': { // <-- Replace with your actual Stripe Price ID
     id: 'growth',
     name: 'Growth',
     stripePriceId: 'price_1S6SAJF6XLY4flzwzQgLGJIq', // <-- Replace with your actual Stripe Price ID
@@ -79,7 +79,7 @@ export const PLANS = {
   // Add Growth Annual Price ID if it exists and points to the same limits
 
   // --- Business Plan ---
-  'price_business_monthly': { // <-- Replace with your actual Stripe Price ID
+  'price_1S6SAlF6XLY4flzwpYebeTpK': { // <-- Replace with your actual Stripe Price ID
     id: 'business',
     name: 'Business',
     stripePriceId: 'price_1S6SAlF6XLY4flzwpYebeTpK', // <-- Replace with your actual Stripe Price ID
@@ -107,7 +107,7 @@ export const PLANS = {
   // Typically, a trial uses the Price ID of the plan being trialed (e.g., Business).
   // Stripe webhooks handle the trial end. So you might not need a separate entry here
   // unless you have a specific "Beta" Price ID in Stripe. If you *do* have a specific Beta Price ID:
-  'price_beta_trial': { // <-- Replace with your actual Stripe Price ID if it exists
+  'price_1SGcT8F6XLY4flzwQlD5GegV': { // <-- Replace with your actual Stripe Price ID if it exists
     id: 'beta',
     name: 'Beta Trial',
     stripePriceId: 'price_1SGcT8F6XLY4flzwQlD5GegV', // <-- Replace with your actual Stripe Price ID if it exists
