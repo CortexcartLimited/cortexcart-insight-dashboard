@@ -54,7 +54,7 @@ const getAdminSecret = () => {
 export async function middleware(req) {
     const { pathname } = req.nextUrl;
     const appUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin; // Ensure base URL is set
-
+console.log(`\n--- Middleware Start --- Path: ${pathname}`); // <-- ADD #1
     // --- 1. Admin Route Protection (Keep this block first) ---
     if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
         const adminCookie = req.cookies.get('admin-session-token');
@@ -93,13 +93,15 @@ export async function middleware(req) {
     let sessionToken = null; // Declare sessionToken here to use later
     if (requiresAuth) {
         sessionToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-
+console.log('Middleware: Session Token:', sessionToken); // <-- ADD #2
         if (!sessionToken?.email) {
             console.log(`Middleware: Authentication required for ${pathname}, redirecting to login.`);
+            console.log('Middleware: Auth failed, redirecting to login.'); // <-- ADD #3
             const loginUrl = new URL('/login', appUrl); // Use regular user login
             loginUrl.searchParams.set('callbackUrl', req.url);
             return NextResponse.redirect(loginUrl);
         }
+        console.log('Middleware: Path does not require auth.'); // <-- ADD #4
         // User is authenticated, proceed to plan checks if necessary
     }
 
@@ -108,11 +110,12 @@ export async function middleware(req) {
     const requirement = Object.entries(PATH_REQUIREMENTS).find(([pathPrefix]) =>
         pathname.startsWith(pathPrefix)
     )?.[1]; // Get the requirement object { limitKey, minRequired }
-
+    console.log('Middleware: Path Requirement Check:', requirement); // <-- ADD #5
     // If a plan requirement exists for this path...
     if (requirement) {
         // We should already have the sessionToken from the auth check above
         if (!sessionToken?.email) {
+            console.error('Middleware: Plan check needed but no session token!'); // <-- ADD #6 (Should not happen if requiresAuth is correct)
             // This should ideally not happen if requiresAuthPaths covers PATH_REQUIREMENTS, but acts as a safeguard
             console.error(`Middleware: Plan check needed for ${pathname}, but no valid session token found.`);
             const loginUrl = new URL('/login', appUrl);
@@ -122,10 +125,10 @@ export async function middleware(req) {
 
         try {
             const subscription = await getUserSubscription(sessionToken.email); // Fetch from your DB
-
+            console.log('Middleware: Subscription from DB:', subscription); // <-- ADD #7
             // Use 'active' and 'trialing' as valid statuses
             const isActiveSub = subscription?.stripeSubscriptionStatus === 'active' || subscription?.stripeSubscriptionStatus === 'trialing';
-
+            console.log('Middleware: Is Active Subscription?', isActiveSub); // <-- ADD #8
             let planDetails;
             // Get plan details based on whether the subscription is active/found
             if (subscription && isActiveSub) {
@@ -133,10 +136,11 @@ export async function middleware(req) {
             } else {
                 console.log(`Middleware: User ${sessionToken.email} accessing ${pathname}. No active subscription found (Status: ${subscription?.stripeSubscriptionStatus}). Applying default plan limits.`);
                 planDetails = getPlanDetails(null); // Get the default/fallback plan limits
+                console.log('Middleware: Applied Plan Details:', planDetails); // <-- ADD #9
             }
 
             const userLimit = planDetails.limits[requirement.limitKey]; // e.g., planDetails.limits['maxSocialConnections']
-
+            console.log(`Middleware: Checking Limit - Key: ${requirement.limitKey}, User Limit: ${userLimit}, Required: ${requirement.minRequired}`); // <-- ADD #10
             // Check if the user's limit meets the minimum requirement
             let hasAccess = false;
             if (typeof requirement.minRequired === 'boolean') {
@@ -144,8 +148,9 @@ export async function middleware(req) {
             } else if (typeof userLimit === 'number') {
                 hasAccess = userLimit >= requirement.minRequired; // Check numeric features
             }
-
+            console.log('Middleware: Calculated hasAccess:', hasAccess); // <-- ADD #11
             if (!hasAccess) {
+                console.log('Middleware: Access DENIED, redirecting to upgrade.'); // <-- ADD #12
                 console.log(`Access denied for ${sessionToken.email} to ${pathname}: Feature "${requirement.limitKey}" limit not met (Plan: ${planDetails.id}, User limit: ${userLimit}, Required: ${requirement.minRequired})`);
                 // Redirect to upgrade page
                 const upgradeUrl = new URL('/upgrade-plans', appUrl); // Ensure this is your correct upgrade page URL
@@ -157,17 +162,21 @@ export async function middleware(req) {
             // Plan limit check passed
             console.log(`Middleware: Access granted for ${sessionToken.email} to ${pathname}. Plan: ${planDetails.id}, Feature: ${requirement.limitKey}`);
             return NextResponse.next();
-
+            console.log('Middleware: Access GRANTED.'); // <-- ADD #13
         } catch (error) {
+            console.error("Middleware error during plan check:", error); // <-- ADD #14
             console.error("Middleware error checking plan limits:", error);
             // Fallback: Redirect to dashboard with error or show generic error page
             return NextResponse.redirect(new URL('/dashboard?error=middleware_plan_check', appUrl));
         }
+        } else {
+        console.log('Middleware: No specific plan requirement for this path.'); // <-- ADD #15
     }
 
     // --- 4. Allow Access if No Specific Checks Failed ---
     // If it's not an admin route, and either doesn't require auth,
     // or auth passed and no specific plan limit check was required/failed, allow access.
+    console.log('Middleware: Reached end, allowing access.'); // <-- ADD #16
     return NextResponse.next();
 }
 

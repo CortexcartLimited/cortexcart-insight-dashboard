@@ -28,10 +28,10 @@ export const PLANS = {
   // },
 
   // --- Starter Plan ---
-  'price_starter_monthly': { // <-- Replace with your actual Stripe Price ID
+  'price_1S6S9hF6XLY4flzwj7GYLs4C': { // <-- Replace with your actual Stripe Price ID
     id: 'starter',
     name: 'Starter',
-    stripePriceId: 'price_1SGcBmF6XLY4flzwPmVdnqUV', // <-- Replace with your actual Stripe Price ID
+    stripePriceId: 'price_1S6S9hF6XLY4flzwj7GYLs4C', // <-- Replace with your actual Stripe Price ID
     limits: {
       visitsPerMonth: 1000,
       googleAnalytics: false, // Basic analytics doesn't include Google integration
