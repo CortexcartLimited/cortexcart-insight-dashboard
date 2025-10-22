@@ -44,7 +44,7 @@ export const PLANS = {
       customRecommendationAlgorithms: 0,
       revenueAttributionModels: 0,
       customAiFeatures: 0,
-      supportTickets: 0, //Only for business users
+      supportTickets: false, //Only for business users
       // Add other features/limits
       maxHeatmaps: 0, // Example
       maxReports: 5, // Example
@@ -71,6 +71,7 @@ export const PLANS = {
       customRecommendationAlgorithms: 0,
       revenueAttributionModels: 0,
       customAiFeatures: 0,
+      supportTickets: false, //Only for business users
       // Add other features/limits
       maxHeatmaps: 10, // Example
       maxReports: 20, // Example
@@ -96,6 +97,7 @@ export const PLANS = {
       customRecommendationAlgorithms: 5,
       revenueAttributionModels: 5,
       customAiFeatures: 1, // Base feature, additional might be addons
+      supportTickets: true, //Only for business users
       // Add other features/limits
       maxHeatmaps: INFINITY, // Example
       maxReports: INFINITY, // Example
@@ -127,6 +129,7 @@ export const PLANS = {
       customAiFeatures: 1,
       maxHeatmaps: INFINITY,
       maxReports: INFINITY,
+      supportTickets: true, //Only for business users
       // socialPostsPerMonth: INFINITY,
     }
   },
