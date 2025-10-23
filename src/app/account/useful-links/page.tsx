@@ -22,7 +22,7 @@ const usefulLinksData = [
     title: 'Tide Business Account',
     description: 'A modern, mobile-first business bank account. Free to open, with powerful features to manage your finances.',
     imageUrl: '/logos/pngaaa.com-2690679.png',
-    affiliateLink: '#',
+    affiliateLink: 'https://tide.com',
   },
   {
     title: 'QuickFile',
@@ -38,7 +38,7 @@ const usefulLinksData = [
   },
     {
     title: 'QuickBooks',
-    description: 'The world’s #1 online accounting software for small businesses. Manage invoices, expenses, and more.',
+    description: 'The world’s #1 online accounting software for small businesses. Manage invoices, expenses, and more. Cortexcart users Get 30% off a new QuickBooks Online or QuickBooks Online Payroll subscriptions for 6 months',
     imageUrl: '/logos/quickbooklogo.png', // This image is already in your project
     affiliateLink: 'https://quickbooks.com',
   },
