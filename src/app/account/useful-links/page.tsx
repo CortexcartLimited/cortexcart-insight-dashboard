@@ -21,7 +21,7 @@ const usefulLinksData = [
   {
     title: 'Tide Business Account',
     description: 'A modern, mobile-first business bank account. Free to open, with powerful features to manage your finances.',
-    imageUrl: '/pngaaa.com-2690679.png',
+    imageUrl: '/logos/pngaaa.com-2690679.png',
     affiliateLink: '#',
   },
   {
