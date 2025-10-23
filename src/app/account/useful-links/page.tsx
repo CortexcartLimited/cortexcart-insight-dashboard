@@ -21,7 +21,7 @@ const usefulLinksData = [
   {
     title: 'Tide Business Account',
     description: 'A modern, mobile-first business bank account. Free to open, with powerful features to manage your finances.',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg', // Example external image
+    imageUrl: '/pngaaa.com-2690679.png',
     affiliateLink: '#',
   },
   {
@@ -46,7 +46,7 @@ const usefulLinksData = [
     title: 'Anna',
     description: 'ANNA is a business account and tax app for small businesses. Customers get a business account, debit cards and all the software they need to grow their businesses, from invoicing and expenses to VAT calculation.',
     imageUrl: 'https://anna.money//static/img/svg/anna_logo.svg', // This image is already in your project
-    affiliateLink: 'https://anna.money/introducers/',
+    affiliateLink: 'https://anna.money/',
   },
   // Add more partner services here...
 ];

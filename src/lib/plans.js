@@ -46,10 +46,10 @@ export const PLANS = {
       customAiFeatures: 0,
       supportTickets: false, //Only for business users
       // Add other features/limits
-      maxHeatmaps: 0, // Example
+      maxHeatmaps: 1, // Example
       maxReports: 5, // Example
       // Add social posts limit if applicable
-      // socialPostsPerMonth: 50, // Example
+      // socialPostsPerMonth: 50, // Example!
     }
   },
   // Add Starter Annual Price ID if it exists and points to the same limits
