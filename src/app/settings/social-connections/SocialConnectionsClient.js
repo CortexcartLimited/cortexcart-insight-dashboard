@@ -12,6 +12,7 @@ import Link from 'next/link';
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 const SocialConnectionsClient = () => {
+<<<<<<< Updated upstream
     // State for individual connection statuses (e.g., { facebook: true, x: false })
     const [connections, setConnections] = useState({});
     const [statusLoading, setStatusLoading] = useState(true);
@@ -37,12 +38,41 @@ const SocialConnectionsClient = () => {
     // Combine loading and error states
     const isLoading = planLoading || connectionsLoading || statusLoading;
     const combinedError = planError || connectionsCountError || statusError;
+=======
+    // --- State for Connection Statuses (Fetched) ---
+    const [connections, setConnections] = useState({});
+    const [statusLoading, setStatusLoading] = useState(true); // Renamed loading state
+    const [statusError, setStatusError] = useState('');     // Renamed error state
+    // --- End State for Connection Statuses ---
+
+    const [showFacebookManager, setShowFacebookManager] = useState(false);
+    const [showInstagramManager, setShowInstagramManager] = useState(false);
+
+    // Fetch user's plan details (maxSocialConnections)
+    const { data: planData, error: planError, isLoading: planLoading } = useSWR('/api/billing/my-plan', fetcher);
+    // Fetch current number of connected platforms
+    const { data: connectionsData, error: connectionsError, isLoading: connectionsLoading, mutate: mutateConnections } = useSWR('/api/user/social-connections', fetcher);
+
+    const userPlan = planData?
+    const maxConnections = userPlan?.limits?.maxSocialConnections || 0;
+    const currentConnections = connectionsData?.currentConnections || 0;
+
+    // Combine loading states
+    const isLoading = planLoading || connectionsLoading || statusLoading;
+    // Combine error states
+    const isError = planError || connectionsError || statusError;
+>>>>>>> Stashed changes
 
     // Determine if the user has reached their limit for *new* connections
     const hasReachedLimit = currentConnections >= maxConnections;
 
+<<<<<<< Updated upstream
     // Fetches the ON/OFF status for each platform
     const fetchConnectionStatuses = useCallback(async () => {
+=======
+    // Fetch initial connection statuses
+    const fetchStatuses = useCallback(async () => {
+>>>>>>> Stashed changes
         setStatusLoading(true);
         setStatusError('');
         try {
@@ -69,6 +99,7 @@ const SocialConnectionsClient = () => {
     }, []);
 
     useEffect(() => {
+<<<<<<< Updated upstream
         fetchConnectionStatuses();
     }, [fetchConnectionStatuses]);
 
@@ -85,19 +116,45 @@ const SocialConnectionsClient = () => {
     };
 
     // Function to call the disconnect API endpoint
+=======
+        fetchStatuses();
+    }, [fetchStatuses]);
+
+    // Handle initiating a connection (Redirect)
+    const handleConnect = (platform) => {
+        // Double check limit just before redirecting
+        if (hasReachedLimit) {
+             alert(`You have reached your limit of ${maxConnections} social platforms. Please upgrade your plan to connect more.`);
+             return;
+        }
+        console.log(`Redirecting to connect ${platform}`);
+        window.location.href = `/api/connect/${platform}`; // Redirect to backend route to start OAuth flow
+    };
+
+    // Handle disconnecting via API call
+>>>>>>> Stashed changes
     const handleDisconnect = async (platform) => {
         if (!confirm(`Are you sure you want to disconnect your ${platform.charAt(0).toUpperCase() + platform.slice(1)} account?`)) {
             return;
         }
+<<<<<<< Updated upstream
         setStatusError(''); // Clear previous errors before trying
+=======
+        setStatusError(''); // Clear previous errors
+>>>>>>> Stashed changes
         try {
             const res = await fetch(`/api/social/disconnect/${platform}`, { ///route.js]
                 method: 'POST',
             });
+<<<<<<< Updated upstream
             const data = await res.json(); // Always try to parse JSON
+=======
+            const data = await res.json(); // Read body regardless of status
+>>>>>>> Stashed changes
             if (!res.ok) {
                 throw new Error(data.error || `Failed to disconnect from ${platform}. Status: ${res.status}`);
             }
+<<<<<<< Updated upstream
             console.log(`Successfully disconnected ${platform}`);
             // --- Refresh statuses and count ---
             await fetchConnectionStatuses(); // Fetch individual on/off states
@@ -122,12 +179,47 @@ const SocialConnectionsClient = () => {
     // --- End Main Handler ---
 
     // --- Loading and Error States ---
+=======
+            // --- Refresh both status and count on success ---
+            await fetchStatuses(); // Refresh individual statuses
+            await mutateConnections(); // Re-fetch the count
+            // --- End Refresh ---
+        } catch (err) {
+            console.error(`Disconnect error for ${platform}:`, err);
+            setStatusError(err.message); // Show error to user
+        }
+    };
+
+    // Decides whether to call connect or disconnect based on current state
+    const handleToggleAction = (platform, isCurrentlyConnected) => {
+         // Prevent enabling if limit is reached
+        if (!isCurrentlyConnected && hasReachedLimit) {
+             alert(`You have reached your limit of ${maxConnections} social platforms. Please upgrade your plan to connect more.`);
+             return; // Explicitly stop here
+        }
+
+        if (isCurrentlyConnected) {
+            handleDisconnect(platform);
+        } else {
+            handleConnect(platform); // This already checks the limit again before redirecting
+        }
+    };
+
+
+>>>>>>> Stashed changes
     if (isLoading) {
         return <div className="text-center p-8"><Cog6ToothIcon className="h-12 w-12 mx-auto text-gray-400 animate-spin" /><p className="mt-4">Loading...</p></div>;
     }
 
+<<<<<<< Updated upstream
     if (combinedError) {
         const errorMessage = statusError || connectionsCountError?.message || planError?.message || 'An unexpected error occurred.';
+=======
+    // Handle combined error state
+    if (isError) {
+        // Prioritize specific errors if available
+        const errorMessage = statusError || connectionsError?.message || planError?.message || 'An unexpected error occurred while loading settings.';
+>>>>>>> Stashed changes
         return (
             <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
                 <div className="flex"><ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-3" /><div><p className="font-bold text-red-800">An Error Occurred</p><p className="mt-1 text-sm text-red-700">{errorMessage}</p></div></div>
@@ -136,15 +228,24 @@ const SocialConnectionsClient = () => {
     }
     // --- End Loading and Error States ---
 
+<<<<<<< Updated upstream
     // Configuration for displaying platforms
+=======
+    // Define platform display configuration
+>>>>>>> Stashed changes
     const platformConfig = {
         x: { name: 'X (Twitter)' },
         facebook: { name: 'Facebook' },
         pinterest: { name: 'Pinterest' },
         instagram: { name: 'Instagram', note: 'Managed via your Facebook connection' },
         youtube: { name: 'YouTube' },
+<<<<<<< Updated upstream
         // Add others if needed
        
+=======
+        // Add others like Mailchimp if managed here
+        // mailchimp: { name: 'Mailchimp' },
+>>>>>>> Stashed changes
     };
 
     return (
@@ -160,6 +261,7 @@ const SocialConnectionsClient = () => {
             {/* Platform List */}
             {Object.entries(platformConfig).map(([platform, config]) => {
                 const isConnected = !!connections[platform]; // Get current status from fetched state
+<<<<<<< Updated upstream
                 // Determine if the toggle should be disabled (only when trying to enable *new* connection at limit)
                 const isDisabled = !isConnected && hasReachedLimit;
 
@@ -177,6 +279,19 @@ const SocialConnectionsClient = () => {
                         </div>
 
                         {/* Buttons & Toggle */}
+=======
+                // Determine if the toggle should be disabled for *enabling*
+                const isDisabled = !isConnected && hasReachedLimit;
+
+                return (
+                    <div key={platform} className="py-4 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-lg font-semibold text-gray-900">{config.name}</p>
+                            {config.note && <p className="text-sm text-gray-500">{config.note}</p>}
+                            {/* Show 'Upgrade' message next to disabled toggles */}
+                            {isDisabled && <p className="text-sm text-yellow-600 mt-1">Upgrade to connect</p>}
+                        </div>
+>>>>>>> Stashed changes
                         <div className="mt-2 sm:mt-0 flex items-center space-x-4">
                             {/* Manage Buttons */}
                             {platform === 'facebook' && isConnected && (
@@ -199,6 +314,7 @@ const SocialConnectionsClient = () => {
                             {/* Toggle Switch */}
                             <Switch
                                 checked={isConnected}
+<<<<<<< Updated upstream
                                 onChange={() => handleToggleChange(platform, isConnected)} // Use the unified handler
                                 disabled={isDisabled} // Disable based on logic
                                 className={`${
@@ -211,6 +327,17 @@ const SocialConnectionsClient = () => {
                                 <span
                                     aria-hidden="true"
                                     className={`${
+=======
+                                onChange={() => handleToggleAction(platform, isConnected)}
+                                disabled={isDisabled} // *** ADDED DISABLED PROP ***
+                                className={`${
+                                    isConnected ? 'bg-blue-600' : 'bg-gray-200'
+                                } ${
+                                    isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer' // Style disabled state
+                                } relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none`}
+                            >
+                                <span className={`${
+>>>>>>> Stashed changes
                                     isConnected ? 'translate-x-5' : 'translate-x-0'
                                     } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
                                 />
