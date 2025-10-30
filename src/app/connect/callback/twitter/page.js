@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
 import Link from 'next/link';
+import { getUserSubscription } from "@/lib/userSubscription"; //
+import { getPlanDetails } from "@/lib/plans"; //
 
 export const runtime = 'nodejs';
 
@@ -80,9 +82,50 @@ export default async function TwitterCallbackPage({ searchParams }) {
         const encryptedRefreshToken = refresh_token ? encrypt(refresh_token) : null;
         const expiresAt = new Date(Date.now() + expires_in * 1000);
 
+        // --- START PLAN LIMIT CHECK ---
+try { // Wrap check in try/catch for DB errors
+
+    // 1. Fetch User's Plan Details
+    const subscription = await getUserSubscription(userEmail);
+    const userPlan = getPlanDetails(subscription?.stripePriceId); // Gets plan or default
+    const maxConnections = userPlan?.limits?.maxSocialConnections ?? 0;
+
+    // 2. Fetch Current Active Connections Count (Using corrected query)
+    const [countRows] = await db.query(
+        `SELECT COUNT(*) as count
+         FROM social_connect
+         WHERE user_email = ?
+           AND platform IN ('facebook', 'pinterest', 'instagram', 'x', 'google', 'youtube')
+           AND is_active = TRUE`, // Adjust 'is_active' if needed
+        [userEmail]
+    );
+    const currentConnections = countRows[0]?.count ?? 0;
+
+    // 3. Check if this specific platform connection already exists and is active
+    const [existingConnection] = await db.query(
+         `SELECT 1 FROM social_connect WHERE user_email = ? AND platform = ? AND is_active = TRUE LIMIT 1`,
+         [userEmail, 'x'] // <-- IMPORTANT: Change 'x' for other platform callbacks
+    );
+
+    // 4. Enforce Limit: Block if it's a NEW connection AND limit is reached
+    if (existingConnection.length === 0 && currentConnections >= maxConnections) {
+        console.warn(`LIMIT REACHED: User ${userEmail} tried to connect Twitter. Limit: ${maxConnections}, Current: ${currentConnections}.`);
+        // Redirect back to settings page with an error message
+        return NextResponse.redirect(new URL('/settings/social-connections?error=limit_reached', req.nextUrl.origin));
+    }
+
+     console.log(`Limit check passed for ${userEmail} connecting Twitter. Limit: ${maxConnections}, Current: ${currentConnections}, Exists: ${existingConnection.length > 0}`);
+
+} catch (checkError) {
+     console.error("Error during plan limit check:", checkError);
+     // Redirect with a generic error if the check fails
+     return NextResponse.redirect(new URL('/settings/social-connections?error=check_failed', req.nextUrl.origin));
+}
+// --- END PLAN LIMIT CHECK ---
+
         const query = `
-            INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at, is_active)
+            VALUES (?, ?, ?, ?, ?, TRUE)
             ON DUPLICATE KEY UPDATE
                 access_token_encrypted = VALUES(access_token_encrypted),
                 refresh_token_encrypted = VALUES(refresh_token_encrypted),

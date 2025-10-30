@@ -35,8 +35,8 @@ export async function GET(request) {
 
         // Save the encrypted token and shop name to the database
         const query = `
-            INSERT INTO social_connect (user_email, platform, access_token_encrypted, shopify_shop_name)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO social_connect (user_email, platform, access_token_encrypted, shopify_shop_name, is_active)
+            VALUES (?, ?, ?, ?, TRUE)
             ON DUPLICATE KEY UPDATE
             access_token_encrypted = VALUES(access_token_encrypted),
             shopify_shop_name = VALUES(shopify_shop_name);
