@@ -7,7 +7,7 @@ import { Cog6ToothIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outl
 import FacebookPageManager from '@/app/components/social/FacebookPageManager';
 import InstagramAccountManager from '@/app/components/social/InstagramAccountManager';
 import useSWR from 'swr';
-import Link from 'next/link'; // Make sure Link is imported
+import Link from 'next/link';
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -26,7 +26,11 @@ const SocialConnectionsClient = () => {
     const { data: connectionsCountData, error: connectionsCountError, isLoading: connectionsLoading, mutate: mutateConnectionsCount } = useSWR('/api/user/social-connections', fetcher);
     // --- End SWR Hooks ---
 
-    const userPlan = planData?.planDetails;
+    // --- !!! THIS IS THE FIX !!! ---
+    // planData *is* the plan object, no .planDetails is needed.
+    const userPlan = planData; 
+    // --- !!! END OF FIX !!! ---
+    
     const maxConnections = userPlan?.limits?.maxSocialConnections ?? 0; // Use nullish coalescing for default
     const currentConnections = connectionsCountData?.currentConnections ?? 0;
 
@@ -140,6 +144,7 @@ const SocialConnectionsClient = () => {
         instagram: { name: 'Instagram', note: 'Managed via your Facebook connection' },
         youtube: { name: 'YouTube' },
         // Add others if needed
+       
     };
 
     return (
@@ -157,6 +162,10 @@ const SocialConnectionsClient = () => {
                 const isConnected = !!connections[platform]; // Get current status from fetched state
                 // Determine if the toggle should be disabled (only when trying to enable *new* connection at limit)
                 const isDisabled = !isConnected && hasReachedLimit;
+
+                // --- Check your browser console for these logs! ---
+                console.log(`Platform: ${platform}, isConnected: ${isConnected}, hasReachedLimit: ${hasReachedLimit}, calculated isDisabled: ${isDisabled}`);
+                // --- End Logs ---
 
                 return (
                     <div key={platform} className="py-4 sm:flex sm:items-center sm:justify-between">

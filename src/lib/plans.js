@@ -55,7 +55,7 @@ export const PLANS = {
   // Add Starter Annual Price ID if it exists and points to the same limits
 
   // --- Growth Plan ---
-  'rice_1S6SAJF6XLY4flzwzQgLGJIq': { // <-- Replace with your actual Stripe Price ID
+  'price_1S6SAJF6XLY4flzwzQgLGJIq': { // <-- Replace with your actual Stripe Price ID
     id: 'growth',
     name: 'Growth',
     stripePriceId: 'price_1S6SAJF6XLY4flzwzQgLGJIq', // <-- Replace with your actual Stripe Price ID
@@ -143,7 +143,7 @@ export const PLANS = {
  */
 export function getPlanDetails(priceId) {
   // Find the plan details using the provided priceId
-  const foundPlan = Object.values(PLANS).find(plan => plan.stripePriceId === priceId);
+  const foundPlan = PLANS[priceId];
 
   if (foundPlan) {
     return foundPlan;

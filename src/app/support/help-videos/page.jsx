@@ -53,6 +53,27 @@ const videos = [
     thumbnail: '/cortexcart-com-logo-videos.jpg',
     videoUrl: 'https://www.youtube.com/embed/v2TedYtS0lQ',
   },
+  {
+    id: '4',
+    title: 'connecting Facebook and Instagram to CortexCart',
+    duration: '0.26',
+    thumbnail: '/cortexcart-com-logo-videos.jpg',
+    videoUrl: 'https://www.youtube.com/embed/7DkzkKPD1qY',
+  },
+    {
+    id: '5',
+    title: 'Posting to FaceBook on CortexCart',
+    duration: '0.26',
+    thumbnail: '/cortexcart-com-logo-videos.jpg',
+    videoUrl: 'https://www.youtube.com/embed/VcBR_N-xq6k',
+  },
+   {
+    id: '6',
+    title: 'Posting to Twitter/x on CortexCart',
+    duration: '0.14',
+    thumbnail: '/cortexcart-com-logo-videos.jpg',
+    videoUrl: 'https://www.youtube.com/embed/6hXKMSUDJik',
+  },
 ];
 
 const HelpVideosPage = () => {
@@ -84,7 +105,7 @@ const HelpVideosPage = () => {
           &larr; Back to Support
         </a>
       </div>
-<span className="text-gray-500 block mb-4 bg-gray-50 p-2">Help Videos: 3</span>
+<span className="text-gray-500 block mb-4 bg-gray-50 p-2">Help Videos: 6</span>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
         {videos.map((video) => (
