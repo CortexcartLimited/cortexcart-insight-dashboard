@@ -4,8 +4,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+// --- THIS IS THE FIX ---
+// This forces the route to run on the Node.js server, not the Edge.
+export const runtime = 'nodejs';
+// --- END OF FIX ---
+
 // Define which platform names to count as "platforms"
-// Add any other platform keys here if you have them!
 const PLATFORM_NAMES = [
   'shopify',
   'mailchimp',
