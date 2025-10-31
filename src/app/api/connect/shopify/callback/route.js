@@ -51,7 +51,7 @@ export async function GET(request) {
             VALUES (?, ?, ?, ?, 1)
             ON DUPLICATE KEY UPDATE
             access_token_encrypted = VALUES(access_token_encrypted),
-            shopify_shop_name = VALUES(shopify_shop_name);
+            shopify_shop_name = VALUES(shopify_shop_name),
             is_active = 1;
         `;
         await db.query(query, [session.user.email, 'shopify', encrypt(accessToken), shop]);

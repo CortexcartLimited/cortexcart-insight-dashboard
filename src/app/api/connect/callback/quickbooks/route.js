@@ -59,7 +59,7 @@ export async function GET(request) {
             ON DUPLICATE KEY UPDATE
             access_token_encrypted = VALUES(access_token_encrypted),
             refresh_token_encrypted = VALUES(refresh_token_encrypted),
-            realm_id = VALUES(realm_id);
+            realm_id = VALUES(realm_id),
             is_active = 1;
             `,
             [session.user.email, accessTokenEncrypted, refreshTokenEncrypted, realmId]
