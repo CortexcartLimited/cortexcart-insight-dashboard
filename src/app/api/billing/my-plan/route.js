@@ -6,6 +6,8 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getPlanDetails } from '@/lib/plans'; 
 
+export const runtime = 'nodejs';
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function GET() {

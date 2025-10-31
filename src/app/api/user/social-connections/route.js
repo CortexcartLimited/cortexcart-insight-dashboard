@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth"; //
 import { db } from "@/lib/db"; //
 import { NextResponse } from "next/server";
+export const runtime = 'nodejs';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
