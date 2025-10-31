@@ -73,11 +73,12 @@ export async function GET(req) {
         const { dc } = metadataResponse.data;
 
         const query = `
-            INSERT INTO social_connect (user_email, platform, access_token_encrypted, server_prefix)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO social_connect (user_email, platform, access_token_encrypted, server_prefix, is_active)
+            VALUES (?, ?, ?, ?, 1)
             ON DUPLICATE KEY UPDATE
             access_token_encrypted = VALUES(access_token_encrypted),
             server_prefix = VALUES(server_prefix);
+            is_active = 1;
         `;
         await db.query(query, [ userEmail, 'mailchimp', encrypt(access_token), dc ]);
 

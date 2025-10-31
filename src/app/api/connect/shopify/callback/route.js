@@ -47,11 +47,12 @@ export async function GET(request) {
         const accessToken = tokenResponse.data.access_token;
 
         const query = `
-            INSERT INTO social_connect (user_email, platform, access_token_encrypted, shopify_shop_name)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO social_connect (user_email, platform, access_token_encrypted, shopify_shop_name, is_active)
+            VALUES (?, ?, ?, ?, 1)
             ON DUPLICATE KEY UPDATE
             access_token_encrypted = VALUES(access_token_encrypted),
             shopify_shop_name = VALUES(shopify_shop_name);
+            is_active = 1;
         `;
         await db.query(query, [session.user.email, 'shopify', encrypt(accessToken), shop]);
         
