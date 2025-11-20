@@ -117,16 +117,16 @@ export async function middleware(req) {
 
             const userLimit = planDetails.limits[requirement.limitKey];
 
-            // --- FIX: Smarter Logic for Numbers vs Booleans ---
+            // Check if the user's limit meets the minimum requirement
             let hasAccess = false;
 
             if (typeof requirement.minRequired === 'boolean') {
-                // If the requirement is a simple TRUE (e.g., "Access Allowed"):
-                // We accept: true, any number > 0, or Infinity.
-                const isTruthy = (userLimit === true) || (typeof userLimit === 'number' && userLimit > 0);
-                hasAccess = isTruthy === requirement.minRequired;
+                // "Smarter" Boolean Check: 
+                // Accepts true, 1, or Infinity as "true"
+                const isUserLimitTruthy = !!userLimit || userLimit === Number.POSITIVE_INFINITY;
+                hasAccess = isUserLimitTruthy === requirement.minRequired;
             } else if (typeof userLimit === 'number') {
-                // Standard number comparison (e.g., limit 5 >= required 1)
+                // Numeric Check
                 hasAccess = userLimit >= requirement.minRequired;
             }
 
