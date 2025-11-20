@@ -66,9 +66,14 @@ export async function GET() {
     }
 
     const sub = activeSubscription; 
-    
+
     const price = sub.items.data[0].price; 
     const stripePriceId = price.id; 
+    // --- NEW DEBUG LOGS ---
+    console.log("--- BILLING API DEBUG ---");
+    console.log("User Email:", session.user.email);
+    console.log("Stripe sent Price ID:", stripePriceId);
+    // ----------------------
 
     // 3. Get internal plan details from plans.js
     const internalPlan = getPlanDetails(stripePriceId);
