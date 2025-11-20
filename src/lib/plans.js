@@ -110,10 +110,10 @@ export const PLANS = {
   // Typically, a trial uses the Price ID of the plan being trialed (e.g., Business).
   // Stripe webhooks handle the trial end. So you might not need a separate entry here
   // unless you have a specific "Beta" Price ID in Stripe. If you *do* have a specific Beta Price ID:
-  'price_1SGcT8F6XLY4flzwQlD5GegV': { // <-- Replace with your actual Stripe Price ID if it exists
+  'price_1SVUHmF6XLY4flzwXDNEjczL': { // <-- Replace with your actual Stripe Price ID if it exists
     id: 'beta',
     name: 'Beta',
-    stripePriceId: 'price_1SGcT8F6XLY4flzwQlD5GegV', // <-- Replace with your actual Stripe Price ID if it exists
+    stripePriceId: 'price_1SVUHmF6XLY4flzwXDNEjczL', // <-- Replace with your actual Stripe Price ID if it exists
     // Mirror the limits of the plan being trialed (e.g., Business)
     limits: {
       visitsPerMonth: 30000,
