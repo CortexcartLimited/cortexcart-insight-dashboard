@@ -52,7 +52,7 @@ const SubscriptionDetails = () => {
       <div className="space-y-3">
         <div className="flex justify-between">
           <span className="text-gray-600">Plan:</span>
-          <span className="font-medium text-gray-800">{subscription.plan_name}</span>
+          <span className="font-medium text-gray-800">{subscription.name}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Price:</span>
