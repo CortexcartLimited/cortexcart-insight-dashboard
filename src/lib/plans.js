@@ -165,7 +165,7 @@ export function getPlanDetails(priceId) {
       supportLevel: 'basic_email',
       maxSocialConnections: 2,
       maxPlatformIntegrations: 1,
-      abTesting: false,
+      abTesting: true,
       customRecommendationAlgorithms: 0,
       revenueAttributionModels: 0,
       customAiFeatures: 0,
