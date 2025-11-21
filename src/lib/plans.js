@@ -165,14 +165,14 @@ export function getPlanDetails(priceId) {
       supportLevel: 'priority_ticket',
       maxSocialConnections: 2,
       maxPlatformIntegrations: 1,
-      abTesting: true,
+      abTesting: false,
       customRecommendationAlgorithms: 0,
       revenueAttributionModels: 0,
       customAiFeatures: 0,
       // Add other features/limits
-      maxHeatmaps: 1, // Example
+      maxHeatmaps: 0, // Example
       maxReports: 5, // Example
-      supportTickets: true,
+      supportTickets: false,
     }
   };
 }
