@@ -1,14 +1,14 @@
-import NextAuth from 'next-auth';
-import { getServerSession } from "next-auth/next";
+// src/lib/auth.js
 import GoogleProvider from 'next-auth/providers/google';
 import TwitterProvider from 'next-auth/providers/twitter';
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
 import bcrypt from 'bcryptjs';
+import { getUserSubscription } from '@/lib/userSubscription'; // <--- NEW IMPORT
 
 // Automatically determine if we should use secure cookies.
-const useSecureCookies = process.env.NEXTAUTH_URL.startsWith("https");
+const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith("https");
 
 /** @type {import('next-auth').AuthOptions} */
 export const authOptions = {
@@ -94,7 +94,6 @@ export const authOptions = {
       }
         }),
     ],
-    // --- DATABASE LOGIC IS NOW RESTORED ---
     callbacks: {
         async signIn({ user, account }) {
             let { email, name } = user;
@@ -116,23 +115,27 @@ export const authOptions = {
             }
             return true; // Allow sign-in
         },
+        
+        // --- CRITICAL FIX IS HERE ---
         async jwt({ token, user, account }) {
+            // 1. Handle Initial Sign In
             if (account && user) {
                 token.id = user.id;
                 token.email = user.email || `${user.id}@users.twitter.com`;
                 token.name = user.name;
                 token.picture = user.image;
-                
 
                 if (account.access_token) { 
                     try {
+                        // FIX: Added 'is_active' to INSERT and UPDATE
                         const query = `
-                            INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at)
-                            VALUES (?, ?, ?, ?, ?)
+                            INSERT INTO social_connect (user_email, platform, access_token_encrypted, refresh_token_encrypted, expires_at, is_active)
+                            VALUES (?, ?, ?, ?, ?, 1)
                             ON DUPLICATE KEY UPDATE 
                                 access_token_encrypted = VALUES(access_token_encrypted), 
                                 refresh_token_encrypted = VALUES(refresh_token_encrypted),
-                                expires_at = VALUES(expires_at);
+                                expires_at = VALUES(expires_at),
+                                is_active = 1;
                         `;
                         const expires_at = account.expires_at ? new Date(account.expires_at * 1000) : null;
                         await db.query(query, [token.email, account.provider, encrypt(account.access_token), encrypt(account.refresh_token), expires_at]);
@@ -141,14 +144,31 @@ export const authOptions = {
                     }
                 }
             }
+
+            // 2. Fetch Subscription Data and Inject into Token
+            // This runs every time the session is checked, keeping the token fresh.
+            if (token.email) {
+                try {
+                    const sub = await getUserSubscription(token.email);
+                    // Save these onto the token so Middleware can read them instantly
+                    token.stripePriceId = sub?.stripePriceId || null;
+                    token.stripeSubscriptionStatus = sub?.stripeSubscriptionStatus || null;
+                } catch (error) {
+                    console.error("Error fetching subscription for token:", error);
+                }
+            }
+
             return token;
         },
+
         async session({ session, token }) {
             if (token) {
                 session.user.id = token.id;
                 session.user.email = token.email;
                 session.user.name = token.name;
                 session.user.image = token.picture;
+                // Pass subscription data to the client-side session too (optional but useful)
+                session.user.stripePriceId = token.stripePriceId;
             }
             if (session.user?.email) {
                 try {
@@ -165,5 +185,3 @@ export const authOptions = {
         },
    },
 };
-
-export default NextAuth(authOptions);

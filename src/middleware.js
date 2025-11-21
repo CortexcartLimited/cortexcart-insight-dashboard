@@ -48,54 +48,48 @@ export async function middleware(req) {
 
     if (requirement) {
         const sessionToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+        
         if (!sessionToken?.email) {
             const loginUrl = new URL('/login', appUrl);
             loginUrl.searchParams.set('callbackUrl', req.url);
             return NextResponse.redirect(loginUrl);
         }
 
-        try {
-            const sub = await getUserSubscription(sessionToken.email);
-            const isActive = sub?.stripeSubscriptionStatus === 'active' || sub?.stripeSubscriptionStatus === 'trialing';
-            
-            // --- DEEP DEBUG LOGGING ---
-            console.log(`\n--- MIDDLEWARE CHECK: ${pathname} ---`);
-            console.log(`User: ${sessionToken.email}`);
-            console.log(`DB Price ID: '${sub?.stripePriceId}'`); // Quotes help see hidden spaces
-            console.log(`Is Active?: ${isActive}`);
-            
-            let plan;
-            if (sub && isActive) {
-                plan = getPlanDetails(sub.stripePriceId);
-            } else {
-                plan = getPlanDetails(null);
-            }
-            
-            console.log(`Resolved Plan Name: '${plan.name}' (ID: ${plan.id})`);
-            console.log(`Required Feature: ${requirement.limitKey}`);
-            console.log(`Plan Limit Value: ${plan.limits[requirement.limitKey]}`);
-            // --------------------------
+        // --- NEW: Read from Token (No DB Call!) ---
+        // The data is now safely inside sessionToken from our Auth update
+        const priceId = sessionToken.stripePriceId;
+        const status = sessionToken.stripeSubscriptionStatus;
+        const isActive = status === 'active' || status === 'trialing';
 
-            const limit = plan.limits[requirement.limitKey];
-            let hasAccess = false;
+        console.log(`\n--- MIDDLEWARE (TOKEN) ---`);
+        console.log(`User: ${sessionToken.email}`);
+        console.log(`Token Price ID: ${priceId}`);
+        console.log(`Token Status: ${status}`);
 
-            if (typeof requirement.minRequired === 'boolean') {
-                const isTruthy = !!limit || limit === Number.POSITIVE_INFINITY;
-                hasAccess = isTruthy === requirement.minRequired;
-            } else if (typeof limit === 'number') {
-                hasAccess = limit >= requirement.minRequired;
-            }
+        let plan;
+        if (priceId && isActive) {
+            plan = getPlanDetails(priceId);
+        } else {
+            plan = getPlanDetails(null);
+        }
+        // -------------------------------------------
 
-            if (!hasAccess) {
-                console.log(`!!! ACCESS DENIED !!! Redirecting.`);
-                const url = new URL('/upgrade-plans', appUrl);
-                url.searchParams.set('reason', isActive ? 'limit' : 'inactive_or_free');
-                url.searchParams.set('feature', requirement.limitKey);
-                return NextResponse.redirect(url);
-            }
-        } catch (error) {
-            console.error("Middleware Error:", error);
-            return NextResponse.redirect(new URL('/dashboard?error=middleware_error', appUrl));
+        const limit = plan.limits[requirement.limitKey];
+        let hasAccess = false;
+
+        if (typeof requirement.minRequired === 'boolean') {
+            const isTruthy = !!limit || limit === Number.POSITIVE_INFINITY;
+            hasAccess = isTruthy === requirement.minRequired;
+        } else if (typeof limit === 'number') {
+            hasAccess = limit >= requirement.minRequired;
+        }
+
+        if (!hasAccess) {
+            console.log(`ACCESS DENIED. Plan: ${plan.name}`);
+            const url = new URL('/upgrade-plans', appUrl);
+            url.searchParams.set('reason', isActive ? 'limit' : 'inactive_or_free');
+            url.searchParams.set('feature', requirement.limitKey);
+            return NextResponse.redirect(url);
         }
     }
 
