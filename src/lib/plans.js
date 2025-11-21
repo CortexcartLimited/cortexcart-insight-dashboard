@@ -162,7 +162,7 @@ export function getPlanDetails(priceId) {
       googleAnalytics: false, // Basic analytics doesn't include Google integration
       recommendationWidgets: 10,
       maxRecommendedProducts: 10,
-      supportLevel: 'basic_email',
+      supportLevel: 'priority_ticket',
       maxSocialConnections: 2,
       maxPlatformIntegrations: 1,
       abTesting: true,
@@ -170,8 +170,9 @@ export function getPlanDetails(priceId) {
       revenueAttributionModels: 0,
       customAiFeatures: 0,
       // Add other features/limits
-      maxHeatmaps: 0, // Example
+      maxHeatmaps: 1, // Example
       maxReports: 5, // Example
+      supportTickets: true,
     }
   };
 }
