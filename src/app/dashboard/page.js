@@ -110,7 +110,8 @@ export default function DashboardPage() {
                         fetch(`/api/stats/top-referrers?siteId=${siteId}${dateParams}`),
                         fetch(`/api/site-settings?siteId=${siteId}`),
                         fetch(`/api/stats/device-types?siteId=${siteId}${dateParams}`),
-                       
+                        // ADDED: Fetch GA4 demographics to power the map
+                        fetch(`/api/ga4-demographics?siteId=${siteId}${dateParams}`),                       
 
                     ]);
 
@@ -118,7 +119,16 @@ export default function DashboardPage() {
                         if (!res.ok) throw new Error(`A data fetch failed: ${res.statusText}`);
                     }
                     
-                    const [statsData, chartData, eventsData, topPagesData, topReferrersData, settingsData, deviceTypesData, audienceData, demographicsData] = await Promise.all(responses.map(res => res.json()));
+ const [
+                        statsData, 
+                        chartData, 
+                        eventsData, 
+                        topPagesData, 
+                        topReferrersData, 
+                        settingsData, 
+                        deviceTypesData,
+                        ga4DemographicsData // <--- Capture the new data
+                    ] = await Promise.all(responses.map(res => res.json()));
 
                     setStats(statsData);
                     setChartApiData(chartData);
@@ -127,11 +137,12 @@ export default function DashboardPage() {
                     setTopReferrers(topReferrersData);
                     setSiteSettings(settingsData);
                     setDeviceData(deviceTypesData);
-                    setGa4AudienceData(audienceData);
-                    setGa4Demographics(demographicsData);
+                    
+                    // ADDED: Save the GA4 data to state
+                    setGa4Demographics(ga4DemographicsData);
 
                 } catch (err) { setError(err.message); }
-            } else { // Fetch from GA4
+                          } else { // Fetch from GA4
                 try {
                     const [statsRes, chartRes] = await Promise.all([
                         fetch(`/api/ga4-stats?siteId=${siteId}${dateParams}`),
@@ -241,7 +252,11 @@ export default function DashboardPage() {
               </ChartContainer>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ChartContainer title="Visitors by Country" className="h-full">
-                <VisitorsByCountryChart dateRange={dateRange} siteId={siteId} />
+                <VisitorsByCountryChart 
+        dateRange={dateRange} 
+        siteId={siteId} 
+        externalData={ga4Demographics?.countryData} 
+    />
                 </ChartContainer>
                 <ChartContainer title="Recent Events">
                   <ActivityTimeline eventsData={recentEvents} />
