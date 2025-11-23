@@ -241,7 +241,7 @@ export default function DashboardPage() {
               </ChartContainer>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ChartContainer title="Visitors by Country" className="h-full">
-                 <VisitorsByCountryChart dateRange={dateRange} />
+                <VisitorsByCountryChart dateRange={dateRange} siteId={siteId} />
                 </ChartContainer>
                 <ChartContainer title="Recent Events">
                   <ActivityTimeline eventsData={recentEvents} />
