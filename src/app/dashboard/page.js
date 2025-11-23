@@ -268,10 +268,10 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ChartContainer title="Visitors by Country" className="h-full">
                 <VisitorsByCountryChart 
-        dateRange={dateRange} 
-        siteId={siteId} 
-        externalData={ga4Demographics?.countryData} 
-    />
+    dateRange={dateRange} 
+    siteId={siteId} 
+    externalData={ga4Demographics?.countryData} 
+/>
                 </ChartContainer>
                 <ChartContainer title="Recent Events">
                   <ActivityTimeline eventsData={recentEvents} />
