@@ -2,11 +2,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { encrypt } from '@/lib/crypto'; // Import encryption helper
 
-/**
- * @description Fetches all GA4 connections for the logged-in user.
- * @method GET
- */
 export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -14,6 +11,7 @@ export async function GET() {
     }
 
     try {
+        // We select id and property_id, but NEVER return the secrets (credentials_json) to the frontend
         const [connections] = await db.query(
             'SELECT id, ga4_property_id FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
@@ -25,38 +23,46 @@ export async function GET() {
     }
 }
 
-/**
- * @description Adds a new GA4 property connection for the logged-in user.
- * @method POST
- */
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
-    const { propertyId } = await req.json();
+    // FIX: Receive both propertyId AND the credentials JSON string
+    const { propertyId, credentials } = await req.json();
 
     if (!propertyId || !/^\d+$/.test(propertyId)) {
         return NextResponse.json({ message: 'Invalid Property ID format.' }, { status: 400 });
     }
 
+    if (!credentials) {
+        return NextResponse.json({ message: 'Service Account JSON file is required.' }, { status: 400 });
+    }
+
+    // Validate that the uploaded content is actually JSON
     try {
-        // First, check if this property already exists for the user
+        JSON.parse(credentials);
+    } catch (e) {
+        return NextResponse.json({ message: 'Invalid JSON file format.' }, { status: 400 });
+    }
+
+    try {
         const [existing] = await db.query(
             'SELECT id FROM ga4_connections WHERE user_email = ? AND ga4_property_id = ?',
             [session.user.email, propertyId]
         );
 
-        // If a record is found, return a conflict error
         if (existing.length > 0) {
             return NextResponse.json({ message: 'This property has already been added.' }, { status: 409 });
         }
 
-        // If no duplicate is found, insert the new property
+        // FIX: Encrypt the credentials before saving
+        const encryptedCredentials = encrypt(credentials);
+
         const [result] = await db.query(
-            'INSERT INTO ga4_connections (user_email, ga4_property_id) VALUES (?, ?)',
-            [session.user.email, propertyId]
+            'INSERT INTO ga4_connections (user_email, ga4_property_id, credentials_json) VALUES (?, ?, ?)',
+            [session.user.email, propertyId, encryptedCredentials]
         );
         
         const [newConnection] = await db.query(
@@ -66,7 +72,6 @@ export async function POST(req) {
 
         return NextResponse.json(newConnection[0], { status: 201 });
     } catch (error) {
-        // This will catch the unique constraint violation if the API check somehow fails
         if (error.code === 'ER_DUP_ENTRY') {
             return NextResponse.json({ message: 'This property has already been added.' }, { status: 409 });
         }
@@ -75,10 +80,6 @@ export async function POST(req) {
     }
 }
 
-/**
- * @description Deletes a specific GA4 connection for the logged-in user.
- * @method DELETE
- */
 export async function DELETE(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

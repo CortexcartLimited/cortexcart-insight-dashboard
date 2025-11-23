@@ -3,15 +3,19 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/app/components/Layout';
 import Link from 'next/link';
-import { TrashIcon } from '@heroicons/react/24/solid';
+import { TrashIcon, DocumentArrowUpIcon } from '@heroicons/react/24/solid';
 import ConfirmationModal from '@/app/components/ConfirmationModal';
 
 const PROPERTY_LIMIT = 6;
 
 export default function IntegrationsPage() {
-    // ... (keep all your existing state and functions: useState, useEffect, handleAddProperty, etc.)
     const [properties, setProperties] = useState([]);
     const [newPropertyId, setNewPropertyId] = useState('');
+    
+    // NEW: State to hold the content of the uploaded JSON file
+    const [jsonFileContent, setJsonFileContent] = useState(null); 
+    const [fileName, setFileName] = useState('');
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,20 +38,47 @@ export default function IntegrationsPage() {
         fetchProperties();
     }, []);
 
+    // NEW: Handle File Selection and Reading
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFileName(file.name);
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setJsonFileContent(event.target.result); // Save text content
+            };
+            reader.readAsText(file);
+        }
+    };
+
     const handleAddProperty = async (e) => {
         e.preventDefault();
+        
+        if (!jsonFileContent) {
+            setError("Please upload your Google Service Account JSON file.");
+            return;
+        }
+
         setIsSubmitting(true);
         setError('');
         try {
             const response = await fetch('/api/ga4-connections', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ propertyId: newPropertyId }),
+                body: JSON.stringify({ 
+                    propertyId: newPropertyId,
+                    credentials: jsonFileContent // Send file content to backend
+                }),
             });
             const newProperty = await response.json();
             if (!response.ok) throw new Error(newProperty.message || 'Failed to add property.');
+            
             setProperties([...properties, newProperty]);
+            
+            // Reset form
             setNewPropertyId('');
+            setJsonFileContent(null);
+            setFileName('');
         } catch (err) {
             setError(err.message);
         } finally {
@@ -87,7 +118,6 @@ export default function IntegrationsPage() {
         setPropertyToDelete(null);
     };
 
-
     if (loading) return <Layout><p className="p-8">Loading GA4 properties...</p></Layout>;
 
     return (
@@ -100,31 +130,53 @@ export default function IntegrationsPage() {
             </div>
             <p className="mt-1 text-sm text-gray-500 mb-8">Manage your connected GA4 properties.</p>
 
-            {/* New Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                {/* Column 1: Main Content */}
                 <div className="lg:col-span-2 space-y-8">
                     <div className="p-6 border rounded-lg bg-white shadow-sm">
                         <h3 className="font-semibold text-gray-800">Add New Property</h3>
-                        <form onSubmit={handleAddProperty} className="mt-4 flex items-center gap-2">
-                            <input
-                                type="text"
-                                value={newPropertyId}
-                                onChange={(e) => setNewPropertyId(e.target.value)}
-                                placeholder="Enter GA4 Property ID (e.g., 123456789)"
-                                className="flex-grow w-full px-3 py-2 border border-gray-300 rounded-md"
-                                //pattern="\\d+"
-                                title="Please enter numbers only."
-                                required
-                                disabled={properties.length >= PROPERTY_LIMIT}
-                            />
+                        <form onSubmit={handleAddProperty} className="mt-4 space-y-4">
+                            {/* Property ID Input */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">GA4 Property ID</label>
+                                <input
+                                    type="text"
+                                    value={newPropertyId}
+                                    onChange={(e) => setNewPropertyId(e.target.value)}
+                                    placeholder="e.g., 123456789"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    title="Please enter numbers only."
+                                    required
+                                    disabled={properties.length >= PROPERTY_LIMIT}
+                                />
+                            </div>
+
+                            {/* JSON File Upload */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Service Account Key (JSON)</label>
+                                <div className="flex items-center gap-2">
+                                    <label className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                                        <DocumentArrowUpIcon className="h-5 w-5 mr-2 text-gray-500" />
+                                        {fileName ? fileName : "Upload JSON File"}
+                                        <input 
+                                            type="file" 
+                                            accept=".json" 
+                                            onChange={handleFileChange} 
+                                            className="hidden" 
+                                            required
+                                        />
+                                    </label>
+                                    {fileName && <span className="text-xs text-green-600">Ready to upload</span>}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Upload the .json file you downloaded from Google Cloud Console.</p>
+                            </div>
+
                             <button 
                                 type="submit" 
                                 disabled={isSubmitting || properties.length >= PROPERTY_LIMIT}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                                className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                             >
-                                {isSubmitting ? 'Adding...' : 'Add Property'}
+                                {isSubmitting ? 'Adding...' : 'Add Property & Credentials'}
                             </button>
                         </form>
                         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
@@ -152,26 +204,18 @@ export default function IntegrationsPage() {
                     </div>
                 </div>
 
-                {/* Column 2: Instructional Card */}
                 <div className="lg:col-span-1">
                     <div className="p-6 border rounded-lg bg-white shadow-sm">
-                        <h3 className="font-semibold text-gray-800 mb-4">How to Find Your Property ID</h3>
+                        <h3 className="font-semibold text-gray-800 mb-4">Setup Instructions</h3>
                         <div className="space-y-4 text-sm text-gray-600">
-                            <p>Follow these steps in your Google Analytics account:</p>
+                            <p>To connect GA4, you need a <strong>Service Account Key</strong>:</p>
                             <ol className="list-decimal list-inside space-y-2 pl-2">
-                                <li>Go to the <strong className="font-semibold">Admin</strong> section (gear icon in the bottom-left).</li>
-                                <li>In the 'Property' column, select your desired property.</li>
-                                <li>Click on <strong className="font-semibold">Property Settings</strong>.</li>
-                                <li>Your <strong className="font-semibold">Property ID</strong> is the number shown at the top (e.g., 123456789).</li>
+                                <li>Go to Google Cloud Console > IAM & Admin > Service Accounts.</li>
+                                <li>Create a new service account.</li>
+                                <li>Click "Keys" > "Add Key" > "Create new key" > Select <strong>JSON</strong>.</li>
+                                <li>The file will download automatically. Upload that file here.</li>
+                                <li><strong>Important:</strong> Copy the service account email (ends in @...iam.gserviceaccount.com) and add it as a user in your Google Analytics Property Access settings.</li>
                             </ol>
-                            
-                            {/* Placeholder for the video */}
-                            <div className="mt-6">
-                                <h4 className="font-semibold text-gray-700 mb-2">Watch a video guide</h4>
-                                <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg flex items-center justify-center">
-                                    <iframe width="560" height="315" src="https://www.youtube.com/embed/cJ1rQ6OjuYM?si=ghKWSGbQ3lrfqH8H" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
