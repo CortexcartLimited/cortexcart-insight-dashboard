@@ -102,6 +102,7 @@ export default function DashboardPage() {
 
             if (dataSource === 'cortexcart') {
                 try {
+                    // 1. Fetch Critical CortexCart Data (These MUST succeed)
                     const responses = await Promise.all([
                         fetch(`/api/stats?siteId=${siteId}${dateParams}`),
                         fetch(`/api/charts/sales-by-day?siteId=${siteId}${dateParams}`),
@@ -110,26 +111,35 @@ export default function DashboardPage() {
                         fetch(`/api/stats/top-referrers?siteId=${siteId}${dateParams}`),
                         fetch(`/api/site-settings?siteId=${siteId}`),
                         fetch(`/api/stats/device-types?siteId=${siteId}${dateParams}`),
-                        // ADDED: Fetch GA4 demographics to power the map
-                        fetch(`/api/ga4-demographics?siteId=${siteId}${dateParams}`),                       
-
                     ]);
 
+                    // Check for errors in critical data only
                     for (const res of responses) {
                         if (!res.ok) throw new Error(`A data fetch failed: ${res.statusText}`);
                     }
                     
- const [
+                    const [
                         statsData, 
                         chartData, 
                         eventsData, 
                         topPagesData, 
                         topReferrersData, 
                         settingsData, 
-                        deviceTypesData,
-                        ga4DemographicsData // <--- Capture the new data
+                        deviceTypesData
                     ] = await Promise.all(responses.map(res => res.json()));
 
+                    // 2. Try to fetch GA4 Data Separately (OPTIONAL - Don't crash if not connected)
+                    let ga4DemographicsData = null;
+                    try {
+                        const ga4Res = await fetch(`/api/ga4-demographics?siteId=${siteId}${dateParams}`);
+                        if (ga4Res.ok) {
+                            ga4DemographicsData = await ga4Res.json();
+                        }
+                    } catch (e) {
+                        console.warn("GA4 fetch failed silently (likely not configured):", e);
+                    }
+
+                    // 3. Set State
                     setStats(statsData);
                     setChartApiData(chartData);
                     setRecentEvents(eventsData);
@@ -138,11 +148,16 @@ export default function DashboardPage() {
                     setSiteSettings(settingsData);
                     setDeviceData(deviceTypesData);
                     
-                    // ADDED: Save the GA4 data to state
-                    setGa4Demographics(ga4DemographicsData);
+                    // Only update GA4 state if we actually got data
+                    if (ga4DemographicsData) {
+                        setGa4Demographics(ga4DemographicsData);
+                    }
 
-                } catch (err) { setError(err.message); }
-                          } else { // Fetch from GA4
+                } catch (err) { 
+                    console.error("Dashboard Error:", err);
+                    setError(err.message); 
+                }
+                       } else { // Fetch from GA4
                 try {
                     const [statsRes, chartRes] = await Promise.all([
                         fetch(`/api/ga4-stats?siteId=${siteId}${dateParams}`),
