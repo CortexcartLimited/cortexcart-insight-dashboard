@@ -3,33 +3,49 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const geoUrl = "/world_countries.json";
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF19AF', '#19AFFF'];
 
-export default function VisitorsByCountryChart() {
+export default function VisitorsByCountryChart({ siteId, dateRange }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Guard clause: Don't fetch if missing required data
+    if (!siteId || !dateRange?.startDate || !dateRange?.endDate) return;
+
     async function fetchData() {
       try {
         setLoading(true);
-        const response = await fetch('/api/stats/locations');
+
+        // Format dates to YYYY-MM-DD to ensure backend compatibility
+        const formatDate = (date) => {
+             if (!date) return '';
+             // Handle both Date objects and strings
+             const d = new Date(date);
+             return d.toISOString().split('T')[0]; 
+        };
+
+        const params = new URLSearchParams({
+            siteId: siteId,
+            startDate: formatDate(dateRange.startDate),
+            endDate: formatDate(dateRange.endDate)
+        });
+
+        const response = await fetch(`/api/stats/locations?${params.toString()}`);
         
         if (!response.ok) throw new Error('Failed to fetch location data');
         
         const rawData = await response.json();
 
-        // FIX: Map your API data to the format Recharts expects (name & value)
-        // Adjust 'country'/'code' and 'visitors'/'count' to match your actual API response keys
+        // Map API data to Recharts format (name/value)
         const formattedData = Array.isArray(rawData) ? rawData.map(item => ({
-          name: item.country || item.code || item.name || 'Unknown', 
-          value: item.visitors || item.count || item.value || 0
+          name: item.name || item.country || 'Unknown', 
+          value: item.value || item.visitor_count || item.count || 0
         })) : [];
 
         setData(formattedData);
+        setError(null);
       } catch (err) {
         console.error("Chart Error:", err);
         setError(true);
@@ -39,7 +55,7 @@ export default function VisitorsByCountryChart() {
     }
 
     fetchData();
-  }, []);
+  }, [siteId, dateRange]); // Re-fetch when these change
 
   if (loading) return <div className="h-64 flex items-center justify-center">Loading chart...</div>;
   if (error) return <div className="h-64 flex items-center justify-center text-red-500">Failed to load data.</div>;
