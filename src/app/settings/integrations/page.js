@@ -210,9 +210,10 @@ export default function IntegrationsPage() {
                         <div className="space-y-4 text-sm text-gray-600">
                             <p>To connect GA4, you need a <strong>Service Account Key</strong>:</p>
                             <ol className="list-decimal list-inside space-y-2 pl-2">
-                                <li>Go to Google Cloud Console > IAM & Admin > Service Accounts.</li>
+                                {/* FIX: Replaced > with &gt; in the lines below */}
+                                <li>Go to Google Cloud Console &gt; IAM & Admin &gt; Service Accounts.</li>
                                 <li>Create a new service account.</li>
-                                <li>Click "Keys" > "Add Key" > "Create new key" > Select <strong>JSON</strong>.</li>
+                                <li>Click "Keys" &gt; "Add Key" &gt; "Create new key" &gt; Select <strong>JSON</strong>.</li>
                                 <li>The file will download automatically. Upload that file here.</li>
                                 <li><strong>Important:</strong> Copy the service account email (ends in @...iam.gserviceaccount.com) and add it as a user in your Google Analytics Property Access settings.</li>
                             </ol>
