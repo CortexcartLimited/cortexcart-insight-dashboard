@@ -164,25 +164,46 @@ export default function DashboardPage() {
                     setError(err.message); 
                 }
                        } else { // Fetch from GA4
-                try {
-                    const [statsRes, chartRes] = await Promise.all([
+            try {
+                    // 1. Fetch all 4 endpoints and save them to the variable 'responses'
+                    const responses = await Promise.all([
                         fetch(`/api/ga4-stats?siteId=${siteId}${dateParams}`),
                         fetch(`/api/ga4-charts?siteId=${siteId}${dateParams}`),
                         fetch(`/api/ga4-audience?siteId=${siteId}${dateParams}`),
                         fetch(`/api/ga4-demographics?siteId=${siteId}${dateParams}`),
                     ]);
-                    if (!statsRes.ok || !chartRes.ok) throw new Error('Failed to fetch GA4 data.');
-                const [
+
+                    // 2. Check for network errors using the 'responses' variable
+                    for (const res of responses) {
+                        if (!res.ok) {
+                            // If Demographics fail, just warn and continue (don't crash dashboard)
+                            if (res.url.includes('demographics')) {
+                                console.warn("Demographics failed to load (likely thresholding)");
+                                continue; 
+                            }
+                            throw new Error(`GA4 Data Fetch Failed: ${res.statusText}`);
+                        }
+                    }
+
+                    // 3. Parse JSON for ALL responses
+                    const [
                         statsData, 
                         chartData, 
-                        audienceData, 
-                        demographicsData   
+                        audienceData,
+                        demographicsData
                     ] = await Promise.all(responses.map(res => res.ok ? res.json() : null));
+
+                    // 4. Save to State
                     setGa4Stats(statsData);
                     setGa4ChartData(chartData);
+                    
                     if (audienceData) setGa4AudienceData(audienceData);
                     if (demographicsData) setGa4Demographics(demographicsData);
-                } catch (err) { setError(err.message); }
+
+                } catch (err) { 
+                    console.error("GA4 Dashboard Error:", err);
+                    setError(err.message); 
+                }
             }
             setIsLoading(false);
         };
