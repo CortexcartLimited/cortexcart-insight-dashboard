@@ -170,13 +170,18 @@ export default function DashboardPage() {
                         fetch(`/api/ga4-charts?siteId=${siteId}${dateParams}`),
                         fetch(`/api/ga4-audience?siteId=${siteId}${dateParams}`),
                         fetch(`/api/ga4-demographics?siteId=${siteId}${dateParams}`),
-
                     ]);
                     if (!statsRes.ok || !chartRes.ok) throw new Error('Failed to fetch GA4 data.');
-                    const statsData = await statsRes.json();
-                    const chartData = await chartRes.json();
+                const [
+                        statsData, 
+                        chartData, 
+                        audienceData, 
+                        demographicsData   
+                    ] = await Promise.all(responses.map(res => res.ok ? res.json() : null));
                     setGa4Stats(statsData);
                     setGa4ChartData(chartData);
+                    if (audienceData) setGa4AudienceData(audienceData);
+                    if (demographicsData) setGa4Demographics(demographicsData);
                 } catch (err) { setError(err.message); }
             }
             setIsLoading(false);
