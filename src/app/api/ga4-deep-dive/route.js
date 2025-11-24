@@ -118,10 +118,9 @@ export async function GET(req) {
                     response = await client.runReport({
                         property: `properties/${ga4_property_id}`,
                         dateRanges: [{ startDate, endDate }],
-                        dimensions: [{ name: 'country' }, { name: 'organicGoogleSearchQuery' }],
-                        metrics: [{ name: 'sessions' }],
-                        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-                        limit: 10
+                        dimensions: [{ name: 'organicGoogleSearchQuery' }, { name: 'country' }],
+                        metrics: [{ name: 'organicGoogleSearchClicks' }], 
+                        orderBys: [{ metric: { metricName: 'organicGoogleSearchClicks' }, desc: true }],                        limit: 10
                     });
                     return NextResponse.json(response[0].rows ? response[0].rows.map(row => ({
                         country: row.dimensionValues[0].value,
