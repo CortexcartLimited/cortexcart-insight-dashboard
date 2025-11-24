@@ -23,7 +23,13 @@ import OnboardingModal from '@/app/components/OnboardingModal';
 import VisitorsByCountryChart from '@/app/components/VisitorsByCountryChart';
 import NewVsReturningChart from '@/app/components/NewVsReturningChart';
 import DemographicsCharts from '@/app/components/DemographicsCharts';
-
+import { 
+    StickinessCard, 
+    CityTable, 
+    SearchQueriesTable, 
+    OrganicLandingTable, 
+    EngagedSessionsCard 
+} from '@/app/components/analytics/DeepDiveWidgets';
 const currencySymbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$' };
 
 const DataSourceToggle = ({ dataSource, setDataSource }) => (
@@ -356,6 +362,30 @@ export default function DashboardPage() {
      <ChartContainer title="Audience Demographics">
         <DemographicsCharts data={ga4Demographics} />
     </ChartContainer>
+    <h3 className="text-xl font-bold mt-8 mb-4 text-gray-800">Deep Dive Analytics</h3>
+    
+    {/* Row 1: Stickiness, Engagement Ratio, Cities */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <ChartContainer title="User Stickiness (Retention)">
+            <StickinessCard dateRange={dateRange} />
+        </ChartContainer>
+        <ChartContainer title="Engaged Sessions / User">
+            <EngagedSessionsCard dateRange={dateRange} />
+        </ChartContainer>
+        <ChartContainer title="Active Users by City">
+            <CityTable dateRange={dateRange} />
+        </ChartContainer>
+    </div>
+
+    {/* Row 2: SEO & Search Data */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <ChartContainer title="Organic Search Landing Pages">
+            <OrganicLandingTable dateRange={dateRange} />
+        </ChartContainer>
+        <ChartContainer title="Search Queries by Country">
+            <SearchQueriesTable dateRange={dateRange} />
+        </ChartContainer>
+    </div>
             </div>
             
             
