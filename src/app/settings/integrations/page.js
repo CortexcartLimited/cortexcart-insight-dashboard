@@ -190,12 +190,33 @@ export default function IntegrationsPage() {
                         <div className="mt-4 space-y-2">
                             {properties.length > 0 ? (
                                 properties.map(prop => (
-                                    <div key={prop.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                                        <span className="font-mono text-sm text-gray-700">{prop.ga4_property_id}</span>
-                                        <button onClick={() => openDeleteModal(prop.id)} className="text-gray-400 hover:text-red-600">
-                                            <TrashIcon className="h-5 w-5" />
-                                        </button>
-                                    </div>
+                                  <div className="mt-4 space-y-2">
+    {properties.length > 0 ? (
+        properties.map(prop => (
+            <div key={prop.id} className="p-4 bg-gray-50 rounded-md border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-gray-700">Property ID: {prop.ga4_property_id}</span>
+                    <button onClick={() => openDeleteModal(prop.id)} className="text-gray-400 hover:text-red-600">
+                        <TrashIcon className="h-5 w-5" />
+                    </button>
+                </div>
+                
+                {/* ✅ NEW: Display the Service Account Email */}
+                {prop.service_email && (
+                    <div className="text-xs bg-blue-50 text-blue-800 p-2 rounded border border-blue-100 break-all">
+                        <p className="font-semibold mb-1">⚠️ Action Required:</p>
+                        <p>Invite this email to your Google Analytics Property as a "Viewer":</p>
+                        <code className="block mt-1 bg-white p-1 rounded select-all border border-blue-200">
+                            {prop.service_email}
+                        </code>
+                    </div>
+                )}
+            </div>
+        ))
+    ) : (
+        <p className="text-sm text-center text-gray-500 py-4">No GA4 properties connected yet.</p>
+    )}
+</div>
                                 ))
                             ) : (
                                 <p className="text-sm text-center text-gray-500 py-4">No GA4 properties connected yet.</p>
