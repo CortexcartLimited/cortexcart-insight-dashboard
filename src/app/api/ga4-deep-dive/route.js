@@ -5,11 +5,15 @@ import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
+// Helper to fix private key formatting
 function formatCredentials(creds) {
-    if (creds && creds.private_key) creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+    if (creds && creds.private_key) {
+        creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+    }
     return creds;
 }
 
+// Helper to handle date formats
 function formatDate(dateStr) {
     if (!dateStr) return '28daysAgo';
     try {
@@ -24,7 +28,7 @@ export async function GET(req) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const type = searchParams.get('type'); // 'stickiness', 'city', 'engaged_user', 'queries', 'organic_landing'
+    const type = searchParams.get('type');
     const startDate = formatDate(searchParams.get('startDate'));
     const endDate = formatDate(searchParams.get('endDate') || 'today');
 
@@ -39,27 +43,41 @@ export async function GET(req) {
         }
 
         const { ga4_property_id, credentials_json } = rows[0];
-        let credentials = JSON.parse(credentials_json);
+        
+        // ✅ FIXED PARSING LOGIC
+        let credentials;
         try {
-             const decrypted = decrypt(credentials_json);
-             if (decrypted) credentials = JSON.parse(decrypted);
-        } catch (e) {}
+            // 1. Attempt to decrypt first
+            const decrypted = decrypt(credentials_json);
+            if (decrypted) {
+                credentials = JSON.parse(decrypted);
+            }
+        } catch (e) {
+            // Decryption failed or wasn't needed
+        }
+
+        // 2. If decryption didn't yield a result, try parsing raw JSON
+        if (!credentials) {
+            try {
+                credentials = JSON.parse(credentials_json);
+            } catch (e) {
+                console.error("GA4 Credentials Parse Error:", e.message);
+                return NextResponse.json({ error: 'Invalid Credentials Format' }, { status: 500 });
+            }
+        }
+
         credentials = formatCredentials(credentials);
-
         const client = new BetaAnalyticsDataClient({ credentials });
+        
+        // ... (Rest of the file remains exactly the same) ...
+        
         let response;
-
         switch (type) {
             case 'stickiness':
-                // DAU/MAU, DAU/WAU, WAU/MAU
                 response = await client.runReport({
                     property: `properties/${ga4_property_id}`,
                     dateRanges: [{ startDate, endDate }],
-                    metrics: [
-                        { name: 'dauPerMau' },
-                        { name: 'dauPerWau' }, 
-                        { name: 'wauPerMau' }
-                    ]
+                    metrics: [{ name: 'dauPerMau' }, { name: 'dauPerWau' }, { name: 'wauPerMau' }]
                 });
                 const stickinessRow = response[0].rows?.[0];
                 return NextResponse.json({
@@ -69,7 +87,6 @@ export async function GET(req) {
                 });
 
             case 'city':
-                // Active Users by Town/City
                 response = await client.runReport({
                     property: `properties/${ga4_property_id}`,
                     dateRanges: [{ startDate, endDate }],
@@ -85,7 +102,6 @@ export async function GET(req) {
                 })) : []);
 
             case 'engaged_user':
-                // Engaged Sessions per Active User
                 response = await client.runReport({
                     property: `properties/${ga4_property_id}`,
                     dateRanges: [{ startDate, endDate }],
@@ -95,20 +111,13 @@ export async function GET(req) {
                 const engagedSessions = engRow ? parseInt(engRow.metricValues[1].value) : 0;
                 const activeUsers = engRow ? parseInt(engRow.metricValues[2].value) : 0;
                 const ratio = activeUsers > 0 ? (engagedSessions / activeUsers).toFixed(2) : 0;
-                
-                return NextResponse.json({
-                    ratio: parseFloat(ratio),
-                    engagedSessions,
-                    activeUsers
-                });
+                return NextResponse.json({ ratio: parseFloat(ratio), engagedSessions, activeUsers });
 
             case 'queries':
-                // Search Queries by Country (Requires Search Console linking for best results, or Site Search)
-                // Using 'organicGoogleSearchQuery' usually requires GSC link. 
                 response = await client.runReport({
                     property: `properties/${ga4_property_id}`,
                     dateRanges: [{ startDate, endDate }],
-                    dimensions: [{ name: 'country' }, { name: 'organicGoogleSearchQuery' }], // Or 'searchTerm' for internal search
+                    dimensions: [{ name: 'country' }, { name: 'organicGoogleSearchQuery' }],
                     metrics: [{ name: 'sessions' }],
                     orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
                     limit: 10
@@ -120,7 +129,6 @@ export async function GET(req) {
                 })) : []);
 
             case 'organic_landing':
-                // Organic Search Traffic: Landing Page + Query String
                 response = await client.runReport({
                     property: `properties/${ga4_property_id}`,
                     dateRanges: [{ startDate, endDate }],
@@ -147,6 +155,7 @@ export async function GET(req) {
 
     } catch (error) {
         console.error(`GA4 Deep Dive Error (${type}):`, error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        // More detailed error response for debugging
+        return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
     }
 }
