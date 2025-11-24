@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { encrypt } from '@/lib/crypto'; 
+import { encrypt, decrypt } from '@/lib/crypto'; // ✅ Make sure decrypt is imported
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -11,17 +11,32 @@ export async function GET() {
     }
 
     try {
-        // FIX: Removed 'id' from selection. user_email is the key.
+        // Fetch the credentials so we can extract the email
         const [connections] = await db.query(
-            'SELECT ga4_property_id FROM ga4_connections WHERE user_email = ?',
+            'SELECT ga4_property_id, credentials_json FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
         );
         
-        // We synthesize a fake 'id' so the frontend React keys don't break
-        const formatted = connections.map(c => ({
-            id: 'primary', 
-            ga4_property_id: c.ga4_property_id
-        }));
+        const formatted = connections.map(c => {
+            let serviceEmail = 'Unknown';
+            try {
+                // 1. Try to decrypt (if encrypted)
+                let jsonString = decrypt(c.credentials_json);
+                // 2. If decrypt fails (returns null), assume it's raw JSON
+                if (!jsonString) jsonString = c.credentials_json;
+                
+                const creds = JSON.parse(jsonString);
+                serviceEmail = creds.client_email;
+            } catch (e) {
+                console.error("Error parsing credentials for email", e);
+            }
+
+            return {
+                id: 'primary', 
+                ga4_property_id: c.ga4_property_id,
+                service_email: serviceEmail // ✅ Sending this to the frontend
+            };
+        });
 
         return NextResponse.json(formatted, { status: 200 });
     } catch (error) {
@@ -30,6 +45,7 @@ export async function GET() {
     }
 }
 
+// ... keep POST and DELETE exactly as they were ...
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -55,9 +71,6 @@ export async function POST(req) {
     try {
         const encryptedCredentials = encrypt(credentials);
 
-        // FIX: Use 'ON DUPLICATE KEY UPDATE'
-        // Since your schema limits 1 connection per user (user_email is Primary Key),
-        // this command will Insert if new, or Update if one already exists.
         await db.query(
             `INSERT INTO ga4_connections (user_email, ga4_property_id, credentials_json) 
              VALUES (?, ?, ?)
@@ -68,7 +81,7 @@ export async function POST(req) {
         );
         
         return NextResponse.json({
-            id: 'primary', // Fake ID for frontend
+            id: 'primary', 
             ga4_property_id: propertyId
         }, { status: 201 });
 
@@ -85,7 +98,6 @@ export async function DELETE(req) {
     }
 
     try {
-        // FIX: Delete based on user_email only (ignore the ID passed from frontend)
         const [result] = await db.query(
             'DELETE FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
