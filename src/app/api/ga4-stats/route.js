@@ -1,56 +1,76 @@
-import { BetaAnalyticsDataClient } from '@google-analytics/data';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { decrypt } from '@/lib/crypto';
+import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
-export async function GET() {
+function formatCredentials(creds) {
+    if (creds && creds.private_key) creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+    return creds;
+}
+
+export async function GET(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
-    }
-
-    const analyticsDataClient = new BetaAnalyticsDataClient();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const [connections] = await db.query(
-            'SELECT ga4_property_id FROM ga4_connections WHERE user_email = ?',
+        // FIX: Use 'ga4_property_id' and 'credentials_json'
+        const [rows] = await db.query(
+            'SELECT ga4_property_id, credentials_json FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
         );
-        const propertyId = connections[0]?.ga4_property_id;
 
-        if (!propertyId) {
-            throw new Error("Your GA4 Property ID has not been set. Please add it in the Settings > Integrations tab.");
+        if (rows.length === 0 || !rows[0].credentials_json) {
+            return NextResponse.json({ error: 'GA4 not configured' }, { status: 404 });
         }
 
-        const [response] = await analyticsDataClient.runReport({
-            property: `properties/${propertyId}`,
+        const { ga4_property_id, credentials_json } = rows[0];
+        
+        // Decrypt/Parse Logic
+        let credentials;
+        try {
+             const decrypted = decrypt(credentials_json);
+             credentials = decrypted ? JSON.parse(decrypted) : JSON.parse(credentials_json);
+        } catch (e) {
+             credentials = JSON.parse(credentials_json);
+        }
+        credentials = formatCredentials(credentials);
+
+        const client = new BetaAnalyticsDataClient({ credentials });
+        const [response] = await client.runReport({
+            property: `properties/${ga4_property_id}`,
             dateRanges: [{ startDate: '28daysAgo', endDate: 'today' }],
             metrics: [
-                { name: 'totalUsers' },
-                { name: 'screenPageViews' },
+                { name: 'activeUsers' },
                 { name: 'sessions' },
+                { name: 'screenPageViews' },
                 { name: 'conversions' },
+                { name: 'userEngagementDuration' }
             ],
         });
 
-        const ga4Stats = {
-            users: 0,
-            pageviews: 0,
-            sessions: 0,
-            conversions: 0,
+        // Safe Data Mapping
+        const metricHeaders = response.metricHeaders.map(h => h.name);
+        const row = response.rows?.[0];
+
+        const getValue = (name) => {
+            if (!row) return 0;
+            const index = metricHeaders.indexOf(name);
+            return index !== -1 ? parseInt(row.metricValues[index].value) : 0;
         };
 
-        if (response.rows && response.rows.length > 0) {
-            ga4Stats.users = parseInt(response.rows[0].metricValues[0].value, 10);
-            ga4Stats.pageviews = parseInt(response.rows[0].metricValues[1].value, 10);
-            ga4Stats.sessions = parseInt(response.rows[0].metricValues[2].value, 10);
-            ga4Stats.conversions = parseInt(response.rows[0].metricValues[3].value, 10);
-        }
+        const stats = {
+            users: getValue('activeUsers'),
+            sessions: getValue('sessions'),
+            pageviews: getValue('screenPageViews'),
+            conversions: getValue('conversions'),
+            averageEngagementDuration: getValue('userEngagementDuration') / (getValue('activeUsers') || 1),
+        };
 
-        return NextResponse.json(ga4Stats, { status: 200 });
+        return NextResponse.json(stats);
     } catch (error) {
-        console.error('Error fetching GA4 data:', error);
-        return NextResponse.json({ message: `Failed to fetch GA4 data: ${error.message}` }, { status: 500 });
+        console.error('GA4 Stats Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

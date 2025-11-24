@@ -1,51 +1,67 @@
-// src/app/api/ga4-charts/route.js
-
-import { BetaAnalyticsDataClient } from '@google-analytics/data';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { decrypt } from '@/lib/crypto';
+import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
-export async function GET() {
+function formatCredentials(creds) {
+    if (creds && creds.private_key) creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+    return creds;
+}
+
+export async function GET(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
-    }
-
-    const analyticsDataClient = new BetaAnalyticsDataClient();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const [connections] = await db.query(
-            'SELECT ga4_property_id FROM ga4_connections WHERE user_email = ?',
+        const [rows] = await db.query(
+            'SELECT ga4_property_id, credentials_json FROM ga4_connections WHERE user_email = ?',
             [session.user.email]
         );
-        const propertyId = connections[0]?.ga4_property_id;
 
-        if (!propertyId) {
-            throw new Error("GA4 Property ID has not been set.");
+        if (rows.length === 0 || !rows[0].credentials_json) {
+            return NextResponse.json({ error: 'GA4 not configured' }, { status: 404 });
         }
 
-        // This report fetches Page Views and Conversions for each day in the date range.
-        const [response] = await analyticsDataClient.runReport({
-            property: `properties/${propertyId}`,
-            dateRanges: [{ startDate: '28daysAgo', endDate: 'today' }],
-            dimensions: [{ name: 'date' }], // We want the data broken down by date
-            metrics: [
-                { name: 'screenPageViews' },
-                { name: 'conversions' },
-            ],
-            orderBys: [{ dimension: { orderType: "ALPHANUMERIC", dimensionName: "date" }}] // Order by date
+        const { ga4_property_id, credentials_json } = rows[0];
+        
+        let credentials;
+        try {
+             const decrypted = decrypt(credentials_json);
+             credentials = decrypted ? JSON.parse(decrypted) : JSON.parse(credentials_json);
+        } catch (e) {
+             credentials = JSON.parse(credentials_json);
+        }
+        credentials = formatCredentials(credentials);
+
+        const client = new BetaAnalyticsDataClient({ credentials });
+        
+        const [response] = await client.runReport({
+            property: `properties/${ga4_property_id}`,
+            dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+            dimensions: [{ name: 'date' }],
+            metrics: [{ name: 'screenPageViews' }, { name: 'conversions' }],
+            orderBys: [{ dimension: { orderType: 'ALPHANUMERIC', dimensionName: 'date' } }],
         });
 
-        const chartData = response.rows?.map(row => ({
-            date: `${row.dimensionValues[0].value.slice(0, 4)}-${row.dimensionValues[0].value.slice(4, 6)}-${row.dimensionValues[0].value.slice(6, 8)}`,
-            pageviews: parseInt(row.metricValues[0].value, 10),
-            conversions: parseInt(row.metricValues[1].value, 10)
-        })) || [];
+        const chartData = response.rows ? response.rows.map(row => ({
+            date: row.dimensionValues[0].value, // Returns YYYYMMDD
+            views: parseInt(row.metricValues[0].value),
+            conversions: parseInt(row.metricValues[1].value),
+        })) : [];
+        
+        // Helper to format YYYYMMDD to readable date
+        const formattedChartData = chartData.map(item => {
+             const y = item.date.substring(0, 4);
+             const m = item.date.substring(4, 6);
+             const d = item.date.substring(6, 8);
+             return { ...item, date: `${y}-${m}-${d}` };
+        });
 
-        return NextResponse.json(chartData, { status: 200 });
+        return NextResponse.json(formattedChartData);
     } catch (error) {
-        console.error('Error fetching GA4 chart data:', error);
-        return NextResponse.json({ message: `Failed to fetch GA4 chart data: ${error.message}` }, { status: 500 });
+        console.error('GA4 Charts Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
