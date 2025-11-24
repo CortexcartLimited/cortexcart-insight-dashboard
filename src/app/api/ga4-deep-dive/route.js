@@ -5,7 +5,6 @@ import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
-// Helper to fix private key formatting
 function formatCredentials(creds) {
     if (creds && creds.private_key) {
         creds.private_key = creds.private_key.replace(/\\n/g, '\n');
@@ -13,7 +12,6 @@ function formatCredentials(creds) {
     return creds;
 }
 
-// Helper to handle date formats
 function formatDate(dateStr) {
     if (!dateStr) return '28daysAgo';
     try {
@@ -29,8 +27,15 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
-    const startDate = formatDate(searchParams.get('startDate'));
-    const endDate = formatDate(searchParams.get('endDate') || 'today');
+    
+    // 1. Validate Dates
+    let startDate = formatDate(searchParams.get('startDate'));
+    let endDate = formatDate(searchParams.get('endDate') || 'today');
+    
+    // Ensure start is not after end (causes INVALID_ARGUMENT)
+    if (new Date(startDate) > new Date(endDate)) {
+        startDate = endDate; 
+    }
 
     try {
         const [rows] = await db.query(
@@ -44,24 +49,18 @@ export async function GET(req) {
 
         const { ga4_property_id, credentials_json } = rows[0];
         
-        // ✅ FIXED PARSING LOGIC
         let credentials;
         try {
-            // 1. Attempt to decrypt first
             const decrypted = decrypt(credentials_json);
             if (decrypted) {
                 credentials = JSON.parse(decrypted);
             }
-        } catch (e) {
-            // Decryption failed or wasn't needed
-        }
+        } catch (e) {}
 
-        // 2. If decryption didn't yield a result, try parsing raw JSON
         if (!credentials) {
             try {
                 credentials = JSON.parse(credentials_json);
             } catch (e) {
-                console.error("GA4 Credentials Parse Error:", e.message);
                 return NextResponse.json({ error: 'Invalid Credentials Format' }, { status: 500 });
             }
         }
@@ -69,8 +68,8 @@ export async function GET(req) {
         credentials = formatCredentials(credentials);
         const client = new BetaAnalyticsDataClient({ credentials });
         
-        // ... (Rest of the file remains exactly the same) ...
-        
+        console.log(`[GA4 Deep Dive] Running report: ${type}`); // Debug Log
+
         let response;
         switch (type) {
             case 'stickiness':
@@ -114,48 +113,63 @@ export async function GET(req) {
                 return NextResponse.json({ ratio: parseFloat(ratio), engagedSessions, activeUsers });
 
             case 'queries':
-                response = await client.runReport({
-                    property: `properties/${ga4_property_id}`,
-                    dateRanges: [{ startDate, endDate }],
-                    dimensions: [{ name: 'country' }, { name: 'organicGoogleSearchQuery' }],
-                    metrics: [{ name: 'sessions' }],
-                    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-                    limit: 10
-                });
-                return NextResponse.json(response[0].rows ? response[0].rows.map(row => ({
-                    country: row.dimensionValues[0].value,
-                    query: row.dimensionValues[1].value,
-                    sessions: parseInt(row.metricValues[0].value)
-                })) : []);
+                // FAILSAFE: This often fails if Search Console isn't linked.
+                try {
+                    response = await client.runReport({
+                        property: `properties/${ga4_property_id}`,
+                        dateRanges: [{ startDate, endDate }],
+                        dimensions: [{ name: 'country' }, { name: 'organicGoogleSearchQuery' }],
+                        metrics: [{ name: 'sessions' }],
+                        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+                        limit: 10
+                    });
+                    return NextResponse.json(response[0].rows ? response[0].rows.map(row => ({
+                        country: row.dimensionValues[0].value,
+                        query: row.dimensionValues[1].value,
+                        sessions: parseInt(row.metricValues[0].value)
+                    })) : []);
+                } catch (err) {
+                    console.warn("[GA4 Deep Dive] Queries report failed (likely no GSC link). Returning empty.");
+                    return NextResponse.json([]); // Return empty list instead of error
+                }
 
             case 'organic_landing':
-                response = await client.runReport({
-                    property: `properties/${ga4_property_id}`,
-                    dateRanges: [{ startDate, endDate }],
-                    dimensions: [{ name: 'landingPagePlusQueryString' }],
-                    metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
-                    dimensionFilter: {
-                        filter: {
-                            fieldName: 'sessionDefaultChannelGroup',
-                            stringFilter: { matchType: 'CONTAINS', value: 'Organic' }
-                        }
-                    },
-                    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-                    limit: 10
-                });
-                return NextResponse.json(response[0].rows ? response[0].rows.map(row => ({
-                    page: row.dimensionValues[0].value,
-                    users: parseInt(row.metricValues[0].value),
-                    sessions: parseInt(row.metricValues[1].value)
-                })) : []);
+                // FAILSAFE: This filter syntax can sometimes be strict
+                try {
+                    response = await client.runReport({
+                        property: `properties/${ga4_property_id}`,
+                        dateRanges: [{ startDate, endDate }],
+                        dimensions: [{ name: 'landingPagePlusQueryString' }],
+                        metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+                        dimensionFilter: {
+                            filter: {
+                                fieldName: 'sessionDefaultChannelGroup',
+                                stringFilter: { 
+                                    matchType: 'CONTAINS', 
+                                    value: 'Organic',
+                                    caseSensitive: false
+                                }
+                            }
+                        },
+                        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+                        limit: 10
+                    });
+                    return NextResponse.json(response[0].rows ? response[0].rows.map(row => ({
+                        page: row.dimensionValues[0].value,
+                        users: parseInt(row.metricValues[0].value),
+                        sessions: parseInt(row.metricValues[1].value)
+                    })) : []);
+                } catch (err) {
+                    console.warn("[GA4 Deep Dive] Organic Landing report failed. Returning empty.");
+                    return NextResponse.json([]);
+                }
 
             default:
                 return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
         }
 
     } catch (error) {
-        console.error(`GA4 Deep Dive Error (${type}):`, error);
-        // More detailed error response for debugging
-        return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
+        console.error(`GA4 Deep Dive Critical Error (${type}):`, error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
