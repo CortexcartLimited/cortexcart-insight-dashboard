@@ -29,7 +29,6 @@ export async function GET(req) {
     let startDate = formatDate(searchParams.get('startDate'));
     let endDate = formatDate(searchParams.get('endDate') || 'today');
     
-    // Prevent date errors
     if (new Date(startDate) > new Date(endDate)) startDate = endDate;
 
     try {
@@ -57,11 +56,12 @@ export async function GET(req) {
         credentials = formatCredentials(credentials);
         const client = new BetaAnalyticsDataClient({ credentials });
 
-        // ✅ FIX: Removed 'advertiserAdConversions' (Invalid Metric)
-        // We only fetch the 3 core valid Advertiser metrics
+        // ✅ FIX: Add 'sessionCampaignName' dimension.
+        // The API requires this dimension to properly report on advertiser metrics.
         const [response] = await client.runReport({
             property: `properties/${ga4_property_id}`,
             dateRanges: [{ startDate, endDate }],
+            dimensions: [{ name: 'sessionCampaignName' }], 
             metrics: [
                 { name: 'advertiserAdClicks' },
                 { name: 'advertiserAdCost' },
@@ -69,17 +69,27 @@ export async function GET(req) {
             ]
         });
 
-        if (!response.rows || response.rows.length === 0) {
-             return NextResponse.json(null);
+        // ✅ AGGREGATE: Sum up the rows to get the totals
+        let totalClicks = 0;
+        let totalCost = 0;
+        let totalImpressions = 0;
+
+        if (response.rows && response.rows.length > 0) {
+            response.rows.forEach(row => {
+                // metricValues[0] = Clicks, [1] = Cost, [2] = Impressions
+                totalClicks += parseInt(row.metricValues[0].value || 0);
+                totalCost += parseFloat(row.metricValues[1].value || 0);
+                totalImpressions += parseInt(row.metricValues[2].value || 0);
+            });
+        } else {
+            // No ads data found
+            return NextResponse.json(null);
         }
 
-        const row = response.rows[0];
         const adsData = {
-            advertiserAdClicks: row.metricValues[0].value,
-            advertiserAdCost: row.metricValues[1].value,
-            advertiserAdImpressions: row.metricValues[2].value,
-            // We return 0 for conversions to prevent the UI from breaking.
-            // (Fetching ad-specific conversions requires complex filtering that often fails without data)
+            advertiserAdClicks: totalClicks,
+            advertiserAdCost: totalCost,
+            advertiserAdImpressions: totalImpressions,
             advertiserAdConversions: 0 
         };
 
@@ -87,7 +97,6 @@ export async function GET(req) {
 
     } catch (error) {
         console.error('Google Ads API Error:', error);
-        // Return the specific error message to the UI for easier debugging
         return NextResponse.json({ error: error.message });
     }
 }
