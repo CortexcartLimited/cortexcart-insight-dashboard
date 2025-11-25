@@ -3,11 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
-
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Helper: Fix private key newlines
 function formatCredentials(creds) {
@@ -43,7 +39,6 @@ export async function GET(req) {
     );
 
     if (rows.length === 0 || !rows[0].credentials_json) {
-        // GA4 not connected, cannot generate insights
         return NextResponse.json(null);
     }
 
@@ -64,42 +59,35 @@ export async function GET(req) {
     const property = `properties/${ga4_property_id}`;
     const dateRanges = [{ startDate, endDate }];
 
-    // 3. Run All Reports in Parallel (Fast & Secure)
+    // 3. Run All Reports in Parallel
     const [statsRep, audienceRep, adsRep, stickinessRep] = await Promise.all([
-        // A. General Stats
         client.runReport({
             property, dateRanges,
             metrics: [{ name: 'activeUsers' }, { name: 'sessions' }, { name: 'conversions' }, { name: 'userEngagementDuration' }]
         }),
-        // B. Audience (Engagement & New vs Returning)
         client.runReport({
             property, dateRanges,
             dimensions: [{ name: 'newVsReturning' }],
             metrics: [{ name: 'activeUsers' }, { name: 'engagementRate' }]
         }),
-        // C. Ads (Advertiser Metrics broken down by Campaign to avoid incompatibility errors)
         client.runReport({
             property, dateRanges,
             dimensions: [{ name: 'sessionCampaignName' }],
             metrics: [{ name: 'advertiserAdClicks' }, { name: 'advertiserAdCost' }, { name: 'advertiserAdImpressions' }]
         }),
-        // D. Stickiness
         client.runReport({
             property, dateRanges,
             metrics: [{ name: 'dauPerMau' }, { name: 'dauPerWau' }]
         })
     ]);
 
-    // 4. Process Data for Gemini
-    
-    // -- Stats Processing --
+    // 4. Process Data
     const statsRow = statsRep[0].rows?.[0];
     const users = parseInt(statsRow?.metricValues[0].value || 0);
     const sessions = parseInt(statsRow?.metricValues[1].value || 0);
     const conversions = parseInt(statsRow?.metricValues[2].value || 0);
     const avgTime = parseFloat(statsRow?.metricValues[3].value || 0) / (users || 1);
 
-    // -- Audience Processing --
     let newUsers = 0;
     let returningUsers = 0;
     let engagementRate = 0;
@@ -109,12 +97,10 @@ export async function GET(req) {
             const count = parseInt(r.metricValues[0].value);
             if (type === 'new') newUsers = count;
             if (type === 'returning') returningUsers = count;
-            // Take the max rate found (simplified)
             engagementRate = Math.max(engagementRate, parseFloat(r.metricValues[1].value) * 100); 
         });
     }
 
-    // -- Ads Processing (Summing up campaigns) --
     let adClicks = 0;
     let adCost = 0;
     let adImpressions = 0;
@@ -128,7 +114,6 @@ export async function GET(req) {
     const ctr = adImpressions > 0 ? ((adClicks / adImpressions) * 100).toFixed(2) : 0;
     const cpc = adClicks > 0 ? (adCost / adClicks).toFixed(2) : 0;
 
-    // -- Stickiness Processing --
     const stickRow = stickinessRep[0].rows?.[0];
     const dauMau = (parseFloat(stickRow?.metricValues[0].value || 0) * 100).toFixed(1);
 
@@ -150,14 +135,39 @@ export async function GET(req) {
 
     prompt += `\nFormat the response as a single paragraph. Focus on growth or fixing low engagement.`;
 
-    // 6. Call Gemini
-    if (!process.env.GOOGLE_API_KEY) {
-        throw new Error("Missing GOOGLE_API_KEY env var");
+    // 6. Call Gemini API Directly (Matches your working pattern)
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error("Missing GEMINI_API_KEY environment variable");
     }
+
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const payload = { 
+        contents: [{ 
+            role: "user", 
+            parts: [{ text: prompt }] 
+        }] 
+    };
+
+    const geminiResponse = await fetch(apiUrl, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+    });
+
+    if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        throw new Error(`Gemini API Error: ${geminiResponse.status} - ${errorText}`);
+    }
+
+    const result = await geminiResponse.json();
+    
+    // Extract text safely
+    let responseText = "No recommendations available.";
+    if (result.candidates && result.candidates.length > 0 && result.candidates[0].content) {
+        responseText = result.candidates[0].content.parts[0].text;
+    }
 
     // 7. Return Alert Object
     return NextResponse.json({
@@ -169,7 +179,6 @@ export async function GET(req) {
 
   } catch (error) {
     console.error("Gemini API Error:", error);
-    // Return debug info if it fails, so you can see it in the Network Tab
     return NextResponse.json({ 
         error: "AI Generation Failed", 
         details: error.message 
