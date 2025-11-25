@@ -1,72 +1,79 @@
-'use client';
+import { 
+  CheckCircleIcon, 
+  ExclamationTriangleIcon, 
+  InformationCircleIcon, 
+  XCircleIcon 
+} from '@heroicons/react/24/solid';
+import Image from 'next/image'; // Import Next.js Image component
 
-import { useState } from 'react';
-import { InformationCircleIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, XMarkIcon } from '@heroicons/react/20/solid';
-
-const alertStyles = {
-    info: {
-        bg: 'bg-blue-50',
-        border: 'border-blue-400',
-        icon: <InformationCircleIcon className="h-5 w-5 text-blue-400" />,
-        title: 'text-blue-800',
-        message: 'text-blue-700'
-    },
+const AlertBanner = ({ title, message, type = 'info' }) => {
+  
+  // 1. Define styles for different alert types
+  const alertStyles = {
     success: {
-        bg: 'bg-green-50',
-        border: 'border-green-400',
-        icon: <CheckCircleIcon className="h-5 w-5 text-green-400" />,
-        title: 'text-green-800',
-        message: 'text-green-700'
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-800',
+      iconColor: 'text-green-400',
+      icon: CheckCircleIcon
     },
     warning: {
-        bg: 'bg-yellow-50',
-        border: 'border-yellow-400',
-        icon: <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />,
-        title: 'text-yellow-800',
-        message: 'text-yellow-700'
+      bgColor: 'bg-yellow-50',
+      textColor: 'text-yellow-800',
+      iconColor: 'text-yellow-400',
+      icon: ExclamationTriangleIcon
     },
-    danger: {
-        bg: 'bg-red-50',
-        border: 'border-red-400',
-        icon: <XCircleIcon className="h-5 w-5 text-red-400" />,
-        title: 'text-red-800',
-        message: 'text-red-700'
+    error: {
+      bgColor: 'bg-red-50',
+      textColor: 'text-red-800',
+      iconColor: 'text-red-400',
+      icon: XCircleIcon
     },
+    info: {
+      bgColor: 'bg-blue-50',
+      textColor: 'text-blue-800',
+      iconColor: 'text-blue-400',
+      icon: InformationCircleIcon
+    },
+    // 2. New 'ai-recommendation' type
+    'ai-recommendation': {
+      bgColor: 'bg-indigo-50', // A distinct color for AI
+      textColor: 'text-indigo-900',
+      iconColor: 'text-indigo-400',
+      // No standard icon, we'll use a custom image
+    }
+  };
+
+  const style = alertStyles[type] || alertStyles.info;
+  const IconComponent = style.icon;
+
+  return (
+    <div className={`rounded-md p-4 ${style.bgColor}`}>
+      <div className="flex">
+        <div className="flex-shrink-0">
+          {/* 3. Conditional rendering for the icon */}
+          {type === 'ai-recommendation' ? (
+            <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-indigo-200">
+              <Image 
+                src="/images/ai-icon.png" // Path to your saved image
+                alt="AI"
+                width={48}
+                height={48}
+                className="object-cover h-full w-full"
+              />
+            </div>
+          ) : (
+            <IconComponent className={`h-5 w-5 ${style.iconColor}`} aria-hidden="true" />
+          )}
+        </div>
+        <div className={`ml-3 ${type === 'ai-recommendation' ? 'mt-1' : ''}`}>
+          <h3 className={`text-sm font-medium ${style.textColor}`}>{title}</h3>
+          <div className={`mt-2 text-sm ${style.textColor} opacity-90`}>
+            <p>{message}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default function AlertBanner({ title, message, type }) {
-    const [isVisible, setIsVisible] = useState(true);
-    const styles = alertStyles[type] || alertStyles.info;
-
-    if (!isVisible) {
-        return null;
-    }
-
-    return (
-        <div className={`rounded-md ${styles.bg} p-4 border-l-4 ${styles.border}`}>
-            <div className="flex">
-                <div className="flex-shrink-0">
-                    {styles.icon}
-                </div>
-                <div className="ml-3">
-                    <h3 className={`text-sm font-medium ${styles.title}`}>{title}</h3>
-                    <div className={`mt-2 text-sm ${styles.message}`}>
-                        <p>{message}</p>
-                    </div>
-                </div>
-                <div className="ml-auto pl-3">
-                    <div className="-mx-1.5 -my-1.5">
-                        <button
-                            type="button"
-                            onClick={() => setIsVisible(false)}
-                            className={`inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${styles.bg}`}
-                        >
-                            <span className="sr-only">Dismiss</span>
-                            <XMarkIcon className={`h-5 w-5 ${styles.message}`} aria-hidden="true" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
+export default AlertBanner;

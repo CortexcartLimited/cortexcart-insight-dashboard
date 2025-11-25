@@ -176,7 +176,22 @@ export default function DashboardPage() {
                     if (audienceData) setGa4AudienceData(audienceData);
                     if (demographicsData) setGa4Demographics(demographicsData);
                     if (googleAdsDataRes) setGoogleAdsData(googleAdsDataRes);
-
+try {
+                        const aiRes = await fetch(`/api/gemini-recommendations?siteId=${siteId}${dateParams}`);
+                        if (aiRes.ok) {
+                            const aiAlert = await aiRes.json();
+                            if (aiAlert) {
+                                // Add the AI alert to the existing alerts list
+                                setAlerts(prevAlerts => {
+                                    // Avoid duplicate AI alerts
+                                    const filtered = prevAlerts.filter(a => a.type !== 'ai-recommendation');
+                                    return [aiAlert, ...filtered];
+                                });
+                            }
+                        }
+                    } catch (aiErr) {
+                        console.warn("Failed to fetch AI recommendations:", aiErr);
+                    }
                 } catch (err) { 
                     console.error("GA4 Dashboard Error:", err);
                     setError(err.message); 
