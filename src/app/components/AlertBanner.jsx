@@ -52,7 +52,7 @@ const AlertBanner = ({ title, message, type = 'info' }) => {
         <div className="flex-shrink-0">
           {/* 3. Conditional rendering for the icon */}
           {type === 'ai-recommendation' ? (
-            <div className="h-12 w-12 rounded-full overflow-hidden p-4">
+            <div className="h-24 w-24 rounded-full overflow-hidden p-4">
               <Image 
                 src="/images/ai-icon.png" // Path to your saved image
                 alt="AI"
