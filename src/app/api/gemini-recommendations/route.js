@@ -7,7 +7,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Helper: Fix private key newlines
 function formatCredentials(creds) {
