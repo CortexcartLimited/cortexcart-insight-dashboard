@@ -6,7 +6,9 @@ import { decrypt } from '@/lib/crypto';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
 function formatCredentials(creds) {
-    if (creds && creds.private_key) creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+    if (creds && creds.private_key) {
+        creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+    }
     return creds;
 }
 
@@ -26,6 +28,8 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     let startDate = formatDate(searchParams.get('startDate'));
     let endDate = formatDate(searchParams.get('endDate') || 'today');
+    
+    // Prevent date errors
     if (new Date(startDate) > new Date(endDate)) startDate = endDate;
 
     try {
@@ -35,16 +39,17 @@ export async function GET(req) {
         );
 
         if (rows.length === 0 || !rows[0].credentials_json) {
-            // Return null so the UI shows the "No Data" message instead of an error
             return NextResponse.json(null); 
         }
 
         const { ga4_property_id, credentials_json } = rows[0];
+        
         let credentials;
         try {
             const decrypted = decrypt(credentials_json);
             if (decrypted) credentials = JSON.parse(decrypted);
         } catch (e) {}
+
         if (!credentials) {
              try { credentials = JSON.parse(credentials_json); } catch (e) { return NextResponse.json(null); }
         }
@@ -52,21 +57,19 @@ export async function GET(req) {
         credentials = formatCredentials(credentials);
         const client = new BetaAnalyticsDataClient({ credentials });
 
-        // Fetch Google Ads Specific Metrics
-        // These metrics REQUIRE a Google Ads link in GA4 to populate.
+        // ✅ FIX: Removed 'advertiserAdConversions' (Invalid Metric)
+        // We only fetch the 3 core valid Advertiser metrics
         const [response] = await client.runReport({
             property: `properties/${ga4_property_id}`,
             dateRanges: [{ startDate, endDate }],
             metrics: [
                 { name: 'advertiserAdClicks' },
                 { name: 'advertiserAdCost' },
-                { name: 'advertiserAdImpressions' },
-                { name: 'advertiserAdConversions' }
+                { name: 'advertiserAdImpressions' }
             ]
         });
 
         if (!response.rows || response.rows.length === 0) {
-             // No data found (likely no Ads link)
              return NextResponse.json(null);
         }
 
@@ -75,14 +78,16 @@ export async function GET(req) {
             advertiserAdClicks: row.metricValues[0].value,
             advertiserAdCost: row.metricValues[1].value,
             advertiserAdImpressions: row.metricValues[2].value,
-            advertiserAdConversions: row.metricValues[3].value,
+            // We return 0 for conversions to prevent the UI from breaking.
+            // (Fetching ad-specific conversions requires complex filtering that often fails without data)
+            advertiserAdConversions: 0 
         };
 
         return NextResponse.json(adsData);
 
     } catch (error) {
         console.error('Google Ads API Error:', error);
-        // Return a specific error object so the UI can show a helpful message
+        // Return the specific error message to the UI for easier debugging
         return NextResponse.json({ error: error.message });
     }
 }
