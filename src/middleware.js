@@ -1,5 +1,5 @@
 // src/middleware.js
-export const runtime = 'nodejs'; 
+export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
@@ -30,23 +30,30 @@ export async function middleware(req) {
     const { pathname } = req.nextUrl;
     const appUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
 
-    // --- 1. GLOBAL EXCLUSIONS (The Critical Fix) ---
-    // Explicitly allow these paths. We check if the path STARTS with them.
+    // ==============================================================
+    // 1. CRITICAL: EXPLICITLY ALLOW PUBLIC PATHS (Circuit Breaker)
+    // ==============================================================
+    // This runs before ANYTHING else to prevent redirect loops.
     const publicPaths = [
-        '/login', 
-        '/registration', 
-        '/verify-email', 
-        '/subscribe', 
-        '/api/register', 
+        '/login',
+        '/registration',
+        '/verify-email',
+        '/api/auth',     // Important for NextAuth to work
+        '/api/register', // Your registration API
         '/api/verify-token',
-        '/api/auth' // Allow auth api calls to pass through
+        '/favicon.ico',
+        '/_next',        // Next.js system files
+        '/static'        // Static assets
     ];
 
+    // If the path starts with any of these, stop and let it pass.
     if (publicPaths.some(path => pathname.startsWith(path))) {
         return NextResponse.next();
     }
 
-    // --- 2. Admin Check ---
+    // ==============================================================
+    // 2. Admin Check
+    // ==============================================================
     if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
         const adminCookie = req.cookies.get('admin-session-token');
         if (!adminCookie) return NextResponse.redirect(new URL('/admin/login', appUrl));
@@ -59,15 +66,18 @@ export async function middleware(req) {
         }
     }
 
-    // --- 3. Feature Check ---
+    // ==============================================================
+    // 3. Feature & Authentication Check
+    // ==============================================================
     const requirement = Object.entries(PATH_REQUIREMENTS).find(([path]) => pathname.startsWith(path))?.[1];
 
     if (requirement) {
-        // Only fetch token IF we hit a protected route
         const sessionToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-        
+
+        // If user is not logged in, redirect to login
         if (!sessionToken?.email) {
             const loginUrl = new URL('/login', appUrl);
+            // We add the callbackUrl so they go back to the right place after login
             loginUrl.searchParams.set('callbackUrl', req.url);
             return NextResponse.redirect(loginUrl);
         }
@@ -105,8 +115,8 @@ export async function middleware(req) {
 }
 
 // --- SIMPLIFIED MATCHER ---
-// We match nearly EVERYTHING here, and let the code above decide what to skip.
-// This prevents regex bugs from accidentally blocking /login or /registration.
+// We match essentially everything here, relying on the code above to filter.
+// This prevents "matcher regex bugs" from accidentally blocking /login.
 export const config = {
     matcher: [
         '/((?!_next/static|_next/image|favicon.ico).*)',
