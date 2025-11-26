@@ -61,12 +61,21 @@ export const authOptions = {
                     const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [credentials.email]);
                     if (rows.length === 0) return null;
                     const user = rows[0];
+
+                    // --- NEW SECURITY CHECK ---
+                    if (!user.emailVerified) {
+                        throw new Error("Please verify your email address first.");
+                    }
+                    // --------------------------
+
                     const passwordMatch = await bcrypt.compare(credentials.password, user.password_hash);
                     if (!passwordMatch) return null;
                     return { id: user.id, email: user.email, name: user.name };
                 } catch (error) {
                     console.error("Credentials auth error:", error);
-                    return null;
+                    // NextAuth often swallows errors, so returning null is safer, 
+                    // but throwing an error allows you to show specific messages if configured.
+                    throw new Error(error.message || "Login failed"); 
                 }
             }
         }),
