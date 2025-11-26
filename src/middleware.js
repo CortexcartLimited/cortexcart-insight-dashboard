@@ -9,6 +9,7 @@ import { getPlanDetails } from '@/lib/plans';
 
 // --- Feature Mappings ---
 const PATH_REQUIREMENTS = {
+    // ... (keep your existing mappings)
     '/social': { limitKey: 'maxSocialConnections', minRequired: 1 },
     '/settings/integrations': { limitKey: 'maxPlatformIntegrations', minRequired: 1 },
     '/settings/platforms': { limitKey: 'maxPlatformIntegrations', minRequired: 1 },
@@ -30,8 +31,16 @@ export async function middleware(req) {
     const { pathname } = req.nextUrl;
     const appUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
 
-    // 1. Admin Check
+    // --- 1. GLOBAL EXCLUSIONS (Fix for your issue) ---
+    // Explicitly allow these paths to bypass all checks
+    const publicPaths = ['/login', '/registration', '/verify-email', '/subscribe', '/api/register', '/api/verify-token'];
+    if (publicPaths.some(path => pathname.startsWith(path))) {
+        return NextResponse.next();
+    }
+
+    // --- 2. Admin Check ---
     if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
+        // ... (keep existing admin logic)
         const adminCookie = req.cookies.get('admin-session-token');
         if (!adminCookie) return NextResponse.redirect(new URL('/admin/login', appUrl));
         try {
@@ -43,28 +52,23 @@ export async function middleware(req) {
         }
     }
 
-    // 2. Feature Check
+    // --- 3. Feature Check ---
     const requirement = Object.entries(PATH_REQUIREMENTS).find(([path]) => pathname.startsWith(path))?.[1];
 
     if (requirement) {
         const sessionToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
         
+        // If user is not logged in, redirect to login
         if (!sessionToken?.email) {
             const loginUrl = new URL('/login', appUrl);
             loginUrl.searchParams.set('callbackUrl', req.url);
             return NextResponse.redirect(loginUrl);
         }
 
-        // --- NEW: Read from Token (No DB Call!) ---
-        // The data is now safely inside sessionToken from our Auth update
+        // ... (keep existing plan check logic)
         const priceId = sessionToken.stripePriceId;
         const status = sessionToken.stripeSubscriptionStatus;
         const isActive = status === 'active' || status === 'trialing';
-
-        console.log(`\n--- MIDDLEWARE (TOKEN) ---`);
-        console.log(`User: ${sessionToken.email}`);
-        console.log(`Token Price ID: ${priceId}`);
-        console.log(`Token Status: ${status}`);
 
         let plan;
         if (priceId && isActive) {
@@ -72,7 +76,6 @@ export async function middleware(req) {
         } else {
             plan = getPlanDetails(null);
         }
-        // -------------------------------------------
 
         const limit = plan.limits[requirement.limitKey];
         let hasAccess = false;
@@ -85,7 +88,6 @@ export async function middleware(req) {
         }
 
         if (!hasAccess) {
-            console.log(`ACCESS DENIED. Plan: ${plan.name}`);
             const url = new URL('/upgrade-plans', appUrl);
             url.searchParams.set('reason', isActive ? 'limit' : 'inactive_or_free');
             url.searchParams.set('feature', requirement.limitKey);
@@ -96,9 +98,10 @@ export async function middleware(req) {
     return NextResponse.next();
 }
 
+// Simplified Matcher (Let the function handle exclusions)
 export const config = {
     matcher: [
-        '/((?!api|_next/static|_next/image|favicon.ico|login|registration|subscribe|upgrade-plans|pages|admin/login|connect/callback).*)',
-        '/admin/:path*',
+        // Match everything EXCEPT static files and images
+        '/((?!_next/static|_next/image|favicon.ico).*)',
     ],
 };
