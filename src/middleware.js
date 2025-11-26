@@ -9,7 +9,6 @@ import { getPlanDetails } from '@/lib/plans';
 
 // --- Feature Mappings ---
 const PATH_REQUIREMENTS = {
-    // ... (keep your existing mappings)
     '/social': { limitKey: 'maxSocialConnections', minRequired: 1 },
     '/settings/integrations': { limitKey: 'maxPlatformIntegrations', minRequired: 1 },
     '/settings/platforms': { limitKey: 'maxPlatformIntegrations', minRequired: 1 },
@@ -31,16 +30,24 @@ export async function middleware(req) {
     const { pathname } = req.nextUrl;
     const appUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
 
-    // --- 1. GLOBAL EXCLUSIONS (Fix for your issue) ---
-    // Explicitly allow these paths to bypass all checks
-    const publicPaths = ['/login', '/registration', '/verify-email', '/subscribe', '/api/register', '/api/verify-token'];
+    // --- 1. GLOBAL EXCLUSIONS (The Critical Fix) ---
+    // Explicitly allow these paths. We check if the path STARTS with them.
+    const publicPaths = [
+        '/login', 
+        '/registration', 
+        '/verify-email', 
+        '/subscribe', 
+        '/api/register', 
+        '/api/verify-token',
+        '/api/auth' // Allow auth api calls to pass through
+    ];
+
     if (publicPaths.some(path => pathname.startsWith(path))) {
         return NextResponse.next();
     }
 
     // --- 2. Admin Check ---
     if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
-        // ... (keep existing admin logic)
         const adminCookie = req.cookies.get('admin-session-token');
         if (!adminCookie) return NextResponse.redirect(new URL('/admin/login', appUrl));
         try {
@@ -56,16 +63,15 @@ export async function middleware(req) {
     const requirement = Object.entries(PATH_REQUIREMENTS).find(([path]) => pathname.startsWith(path))?.[1];
 
     if (requirement) {
+        // Only fetch token IF we hit a protected route
         const sessionToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
         
-        // If user is not logged in, redirect to login
         if (!sessionToken?.email) {
             const loginUrl = new URL('/login', appUrl);
             loginUrl.searchParams.set('callbackUrl', req.url);
             return NextResponse.redirect(loginUrl);
         }
 
-        // ... (keep existing plan check logic)
         const priceId = sessionToken.stripePriceId;
         const status = sessionToken.stripeSubscriptionStatus;
         const isActive = status === 'active' || status === 'trialing';
@@ -98,10 +104,11 @@ export async function middleware(req) {
     return NextResponse.next();
 }
 
-// Simplified Matcher (Let the function handle exclusions)
+// --- SIMPLIFIED MATCHER ---
+// We match nearly EVERYTHING here, and let the code above decide what to skip.
+// This prevents regex bugs from accidentally blocking /login or /registration.
 export const config = {
     matcher: [
-        // Match everything EXCEPT static files and images
         '/((?!_next/static|_next/image|favicon.ico).*)',
     ],
 };
