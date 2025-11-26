@@ -132,7 +132,7 @@ function LoginForm() {
                                 className="w-full flex justify-center items-center"
                             >
                                 {icon}
-                                <span>Sign in with {label}</span>
+                                <span>Sign in with: {label}</span>
                             </Button>
                         );
                     })}
