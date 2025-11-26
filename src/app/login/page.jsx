@@ -141,8 +141,7 @@ function LoginForm() {
                 <div className="mt-6 text-center text-sm">
                     <p className="text-gray-600">
                         Don&apos;t have an account?{' '}
-                        <Link href="/registration" className="font-medium text-blue-600 hover:text-blue-500 hover:underline">
-                            Sign up
+                        <Link href="https://cortexcart.com/register" className="font-medium text-blue-600 hover:text-blue-500 hover:underline">                            Sign up
                         </Link>
                     </p>
                 </div>
