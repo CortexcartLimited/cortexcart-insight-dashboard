@@ -99,6 +99,14 @@ function LoginForm() {
                             required 
                             className="bg-white"
                         />
+                        <div className="flex justify-end mt-1">
+            <Link 
+                href="https://cortexcart.com/forgot-password" 
+                className="text-xs text-blue-600 hover:underline"
+            >
+                Forgot password?
+            </Link>
+        </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                         {isLoading ? 'Signing in...' : 'Sign In'}
