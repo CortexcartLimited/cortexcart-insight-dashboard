@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req) {
   try {
     const { message, context } = await req.json();
-    const apiKey = process.env.GOOGLE_API_KEY; // Make sure this matches your .env name
+    const apiKey = process.env.GEMINI_API_KEY; // Make sure this matches your .env name
 
     if (!apiKey) {
       return NextResponse.json({ reply: "AI is not configured (Missing API Key)." }, { status: 500 });
