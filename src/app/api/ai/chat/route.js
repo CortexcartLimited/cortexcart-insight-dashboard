@@ -1,33 +1,31 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
+  console.log("🤖 AI Chat Request Received"); // Debug Log 1
+
   try {
     const { message, context } = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY; // Make sure this matches your .env name
-
+    
+    // 1. Check API Key
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ reply: "AI is not configured (Missing API Key)." }, { status: 500 });
+      console.error("❌ Critical: Missing API Key in Environment Variables");
+      return NextResponse.json({ reply: "Configuration Error: API Key missing." }, { status: 500 });
     }
 
-    // 1. Construct the System Prompt
-    // We combine the role, context, and user question into one prompt string.
+    // 2. Construct Prompt
     const prompt = `
-      You are Cortexcart's AI Business Analyst. You are talking to an e-commerce business owner.
-      
-      HERE IS THE USER'S LIVE DASHBOARD DATA:
-      ${JSON.stringify(context, null, 2)}
-      
-      RULES:
-      1. Answer the user's question based strictly on the data above.
-      2. If the data is missing for a specific metric, say "I don't see that data currently."
-      3. Be concise, professional, and actionable.
-      4. If the user asks "Why did sales drop?", look for correlations in the data (e.g., lower traffic, lower ad spend).
-      
+      You are Cortexcart's AI Business Analyst.
+      CONTEXT DATA: ${JSON.stringify(context)}
       USER QUESTION: "${message}"
+      Keep the answer concise and helpful.
     `;
 
-    // 2. Call the Gemini API (Direct Fetch)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+    console.log("📤 Sending request to Gemini..."); // Debug Log 2
+
+    // 3. Call Gemini API (Direct REST)
+    // Using 'gemini-1.5-flash' as it is often faster/cheaper/more stable than 'gemini-pro'
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const payload = {
       contents: [{
@@ -44,23 +42,24 @@ export async function POST(req) {
 
     if (!geminiResponse.ok) {
       const errorData = await geminiResponse.json();
-      throw new Error(errorData.error?.message || 'Failed to get a response from AI.');
+      console.error("🔥 Gemini API Error:", JSON.stringify(errorData, null, 2)); // Critical Error Log
+      throw new Error(errorData.error?.message || `API Status: ${geminiResponse.status}`);
     }
 
     const result = await geminiResponse.json();
+    console.log("✅ Gemini Response Received"); // Debug Log 3
 
-    // 3. Parse the Response
     if (result.candidates && result.candidates.length > 0) {
       const replyText = result.candidates[0].content.parts[0].text;
       return NextResponse.json({ reply: replyText });
     } else {
-      throw new Error('No content received from the AI model.');
+      throw new Error('No content in Gemini response candidates.');
     }
 
   } catch (error) {
-    console.error('AI Chat Error:', error);
+    console.error('🔥 Server Handler Error:', error);
     return NextResponse.json({ 
-      message: `Server Error: ${error.message}` 
+      reply: "I'm having trouble thinking right now. (Check server logs for details)" 
     }, { status: 500 });
   }
 }
