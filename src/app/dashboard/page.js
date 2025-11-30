@@ -24,7 +24,7 @@ import VisitorsByCountryChart from '@/app/components/VisitorsByCountryChart';
 import NewVsReturningChart from '@/app/components/NewVsReturningChart';
 import DemographicsCharts from '@/app/components/DemographicsCharts';
 import GoogleAdsCharts from '@/app/components/GoogleAdsCharts';
-import AiChatAssistant from '@/app/components/AIChatAssistant';
+import AiChatAssistant from '@/app/components/AiChatAssistant';
 
 import { 
     StickinessCard, 
