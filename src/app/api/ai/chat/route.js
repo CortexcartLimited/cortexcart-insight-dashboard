@@ -25,7 +25,7 @@ export async function POST(req) {
 
     // 3. Call Gemini API (Direct REST)
     // Using 'gemini-1.5-flash' as it is often faster/cheaper/more stable than 'gemini-pro'
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
     
     const payload = {
       contents: [{
