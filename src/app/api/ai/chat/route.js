@@ -7,7 +7,7 @@ export async function POST(req) {
     const { message, context } = await req.json();
     
     // 1. Check API Key
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error("❌ Critical: Missing API Key in Environment Variables");
       return NextResponse.json({ reply: "Configuration Error: API Key missing." }, { status: 500 });
