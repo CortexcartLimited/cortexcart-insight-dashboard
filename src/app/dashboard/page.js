@@ -23,7 +23,9 @@ import OnboardingModal from '@/app/components/OnboardingModal';
 import VisitorsByCountryChart from '@/app/components/VisitorsByCountryChart';
 import NewVsReturningChart from '@/app/components/NewVsReturningChart';
 import DemographicsCharts from '@/app/components/DemographicsCharts';
-import GoogleAdsCharts from '@/app/components/GoogleAdsCharts'; // <--- ADDED IMPORT
+import GoogleAdsCharts from '@/app/components/GoogleAdsCharts';
+import AiChatAssistant from '@/app/components/AiChatAssistant';
+
 import { 
     StickinessCard, 
     CityTable, 
@@ -40,6 +42,14 @@ const DataSourceToggle = ({ dataSource, setDataSource }) => (
     <button onClick={() => setDataSource('ga4')} className={`px-4 py-1 text-sm font-medium rounded-md transition-colors ${dataSource === 'ga4' ? 'bg-white shadow' : 'text-gray-600'}`}>Google Analytics</button>
   </div>
 );
+
+const aiContext = {
+    revenue: totalRevenue || 0, // Replace with your actual state variables
+    visitors: liveVisitors || 0,
+    activeExperiments: experiments?.length || 0,
+    recentAlerts: alerts || [],
+    // Add any other metrics you want the AI to know about
+  };
 
 export default function DashboardPage() {
   const { data: session, status, update } = useSession();
@@ -417,9 +427,10 @@ try {
                         <GoogleAdsCharts data={googleAdsData} />
                     </ChartContainer>
                 )}
-
+   <AiChatAssistant contextData={aiContext} />
             </div>
           )}
+       
         </div>
       )} 
     </Layout>
