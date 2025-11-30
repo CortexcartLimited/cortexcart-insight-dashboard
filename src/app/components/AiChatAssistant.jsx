@@ -49,7 +49,9 @@ export default function AiChatAssistant({ contextData }) {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+   // Changed 'right-6' to 'right-24' (moves it left)
+// Increased z-index to 'z-[100]' to ensure it sits on top of everything
+<div className="fixed bottom-6 right-24 z-[100] flex flex-col items-end">
       
       {/* --- Chat Window --- */}
       {isOpen && (
