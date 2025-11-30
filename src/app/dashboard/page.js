@@ -44,7 +44,7 @@ const DataSourceToggle = ({ dataSource, setDataSource }) => (
 );
 
 const aiContext = {
-    revenue: totalRevenue || 0, // Replace with your actual state variables
+    
     visitors: liveVisitors || 0,
     activeExperiments: experiments?.length || 0,
     recentAlerts: alerts || [],

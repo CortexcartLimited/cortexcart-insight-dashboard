@@ -1,4 +1,5 @@
 // src/app/api/billing/invoices/route.js
+export const dynamic = 'force-dynamic';
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
