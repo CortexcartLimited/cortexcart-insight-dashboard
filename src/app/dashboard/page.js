@@ -43,13 +43,6 @@ const DataSourceToggle = ({ dataSource, setDataSource }) => (
   </div>
 );
 
-const aiContext = {
-    
-    visitors: liveVisitors || 0,
-    activeExperiments: experiments?.length || 0,
-    recentAlerts: alerts || [],
-    // Add any other metrics you want the AI to know about
-  };
 
 export default function DashboardPage() {
   const { data: session, status, update } = useSession();
@@ -256,7 +249,18 @@ try {
   
   const currencySymbol = siteSettings?.currency ? (currencySymbols[siteSettings.currency] || '$') : '$';
   const formattedRevenue = `${currencySymbol}${stats?.totalRevenue ? parseFloat(stats.totalRevenue).toFixed(2) : '0.00'}`;
-
+const aiContext = {
+    // Use the actual state variables you have available
+    revenue: stats?.totalRevenue || 0,
+    sales: stats?.sales || 0,
+    visitors: liveVisitors || 0,
+    pageviews: stats?.pageviews || 0,
+    activeAlerts: alerts || [],
+    topPages: topPages || [],
+    // Add Google data if available
+    ga4Users: ga4Stats?.users || 0,
+    ga4Conversions: ga4Stats?.conversions || 0,
+  };
   return (
     <Layout>
       <OnboardingModal 
@@ -427,12 +431,13 @@ try {
                         <GoogleAdsCharts data={googleAdsData} />
                     </ChartContainer>
                 )}
-   <AiChatAssistant contextData={aiContext} />
+  
             </div>
           )}
        
         </div>
       )} 
+       <AiChatAssistant contextData={aiContext} />
     </Layout>
   );
 }
