@@ -1,13 +1,18 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit'; // Import Helper
 
 export async function POST(request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
-
+// 1. CHECK LIMIT
+    const limitCheck = await checkAiLimit(session.user.email);
+    if (!limitCheck.allowed) {
+        return NextResponse.json({ message: limitCheck.error }, { status: 403 });
+    }
     try {
         const { topic, platform, maxLength } = await request.json();
 
@@ -52,6 +57,9 @@ export async function POST(request) {
             const rawText = result.candidates[0].content.parts[0].text;
             const jsonText = rawText.replace(/```json|```/g, '').trim();
             const analysisData = JSON.parse(jsonText);
+            // 2. CHARGE TOKENS
+        const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(rawText));
+        await chargeAiTokens(session.user.email, usedTokens);
             return NextResponse.json(analysisData, { status: 200 });
         } else {
             throw new Error('No content received from the AI model.');

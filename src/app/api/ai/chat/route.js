@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
+import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit'; // Import Helper
 
 export async function POST(req) {
   console.log("🤖 AI Chat Request Received"); // Debug Log 1
 
   try {
     const { message, context } = await req.json();
-    
+
+    // 1. CHECK LIMIT
+    const limitCheck = await checkAiLimit(session.user.email);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ reply: `🚫 ${limitCheck.error}` }, { status: 200 });
+    }
+
     // 1. Check API Key
     const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -51,6 +58,13 @@ export async function POST(req) {
 
     if (result.candidates && result.candidates.length > 0) {
       const replyText = result.candidates[0].content.parts[0].text;
+
+// 4. CHARGE TOKENS (Input + Output)
+    // If Gemini provides 'usageMetadata', use it. Otherwise estimate.
+    const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(replyText));
+    
+    await chargeAiTokens(session.user.email, usedTokens);
+
       return NextResponse.json({ reply: replyText });
     } else {
       throw new Error('No content in Gemini response candidates.');

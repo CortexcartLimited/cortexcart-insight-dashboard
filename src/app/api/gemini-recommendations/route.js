@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
+import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit';
 
 // Helper: Fix private key newlines
 function formatCredentials(creds) {
@@ -26,7 +27,17 @@ function formatDate(dateStr) {
 export async function GET(req) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+// 1. CHECK LIMIT
+    const limitCheck = await checkAiLimit(session.user.email);
+    if (!limitCheck.allowed) {
+        // Return null or a specific "Upgrade" alert object
+        return NextResponse.json({
+            id: 'ai-limit',
+            type: 'warning',
+            title: 'AI Analysis Paused',
+            message: 'You have reached your monthly AI token limit. Upgrade to restore insights.'
+        });
+    }
   const { searchParams } = new URL(req.url);
   const startDate = formatDate(searchParams.get('startDate'));
   const endDate = formatDate(searchParams.get('endDate') || 'today');
@@ -162,7 +173,9 @@ export async function GET(req) {
     }
 
     const result = await geminiResponse.json();
-    
+    // 2. CHARGE TOKENS
+        const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(rawText));
+        await chargeAiTokens(session.user.email, usedTokens);
     // Extract text safely
     let responseText = "No recommendations available.";
     if (result.candidates && result.candidates.length > 0 && result.candidates[0].content) {
