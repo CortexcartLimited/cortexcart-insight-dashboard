@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { getReportingData } from '@/lib/report-helper';
 
 // Helper function to safely fetch and parse JSON
 async function fetchJson(url, options) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getReportingData } from '@/lib/report-helper';
 import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit';
 
 // Initialize the Gemini AI client
@@ -33,7 +34,11 @@ export async function POST(request) {
         }
 
         const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
+        const contextData = await getReportingData(
+            session.user.email, 
+            body.startDate, 
+            body.endDate
+        );
         // This is our "Smart Prompt" that tells the AI exactly what to do
         const prompt = `
             You are a professional marketing data analyst named Cortex an AI from CortexCart. Your tone is expert, insightful, and encouraging.
