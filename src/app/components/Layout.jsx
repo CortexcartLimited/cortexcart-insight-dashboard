@@ -69,7 +69,14 @@ const TopNav = () => {
     return (
         <div className="flex items-center justify-between w-full h-full">
             <RealTimeClock /> {/* RealTimeClock remains on the left */}
-            
+              {/* --- NEW: AI Token Counter --- */}
+            <div className="hidden md:flex flex-col items-end mr-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">AI Tokens</div>
+                <div className={`text-sm font-bold ${aiUsage.used >= aiUsage.limit ? 'text-red-600' : 'text-blue-600'}`}>
+                    {formatCompact(aiUsage.used)} / {formatCompact(aiUsage.limit)}
+                </div>
+            </div>
+            {/* ----------------------------- */}
             {/* Notifications and User dropdown remain on the right */}
             <div className="flex items-center space-x-4"> {/* Added a container for right-aligned items */}
                 <div className="relative h-full flex items-center" ref={notificationsRef}>
