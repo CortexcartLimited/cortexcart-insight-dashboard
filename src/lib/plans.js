@@ -50,6 +50,7 @@ export const PLANS = {
       maxReports: 5, // Example
       // Add social posts limit if applicable
       // socialPostsPerMonth: 50, // Example!
+      geminiTokens: 100000, // 100k tokens
     }
   },
   // Add Starter Annual Price ID if it exists and points to the same limits
@@ -76,6 +77,7 @@ export const PLANS = {
       maxHeatmaps: 10, // Example
       maxReports: 20, // Example
       // socialPostsPerMonth: 200, // Example
+      geminiTokens: 500000, // 500k tokens
     }
   },
   // Add Growth Annual Price ID if it exists and points to the same limits
@@ -102,6 +104,7 @@ export const PLANS = {
       maxHeatmaps: INFINITY, // Example
       maxReports: INFINITY, // Example
       // socialPostsPerMonth: INFINITY, // Example
+      geminiTokens: 1500000, // 1.5m tokens
     }
   },
   // Add Business Annual Price ID if it exists and points to the same limits
