@@ -114,7 +114,7 @@ export async function POST() {
         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
         const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
         // Using Pro model for better analysis
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
         
         const geminiResponse = await fetch(apiUrl, { 
             method: 'POST', 
