@@ -73,7 +73,14 @@ export default function TopNav() {
     return (
         
         <div className="flex items-center space-x-4 ml-auto">
-           
+           {/* --- NEW: AI Token Counter --- */}
+            <div className="hidden md:flex flex-col items-end mr-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">AI Tokens</div>
+                <div className={`text-sm font-bold ${aiUsage.used >= aiUsage.limit ? 'text-red-600' : 'text-blue-600'}`}>
+                    {formatCompact(aiUsage.used)} / {formatCompact(aiUsage.limit)}
+                </div>
+            </div>
+            {/* ----------------------------- */}
             <div className="relative" ref={notificationsRef}>
                 <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 relative">
                     <span className="sr-only">View notifications</span>
