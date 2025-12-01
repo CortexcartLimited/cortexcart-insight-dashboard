@@ -21,9 +21,14 @@ const TopNav = () => {
     const [notifications, setNotifications] = useState([]);
     const userDropdownRef = useRef(null);
     const notificationsRef = useRef(null);
+    // --- NEW: AI Usage State ---
+    const [aiUsage, setAiUsage] = useState({ used: 0, limit: 0 }); 
+    // ---------------------------
 
     const unreadCount = notifications.filter(n => !n.is_read).length;
-
+    // --- NEW: Helper function ---
+    const formatCompact = (num) => Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(num);
+    // ----------------------------
     const fetchNotifications = async () => {
         if (status !== 'authenticated') return;
         try {
@@ -40,6 +45,12 @@ const TopNav = () => {
     useEffect(() => {
         if (status === 'authenticated') {
             fetchNotifications();
+            // --- NEW: Fetch AI Usage ---
+            fetch('/api/ai/usage')
+                .then(res => res.json())
+                .then(data => setAiUsage(data))
+                .catch(err => console.error("Failed to load AI usage", err));
+            // ---------------------------
             const interval = setInterval(fetchNotifications, 30000);
             return () => clearInterval(interval);
         }
