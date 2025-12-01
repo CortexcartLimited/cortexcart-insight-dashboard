@@ -1,6 +1,8 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';import { NextResponse } from 'next/server';
+import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit';
+
 
 export async function POST() {
     const session = await getServerSession(authOptions);
@@ -8,7 +10,17 @@ export async function POST() {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
     const userEmail = session.user.email;
-
+// 1. CHECK LIMIT
+    const limitCheck = await checkAiLimit(session.user.email);
+    if (!limitCheck.allowed) {
+        // Return null or a specific "Upgrade" alert object
+        return NextResponse.json({
+            id: 'ai-limit',
+            type: 'warning',
+            title: 'AI Analysis Paused',
+            message: 'You have reached your monthly AI token limit. Upgrade to restore insights.'
+        });
+    }
     try {
         // --- Cooldown Logic ---
         const [lastReport] = await db.query(
@@ -64,7 +76,9 @@ export async function POST() {
         if (!geminiResponse.ok) {
             throw new Error('Failed to get a response from the AI model.');
         }
-        
+        // 2. CHARGE TOKENS
+        const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(rawText));
+        await chargeAiTokens(session.user.email, usedTokens);
         const result = await geminiResponse.json();
 
         if (result.candidates && result.candidates.length > 0) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit';
 
 // Initialize the Gemini AI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -11,7 +12,17 @@ export async function POST(request) {
     if (!session) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
-
+// 1. CHECK LIMIT
+    const limitCheck = await checkAiLimit(session.user.email);
+    if (!limitCheck.allowed) {
+        // Return null or a specific "Upgrade" alert object
+        return NextResponse.json({
+            id: 'ai-limit',
+            type: 'warning',
+            title: 'AI Analysis Paused',
+            message: 'You have reached your monthly AI token limit. Upgrade to restore insights.'
+        });
+    }
     try {
         // Get the aggregated data that the frontend will send
         let aggregatedData = {};
@@ -76,7 +87,9 @@ export async function POST(request) {
         // Clean the response to ensure it's valid JSON
         const cleanedJsonString = responseText.replace(/```json|```/g, '').trim();
         const reportJson = JSON.parse(cleanedJsonString);
-
+// 2. CHARGE TOKENS
+        const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(rawText));
+        await chargeAiTokens(session.user.email, usedTokens);
         return NextResponse.json(reportJson);
 
     } catch (error) {
