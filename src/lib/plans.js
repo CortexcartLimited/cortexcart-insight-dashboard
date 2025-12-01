@@ -134,6 +134,7 @@ export const PLANS = {
       maxReports: INFINITY,
       supportTickets: true, //Only for business users
       // socialPostsPerMonth: INFINITY,
+      geminiTokens: 1500000, // 1.5m tokens
     }
   },
 };
