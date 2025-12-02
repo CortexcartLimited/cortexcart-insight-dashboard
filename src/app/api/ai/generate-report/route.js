@@ -5,18 +5,15 @@ import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit';
 import { getReportingData } from '@/lib/report-helper';
 
 export async function POST(req) {
-    // 1. Auth Check
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-    // 2. Limit Check
     const limitCheck = await checkAiLimit(session.user.email);
     if (!limitCheck.allowed) {
         return NextResponse.json({ message: limitCheck.error }, { status: 403 });
     }
 
     try {
-        // 3. Parse Request Body (Safely)
         let body = {};
         try {
             const text = await req.text();
@@ -25,19 +22,30 @@ export async function POST(req) {
             console.warn("Empty request body, using defaults.");
         }
         
-        // 4. Get Data from DB
         const contextData = await getReportingData(
             session.user.email, 
             body.startDate, 
             body.endDate
         );
 
-        // 5. Construct Prompt
+        // --- UPDATED PROMPT WITH INSTRUCTIONS FOR MISSING DATA ---
         const prompt = `
             You are Cortexcart's AI Analyst. Generate a performance report based on this data: 
             ${JSON.stringify(contextData)}
             
             Output MUST be valid HTML (no markdown blocks).
+            
+            CRITICAL INSTRUCTIONS FOR DATA:
+            1. If 'stats.totalRevenue' equals "Not Connected":
+               - In the Key Metrics section, write: "<strong>Revenue:</strong> Data unavailable. Please connect your Shopify store in Settings to unlock financial insights."
+               - Do NOT invent a revenue number.
+            
+            2. If 'stats.totalRevenue' equals "Sync Error":
+               - Write: "<strong>Revenue:</strong> Sync Error. Please check your Shopify connection."
+
+            3. If 'stats.visitors' is 0:
+               - Mention that no traffic was detected and suggest checking if the tracking script is installed.
+
             Structure:
             <div class="space-y-6">
                 <section>
@@ -55,9 +63,7 @@ export async function POST(req) {
             </div>
         `;
 
-        // 6. Call Gemini API (Stable Model)
         const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-        // CHANGED: Using 1.5-flash for stability
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const geminiResponse = await fetch(apiUrl, {
@@ -66,7 +72,6 @@ export async function POST(req) {
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
 
-        // --- DEBUGGING: Read raw text first ---
         const responseText = await geminiResponse.text();
         
         if (!geminiResponse.ok) {
@@ -74,22 +79,18 @@ export async function POST(req) {
             throw new Error(`AI Request Failed: ${geminiResponse.status}`);
         }
 
-        if (!responseText) {
-             throw new Error("AI returned an empty response.");
-        }
+        if (!responseText) throw new Error("AI returned an empty response.");
 
         let result;
         try {
             result = JSON.parse(responseText);
         } catch (e) {
-            console.error("🔥 Invalid JSON from AI:", responseText);
             throw new Error("AI returned invalid JSON.");
         }
 
         const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
         const reportHtml = rawText.replace(/```html|```/g, '').trim();
 
-        // 7. Charge Tokens
         const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(reportHtml));
         await chargeAiTokens(session.user.email, usedTokens);
 
