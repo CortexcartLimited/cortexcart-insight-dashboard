@@ -8,7 +8,7 @@ import { ThemeProvider } from "./components/ThemeProvider"; // 2. Import the The
 
 // 3. Call the font function at the top level of the file (module scope)
 const inter = Inter({ subsets: ['latin'] });
-
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: `CortexCart Insight Dashboard v${process.env.NEXT_PUBLIC_APP_VERSION}`,
   description: "Your statistics dashboard",
