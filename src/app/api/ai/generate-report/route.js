@@ -5,26 +5,34 @@ import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit';
 import { getReportingData } from '@/lib/report-helper';
 
 export async function POST(req) {
+    // 1. Auth Check
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-    // 1. CHECK LIMIT
+    // 2. Limit Check
     const limitCheck = await checkAiLimit(session.user.email);
     if (!limitCheck.allowed) {
         return NextResponse.json({ message: limitCheck.error }, { status: 403 });
     }
 
     try {
-        const body = await req.json();
+        // 3. Parse Request Body (Safely)
+        let body = {};
+        try {
+            const text = await req.text();
+            if (text) body = JSON.parse(text);
+        } catch (e) {
+            console.warn("Empty request body, using defaults.");
+        }
         
-        // 2. GET DATA
+        // 4. Get Data from DB
         const contextData = await getReportingData(
             session.user.email, 
             body.startDate, 
             body.endDate
         );
 
-        // 3. CONSTRUCT PROMPT
+        // 5. Construct Prompt
         const prompt = `
             You are Cortexcart's AI Analyst. Generate a performance report based on this data: 
             ${JSON.stringify(contextData)}
@@ -45,13 +53,11 @@ export async function POST(req) {
                     <ul class="list-disc pl-5">...</ul>
                 </section>
             </div>
-            
-            Keep it professional, concise, and encouraging.
         `;
 
-        // 4. CALL GEMINI
+        // 6. Call Gemini API (Stable Model)
         const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-        // Using the stable Flash model which is most reliable
+        // CHANGED: Using 1.5-flash for stability
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const geminiResponse = await fetch(apiUrl, {
@@ -60,12 +66,12 @@ export async function POST(req) {
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
 
-        // --- SAFER RESPONSE HANDLING ---
+        // --- DEBUGGING: Read raw text first ---
         const responseText = await geminiResponse.text();
         
         if (!geminiResponse.ok) {
             console.error("🔥 AI API Error Response:", responseText);
-            throw new Error(`AI Request Failed: ${geminiResponse.status} ${geminiResponse.statusText}`);
+            throw new Error(`AI Request Failed: ${geminiResponse.status}`);
         }
 
         if (!responseText) {
@@ -81,11 +87,9 @@ export async function POST(req) {
         }
 
         const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        
-        // Cleanup markdown
         const reportHtml = rawText.replace(/```html|```/g, '').trim();
 
-        // 5. CHARGE TOKENS
+        // 7. Charge Tokens
         const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(reportHtml));
         await chargeAiTokens(session.user.email, usedTokens);
 

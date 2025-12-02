@@ -43,7 +43,11 @@ export default function ReportsPage() {
         setIsGenerating(true);
         setError('');
         try {
-            const res = await fetch('/api/ai/generate-report', { method: 'POST' });
+            const res = await fetch('/api/ai/generate-report', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
             if (!res.ok) {
                 const result = await res.json();
                 throw new Error(result.message || 'Failed to generate report.');
