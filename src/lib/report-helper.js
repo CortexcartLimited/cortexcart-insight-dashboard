@@ -38,7 +38,7 @@ export async function getReportingData(identifier, startDate, endDate) {
         // 3. Get Traffic Stats (Internal)
         const [trafficStats] = await db.query(`
             SELECT 
-                COUNT(DISTINCT session_id) as visitors,
+                COUNT(DISTINCT id) as visitors,
                 COUNT(*) as pageviews
             FROM events 
             WHERE site_id = ? AND created_at BETWEEN ? AND ?
