@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import UAParser from 'ua-parser-js'; // Use import syntax
 
 export async function POST(request) {
   try {
@@ -10,41 +11,43 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    // 1. Load User Agent Parser
-    const UAParser = require('ua-parser-js');
+    // 1. Parse User Agent
     const ua = request.headers.get('user-agent');
-    const parser = new UAParser(ua);
+    const parser = new UAParser(ua || ''); // Handle null UA
     const deviceType = parser.getDevice().type || 'desktop';
 
     // 2. Get IP Address
     const forwardedFor = request.headers.get('x-forwarded-for');
     const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : '127.0.0.1';
     
-    let country = null;
+    let country = 'Unknown';
 
-    // 3. Attempt GeoIP Lookup (Fails gracefully on live servers)
+    // 3. Optimized GeoIP Lookup
+    // Only attempt lookup if valid public IP. Set a strict timeout to prevent hanging.
     if (ip && ip !== '::1' && ip !== '127.0.0.1') {
       try {
-        // Note: Free ip-api often blocks cloud server IPs (AWS/Vercel)
-        const geoResponse = await fetch(`http://ip-api.com/json/${ip}?fields=country`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s Timeout
+
+        const geoResponse = await fetch(`http://ip-api.com/json/${ip}?fields=country`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
         if (geoResponse.ok) {
           const geoData = await geoResponse.json();
-          country = geoData.country;
+          if (geoData.country) country = geoData.country;
         }
       } catch (geoError) {
-        // Silently fail if API is blocked or down
-        console.warn("GeoIP lookup failed (likely rate limited or blocked):", geoError.message);
+        // Ignore timeouts/errors to ensure event is still tracked
       }
     }
     
-    // 4. CRITICAL FIX: Fallback to 'Unknown' if country is null
-    // This ensures the row is NOT filtered out by your SQL query
-    const finalCountry = country || 'Unknown';
-
     const dataWithMeta = { 
         ...data, 
         ip, 
-        country: finalCountry, 
+        country, // 'Unknown' is already set as default above
         device: deviceType 
     };
 

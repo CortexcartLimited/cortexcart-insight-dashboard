@@ -220,7 +220,7 @@ const SidebarContent = () => {
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false); // State for the Tools dropdown (renamed for clarity)
 
   const getLinkClass = (path) => {
-    // All other links should be text-grey-900
+    // All other links should be text-gray-900
     return pathname.startsWith(path) ? 'flex items-center p-2 bg-gray-700 rounded-lg text-gray-100' : 'flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-900 hover:text-white transition-colors';
   }; 
 
@@ -232,7 +232,7 @@ const SidebarContent = () => {
   return (
     <>
       <div className="flex-grow">
-        <a href="/" className="flex items-center pb-6 px-2"><h1 className="text-2xl font-bold text-grey-900">CortexCart</h1></a>
+        <a href="/" className="flex items-center pb-6 px-2"><h1 className="text-2xl font-bold text-gray-900">CortexCart</h1></a>
         <nav>
           <ul className="space-y-2">
             {session && (
@@ -418,7 +418,7 @@ const FeedbackButton = () => {
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   return (
-    <div className="relative h-screen flex bg-grey-400 overflow-hidden">
+    <div className="relative h-screen flex bg-gray-400 overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-shrink-0 w-64 bg-white p-4 flex-col border-r border-gray-200">
         <SidebarContent />
@@ -427,8 +427,7 @@ const Layout = ({ children }) => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col w-0">
         {/* Corrected Header Structure */}
-        <div className="relative z-10 flex-shrink-0 flex h-16 bg-grey-700 shadow ${isScrolled ? 'bg-grey-700' : 'bg-transparent'}">
-            <button onClick={() => setSidebarOpen(true)} className="px-4 border-r border-gray-900 text-gray-500 focus:outline-none lg:hidden">
+        <div className={`relative z-10 flex-shrink-0 flex h-16 bg-white shadow ${isScrolled ? 'shadow-md' : 'shadow-sm'}`}>            <button onClick={() => setSidebarOpen(true)} className="px-4 border-r border-gray-900 text-gray-500 focus:outline-none lg:hidden">
                 <span className="sr-only">Open sidebar</span>
                 <Bars3Icon className="h-6 w-6" />
             </button>
@@ -437,7 +436,7 @@ const Layout = ({ children }) => {
             </div>
         </div>
 
-        <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none p-6 lg:p-10 bg-grey-400">
+        <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none p-6 lg:p-10 bg-gray-400">
             <BetaBanner />
             {children}
                 <Footer />
