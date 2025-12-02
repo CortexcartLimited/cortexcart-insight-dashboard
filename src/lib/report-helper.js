@@ -2,10 +2,9 @@ import { db } from '@/lib/db';
 
 export async function getReportingData(identifier, startDate, endDate) {
     try {
-        // 1. Resolve Site ID (Identifier can be email or ID)
-        // We check if the identifier looks like an email. If so, get the ID.
+        // 1. Resolve Site ID & Currency
         let siteId = identifier;
-        let currency = '$'; // Default currency
+        let currency = '$';
 
         if (identifier.includes('@')) {
             const [siteRows] = await db.query(
@@ -21,18 +20,26 @@ export async function getReportingData(identifier, startDate, endDate) {
         const end = endDate || new Date().toISOString().split('T')[0];
         const start = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        // 3. Get General Stats (Revenue, Visitors)
-        // We use COALESCE to ensure we get 0 instead of null if no data exists
-        const [stats] = await db.query(`
+        // 3. Get Traffic Stats (From 'events' table)
+        // REMOVED 'revenue' from here because it doesn't exist
+        const [trafficStats] = await db.query(`
             SELECT 
-                COALESCE(SUM(revenue), 0) as totalRevenue,
                 COUNT(DISTINCT session_id) as visitors,
                 COUNT(*) as pageviews
             FROM events 
             WHERE site_id = ? AND created_at BETWEEN ? AND ?
         `, [siteId, start, end]);
 
-        // 4. Get Top Pages
+        // 4. Get Revenue (From 'shopify_analytics' table)
+        // We sum up sales from the analytics table for this user
+        // Note: If you have multiple stores, this sums them all.
+        const [revenueStats] = await db.query(`
+            SELECT SUM(total_sales) as totalRevenue
+            FROM shopify_analytics
+            WHERE user_email = ?
+        `, [identifier]); // Using email since shopify_analytics uses user_email
+
+        // 5. Get Top Pages
         const [topPages] = await db.query(`
             SELECT pathname, COUNT(*) as views 
             FROM events 
@@ -42,7 +49,7 @@ export async function getReportingData(identifier, startDate, endDate) {
             LIMIT 5
         `, [siteId, start, end]);
 
-        // 5. Get Top Referrers
+        // 6. Get Top Referrers
         const [referrers] = await db.query(`
             SELECT referrer, COUNT(*) as count 
             FROM events 
@@ -58,9 +65,9 @@ export async function getReportingData(identifier, startDate, endDate) {
             dateRange: { start, end },
             currency,
             stats: {
-                totalRevenue: stats[0]?.totalRevenue || 0,
-                visitors: stats[0]?.visitors || 0,
-                pageviews: stats[0]?.pageviews || 0
+                totalRevenue: revenueStats[0]?.totalRevenue || 0, // Now coming from correct table
+                visitors: trafficStats[0]?.visitors || 0,
+                pageviews: trafficStats[0]?.pageviews || 0
             },
             topPages,
             referrers
