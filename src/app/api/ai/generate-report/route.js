@@ -17,21 +17,36 @@ export async function POST(req) {
     try {
         const body = await req.json();
         
-        // --- THE FIX: Call Helper Directly (No Fetch) ---
+        // 2. Fetch Data (Using Helper)
         const contextData = await getReportingData(
-            session.user.email, 
+            session.user.email, // Helper now handles email lookup!
             body.startDate, 
             body.endDate
         );
-        // ------------------------------------------------
 
+        // 3. Construct Prompt
         const prompt = `
-            Generate a performance report based on this data: 
+            You are an expert e-commerce analyst. Generate a performance report based on this data: 
             ${JSON.stringify(contextData)}
-            Format as HTML with sections: Summary, Key Metrics, and Actionable Tips.
+            
+            Format the response as valid HTML (do NOT use markdown code blocks like \`\`\`html).
+            
+            Structure:
+            <h2>Executive Summary</h2>
+            <p>...</p>
+            
+            <h2>Key Metrics</h2>
+            <ul>...</ul>
+            
+            <h2>Actionable Recommendations</h2>
+            <ul>...</ul>
+            
+            Keep it professional, concise, and encouraging.
         `;
 
+        // 4. Call Gemini API
         const apiKey = process.env.GEMINI_API_KEY;
+        // Use the model that you confirmed works for generate-post
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
         const geminiResponse = await fetch(apiUrl, {
@@ -40,15 +55,16 @@ export async function POST(req) {
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
 
-        if (!geminiResponse.ok) throw new Error('AI Error');
+        if (!geminiResponse.ok) throw new Error('AI Model Failed');
         
         const result = await geminiResponse.json();
-        const rawText = result.candidates[0].content.parts[0].text;
-        // Strip markdown code blocks if present
+        const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        
+        // Clean up output (remove markdown if AI adds it despite instructions)
         const reportHtml = rawText.replace(/```html|```/g, '').trim();
 
-        // 2. Charge Tokens
-        const usedTokens = result.usageMetadata?.totalTokenCount || 1000;
+        // 5. Charge Tokens
+        const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(reportHtml));
         await chargeAiTokens(session.user.email, usedTokens);
 
         return NextResponse.json({ report: reportHtml });
