@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
-import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit'; // Import Helper
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { checkAiLimit, chargeAiTokens, estimateTokens } from '@/lib/ai-limit';
 
 export async function POST(req) {
-  console.log("🤖 AI Chat Request Received"); // Debug Log 1
-
   try {
-    const { message, context } = await req.json();
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ reply: "Please log in." }, { status: 401 });
+    }
 
     // 1. CHECK LIMIT
     const limitCheck = await checkAiLimit(session.user.email);
@@ -13,12 +16,10 @@ export async function POST(req) {
       return NextResponse.json({ reply: `🚫 ${limitCheck.error}` }, { status: 200 });
     }
 
-    // 1. Check API Key
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("❌ Critical: Missing API Key in Environment Variables");
-      return NextResponse.json({ reply: "Configuration Error: API Key missing." }, { status: 500 });
-    }
+    const { message, context } = await req.json();
+    
+    // FIX: Use the same key variable as your working route
+    const apiKey = process.env.GEMINI_API_KEY; 
 
     // 2. Construct Prompt
     const prompt = `
@@ -28,52 +29,33 @@ export async function POST(req) {
       Keep the answer concise and helpful.
     `;
 
-    console.log("📤 Sending request to Gemini..."); // Debug Log 2
-
-    // 3. Call Gemini API (Direct REST)
-    // Using 'gemini-1.5-flash' as it is often faster/cheaper/more stable than 'gemini-pro'
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
+    // 3. Call Gemini API (Using the working model 2.0-flash)
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     
-    const payload = {
-      contents: [{
-        role: "user",
-        parts: [{ text: prompt }]
-      }]
-    };
-
     const geminiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }]
+      })
     });
 
     if (!geminiResponse.ok) {
-      const errorData = await geminiResponse.json();
-      console.error("🔥 Gemini API Error:", JSON.stringify(errorData, null, 2)); // Critical Error Log
-      throw new Error(errorData.error?.message || `API Status: ${geminiResponse.status}`);
+        const err = await geminiResponse.json();
+        throw new Error(err.error?.message || "AI Error");
     }
 
     const result = await geminiResponse.json();
-    console.log("✅ Gemini Response Received"); // Debug Log 3
+    const replyText = result.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
 
-    if (result.candidates && result.candidates.length > 0) {
-      const replyText = result.candidates[0].content.parts[0].text;
-
-// 4. CHARGE TOKENS (Input + Output)
-    // If Gemini provides 'usageMetadata', use it. Otherwise estimate.
+    // 4. CHARGE TOKENS
     const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(replyText));
-    
     await chargeAiTokens(session.user.email, usedTokens);
 
-      return NextResponse.json({ reply: replyText });
-    } else {
-      throw new Error('No content in Gemini response candidates.');
-    }
+    return NextResponse.json({ reply: replyText });
 
   } catch (error) {
-    console.error('🔥 Server Handler Error:', error);
-    return NextResponse.json({ 
-      reply: "I'm having trouble thinking right now. (Check server logs for details)" 
-    }, { status: 500 });
+    console.error('AI Chat Error:', error);
+    return NextResponse.json({ reply: "I'm having trouble connecting right now. Please try again." }, { status: 500 });
   }
 }
