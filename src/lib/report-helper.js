@@ -24,7 +24,7 @@ export async function getReportingData(identifier, startDate, endDate) {
         // REMOVED 'revenue' from here because it doesn't exist
         const [trafficStats] = await db.query(`
             SELECT 
-                COUNT(DISTINCT session_id) as visitors,
+                COUNT(DISTINCT id) as visitors,
                 COUNT(*) as pageviews
             FROM events 
             WHERE site_id = ? AND created_at BETWEEN ? AND ?
