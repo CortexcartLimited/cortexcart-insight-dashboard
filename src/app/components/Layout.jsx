@@ -21,14 +21,11 @@ const TopNav = () => {
     const [notifications, setNotifications] = useState([]);
     const userDropdownRef = useRef(null);
     const notificationsRef = useRef(null);
-    // --- NEW: AI Usage State ---
     const [aiUsage, setAiUsage] = useState({ used: 0, limit: 0 }); 
-    // ---------------------------
 
     const unreadCount = notifications.filter(n => !n.is_read).length;
-    // --- NEW: Helper function ---
     const formatCompact = (num) => Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(num);
-    // ----------------------------
+
     const fetchNotifications = async () => {
         if (status !== 'authenticated') return;
         try {
@@ -45,12 +42,11 @@ const TopNav = () => {
     useEffect(() => {
         if (status === 'authenticated') {
             fetchNotifications();
-            // --- NEW: Fetch AI Usage ---
             fetch('/api/ai/usage')
                 .then(res => res.json())
                 .then(data => setAiUsage(data))
                 .catch(err => console.error("Failed to load AI usage", err));
-            // ---------------------------
+            
             const interval = setInterval(fetchNotifications, 30000);
             return () => clearInterval(interval);
         }
@@ -79,17 +75,14 @@ const TopNav = () => {
 
     return (
         <div className="flex items-center justify-between w-full h-full">
-            <RealTimeClock /> {/* RealTimeClock remains on the left */}
-              {/* --- NEW: AI Token Counter --- */}
+            <RealTimeClock />
             <div className="hidden md:flex flex-col items-end mr-2">
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">AI Tokens</div>
                 <div className={`text-sm font-bold ${aiUsage.used >= aiUsage.limit ? 'text-red-600' : 'text-blue-600'}`}>
                     {formatCompact(aiUsage.used)} / {formatCompact(aiUsage.limit)}
                 </div>
             </div>
-            {/* ----------------------------- */}
-            {/* Notifications and User dropdown remain on the right */}
-            <div className="flex items-center space-x-4"> {/* Added a container for right-aligned items */}
+            <div className="flex items-center space-x-4">
                 <div className="relative h-full flex items-center" ref={notificationsRef}>
                     <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 relative">
                         <BellIcon className="h-6 w-6" />
@@ -116,7 +109,6 @@ const TopNav = () => {
                             <div className="px-4 py-2 border-b"><p className="text-sm font-medium text-gray-900 truncate">{session.user.name}</p><p className="text-xs text-gray-500 truncate">{session.user.email}</p></div>
                             <a href="/settings" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Cog6ToothIcon className="h-5 w-5 mr-2" /> Settings</a>
                             <a href="/account" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5 mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Account</a>
-
                             <button onClick={() => signOut({ callbackUrl: '/login' })} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><ArrowRightEndOnRectangleIcon className="h-5 w-5 mr-2" /> Sign Out</button>
                         </div>
                     )}
@@ -135,55 +127,12 @@ const Footer = () => {
        { name: 'Privacy Policy', href: 'https://cortexcart.com/pages/privacy' },
        { name: 'Data Protection', href: 'https://cortexcart.com/pages/data-protection/' },
     ];
-    // --- NEW: Social media links array ---
-  const socialLinks = [
-    {
-      name: 'Facebook',
-      href: 'https://www.facebook.com/profile.php?id=61577780473897',
-      icon: (props) => (
-        <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
-          <path
-            fillRule="evenodd"
-            d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.77-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.028C18.343 21.128 22 16.991 22 12z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ),
-    },
-    {
-      name: 'Instagram',
-      href: 'https://www.instagram.com/cortexcartai/',
-      icon: (props) => (
-        <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
-          <path
-            fillRule="evenodd"
-            d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.024.06 1.378.06 3.808s-.012 2.784-.06 3.808c-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.024.048-1.378.06-3.808.06s-2.784-.012-3.808-.06c-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.048-1.024-.06-1.378-.06-3.808s.012-2.784.06-3.808c.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 016.08 2.525c.636-.247 1.363-.416 2.427-.465C9.53 2.013 9.884 2 12.315 2zM12 7a5 5 0 100 10 5 5 0 000-10zm0 8a3 3 0 110-6 3 3 0 010 6zm5.25-9.75a1.25 1.25 0 100-2.5 1.25 1.25 0 000 2.5z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ),
-    },
-    {
-      name: 'X',
-      href: 'https://x.com/JonathanService',
-      target: '_new',
-      icon: (props) => (
-        <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
-          <path d="M13.682 10.623 20.239 3h-1.64l-5.705 6.44L7.65 3H3l6.836 9.753L3 21h1.64l6.082-6.885L16.351 21H21l-7.318-10.377zM14.78 13.968l-.87-1.242L6.155 4.16h2.443l4.733 6.742.87 1.242 7.03 9.98h-2.443l-5.045-7.143z" />
-        </svg>
-      ),
-    },
-    {
-      name: 'Pinterest',
-      href: 'https://uk.pinterest.com/Cortexcart/',
-      target: '_new',
-      icon: (props) => (
-        <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
-            <path d="M12.017 0C5.396 0 .029 5.367.029 12c0 4.137 2.678 7.653 6.333 8.943.02-.19.029-.398.05-.61l.329-1.4a.123.123 0 0 1 .099-.1c.36-.18 1.15-.56 1.15-.56s-.299-.909-.249-1.79c.06-.9.649-2.12 1.459-2.12.68 0 1.2.51 1.2 1.12 0 .68-.43 1.7-.65 2.64-.179.78.379 1.42.919 1.42 1.58 0 2.63-2.1 2.63-4.22 0-1.8-1.12-3.44-3.03-3.44-2.28 0-3.52 1.68-3.52 3.32 0 .61.22 1.25.5 1.62.03.04.04.05.02.13l-.15.65c-.05.2-.14.24-.32.08-1.05-.9-1.5-2.3-1.5-3.82C6.18 5.76 8.35 3 12.33 3c3.22 0 5.59 2.38 5.59 4.91 0 3.22-1.95 5.61-4.79 5.61-.9 0-1.75-.47-2.05-1.02l-.52 2.1c-.24 1.01-1.04 2.45-1.04 2.45s-.28.1-.32.08c-.46-.38-.68-1.2-.55-1.88l.38-1.68c.12-.55-.03-1.2-.5-1.52-1.32-.9-1.9-2.6-1.9-4.22 0-2.28 1.6-4.3 4.6-4.3 2.5 0 4.2 1.8 4.2 4.15 0 2.5-1.55 4.5-3.8 4.5-.75 0-1.45-.38-1.7-.82l-.28-.9c-.1-.4-.2-.8-.2-1.22 0-.9.42-1.68 1.12-1.68.9 0 1.5.8 1.5 1.88 0 .8-.25 1.88-.58 2.8-.25.7-.5 1.4-.5 1.4s-.3.12-.35.1c-.2-.1-.3-.2-.3-.4l.02-1.12z" />
-        </svg>
-      ),
-    }
-  ];
+    const socialLinks = [
+        { name: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61577780473897', icon: (props) => (<svg fill="currentColor" viewBox="0 0 24 24" {...props}><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.77-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.028C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" /></svg>) },
+        { name: 'Instagram', href: 'https://www.instagram.com/cortexcartai/', icon: (props) => (<svg fill="currentColor" viewBox="0 0 24 24" {...props}><path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.024.06 1.378.06 3.808s-.012 2.784-.06 3.808c-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.024.048-1.378.06-3.808.06s-2.784-.012-3.808-.06c-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 011.153-1.772A4.902 4.902 0 016.08 2.525c.636-.247 1.363-.416 2.427-.465C9.53 2.013 9.884 2 12.315 2zM12 7a5 5 0 100 10 5 5 0 000-10zm0 8a3 3 0 110-6 3 3 0 010 6zm5.25-9.75a1.25 1.25 0 100-2.5 1.25 1.25 0 000 2.5z" clipRule="evenodd" /></svg>) },
+        { name: 'X', href: 'https://x.com/JonathanService', icon: (props) => (<svg fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M13.682 10.623 20.239 3h-1.64l-5.705 6.44L7.65 3H3l6.836 9.753L3 21h1.64l6.082-6.885L16.351 21H21l-7.318-10.377zM14.78 13.968l-.87-1.242L6.155 4.16h2.443l4.733 6.742.87 1.242 7.03 9.98h-2.443l-5.045-7.143z" /></svg>) },
+        { name: 'Pinterest', href: 'https://uk.pinterest.com/Cortexcart/', icon: (props) => (<svg fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M12.017 0C5.396 0 .029 5.367.029 12c0 4.137 2.678 7.653 6.333 8.943.02-.19.029-.398.05-.61l.329-1.4a.123.123 0 0 1 .099-.1c.36-.18 1.15-.56 1.15-.56s-.299-.909-.249-1.79c.06-.9.649-2.12 1.459-2.12.68 0 1.2.51 1.2 1.12 0 .68-.43 1.7-.65 2.64-.179.78.379 1.42.919 1.42 1.58 0 2.63-2.1 2.63-4.22 0-1.8-1.12-3.44-3.03-3.44-2.28 0-3.52 1.68-3.52 3.32 0 .61.22 1.25.5 1.62.03.04.04.05.02.13l-.15.65c-.05.2-.14.24-.32.08-1.05-.9-1.5-2.3-1.5-3.82C6.18 5.76 8.35 3 12.33 3c3.22 0 5.59 2.38 5.59 4.91 0 3.22-1.95 5.61-4.79 5.61-.9 0-1.75-.47-2.05-1.02l-.52 2.1c-.24 1.01-1.04 2.45-1.04 2.45s-.28.1-.32.08c-.46-.38-.68-1.2-.55-1.88l.38-1.68c.12-.55-.03-1.2-.5-1.52-1.32-.9-1.9-2.6-1.9-4.22 0-2.28 1.6-4.3 4.6-4.3 2.5 0 4.2 1.8 4.2 4.15 0 2.5-1.55 4.5-3.8 4.5-.75 0-1.45-.38-1.7-.82l-.28-.9c-.1-.4-.2-.8-.2-1.22 0-.9.42-1.68 1.12-1.68.9 0 1.5.8 1.5 1.88 0 .8-.25 1.88-.58 2.8-.25.7-.5 1.4-.5 1.4s-.3.12-.35.1c-.2-.1-.3-.2-.3-.4l.02-1.12z" /></svg>) }
+    ];
 
     return (
         <footer className="bg-white mt-4 w-full p-0">
@@ -193,38 +142,37 @@ const Footer = () => {
                         <div key={link.name} className="px-5 py-2"><a href={link.href} className="text-sm text-gray-500 hover:text-gray-900">{link.name}</a></div>
                     ))}
                 </nav>
-{/* --- NEW: Social Icons Section --- */}
-        <div className="mt-6 flex justify-center space-x-6">
-          {socialLinks.map((item) => (
-            <a key={item.name} href={item.href} className="text-gray-400 hover:text-gray-500">
-              <span className="sr-only">{item.name}</span>
-              <item.icon className="h-6 w-6" aria-hidden="true" />
-            </a>
-          ))}
-        </div>
+                <div className="mt-6 flex justify-center space-x-6">
+                    {socialLinks.map((item) => (
+                        <a key={item.name} href={item.href} className="text-gray-400 hover:text-gray-500" target="_blank" rel="noopener noreferrer">
+                            <span className="sr-only">{item.name}</span>
+                            <item.icon className="h-6 w-6" aria-hidden="true" />
+                        </a>
+                    ))}
+                </div>
                 <p className="mt-6 text-center text-xs text-gray-400">
-                    &copy; 2025 CortexCart v{process.env.NEXT_PUBLIC_APP_VERSION}. All rights reserved. </p><p className="mt-6 text-center text-xs text-gray-400">Cortexcart Limited is a registered company in Northern Ireland, UK. company number NI73656
+                    &copy; 2025 CortexCart v{process.env.NEXT_PUBLIC_APP_VERSION}. All rights reserved.
+                </p>
+                <p className="mt-6 text-center text-xs text-gray-400">
+                    Cortexcart Limited is a registered company in Northern Ireland, UK. company number NI73656
                 </p>
             </div>
         </footer>
     );
 };
-// --- Sub-component: Sidebar Content ---
-// In src/app/components/Layout.jsx
 
+// --- Sub-component: Sidebar Content ---
 const SidebarContent = () => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const pathname = usePathname();
-  const [isAiMenuOpen, setIsAiMenuOpen] = useState(false); // State for the new dropdown, default to open
-  const [isFinancialsMenuOpen, setIsFinancialsMenuOpen] = useState(false); // State for the Financials dropdown
-  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false); // State for the Tools dropdown (renamed for clarity)
+  const [isAiMenuOpen, setIsAiMenuOpen] = useState(false);
+  const [isFinancialsMenuOpen, setIsFinancialsMenuOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
   const getLinkClass = (path) => {
-    // All other links should be text-gray-900
     return pathname.startsWith(path) ? 'flex items-center p-2 bg-gray-700 rounded-lg text-gray-100' : 'flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-900 hover:text-white transition-colors';
   }; 
 
-  // Sub-link style for the dropdown items
   const getSubLinkClass = (path) => {
     return pathname.startsWith(path) ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-300';
   };
@@ -238,14 +186,9 @@ const SidebarContent = () => {
             {session && (
             <> 
                 <li><a href="/dashboard" className={getLinkClass('/dashboard')}><ChartPieIcon className="h-6 w-6 mr-3" /><span>Dashboard</span></a></li>
-                
-                {/* --- New AI Tools Dropdown --- */}
                 <li>
                     <button onClick={() => setIsAiMenuOpen(!isAiMenuOpen)} className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-600 hover:text-white transition-colors dark:text-gray-300">
-                        <div className="flex items-center">
-                            <SparklesIcon className="h-6 w-6 mr-3" />
-                            <span>AI Tools</span>
-                        </div>
+                        <div className="flex items-center"><SparklesIcon className="h-6 w-6 mr-3" /><span>AI Tools</span></div>
                         <ChevronDownIcon className={`h-5 w-5 transition-transform ${isAiMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {isAiMenuOpen && (
@@ -256,18 +199,10 @@ const SidebarContent = () => {
                         </ul>
                     )}
                 </li>
-
                 <li><a href="/social" className={getLinkClass('/social')}><ShareIcon className="h-6 w-6 mr-3" /><span>Social Manager</span></a></li>
-                {/* Financials Dropdown */}
                 <li>
-                    <button
-                        onClick={() => setIsFinancialsMenuOpen(!isFinancialsMenuOpen)}
-                        className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-900 hover:text-white transition-colors"
-                    >
-                        <div className="flex items-center">
-                            <DocumentChartBarIcon className="h-6 w-6 mr-3" />
-                            <span>Financials</span>
-                        </div> 
+                    <button onClick={() => setIsFinancialsMenuOpen(!isFinancialsMenuOpen)} className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-900 hover:text-white transition-colors">
+                        <div className="flex items-center"><DocumentChartBarIcon className="h-6 w-6 mr-3" /><span>Financials</span></div> 
                         <ChevronDownIcon className={`h-5 w-5 transition-transform ${isFinancialsMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {isFinancialsMenuOpen && (
@@ -277,27 +212,20 @@ const SidebarContent = () => {
                         </ul>
                     )}
                 </li>
-                <li> {/* Tools Dropdown */}
-    <button
-        className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-600 hover:text-white transition-colors dark:text-gray-300"
-    >
-        <div className="flex items-center">
-            <WrenchIcon className="h-6 w-6 mr-3" />
-            <span>Experiment Tools</span>
-        </div>
-       
-        <ChevronDownIcon className={`h-5 w-5 transition-transform ${isToolsMenuOpen ? 'rotate-180' : ''}`} onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} />
-    </button>
-    
-    {isToolsMenuOpen && (
-        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l border-gray-700 ml-4">
-            <li><a href="/experiments" className={getSubLinkClass('/experiments')}><span>A/B Testing</span></a></li>
-            <li><a href="/heatmaps" className={getSubLinkClass('/heatmaps')}><span>Heatmaps</span></a></li>
-        </ul>
-    )}
-</li>                <li className="pt-4 border-t border-gray-700 mt-4"><span className="px-2 text-xs font-semibold text-gray-400">Help & Support</span></li>
+                <li>
+                    <button className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-600 hover:text-white transition-colors dark:text-gray-300" onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}>
+                        <div className="flex items-center"><WrenchIcon className="h-6 w-6 mr-3" /><span>Experiment Tools</span></div>
+                        <ChevronDownIcon className={`h-5 w-5 transition-transform ${isToolsMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isToolsMenuOpen && (
+                        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l border-gray-700 ml-4">
+                            <li><a href="/experiments" className={getSubLinkClass('/experiments')}><span>A/B Testing</span></a></li>
+                            <li><a href="/heatmaps" className={getSubLinkClass('/heatmaps')}><span>Heatmaps</span></a></li>
+                        </ul>
+                    )}
+                </li>
+                <li className="pt-4 border-t border-gray-700 mt-4"><span className="px-2 text-xs font-semibold text-gray-400">Help & Support</span></li>
                 <li><a href="/support" className={getLinkClass('/support')}><PuzzlePieceIcon className="h-6 w-6 mr-3" /><span>Support</span></a></li>
-                
                 <li className="pt-4 border-t border-gray-700 mt-4"><span className="px-2 text-xs font-semibold text-gray-400">General</span></li>
                 <li><a href="/roadmap" className={getLinkClass('/roadmap')}><MapIcon className="h-6 w-6 mr-3" /><span>Roadmap</span></a></li>
                 <li><a href="/notifications" className={getLinkClass('/notifications')}><BellIcon className="h-6 w-6 mr-3" /><span>Notifications</span></a></li>
@@ -307,10 +235,10 @@ const SidebarContent = () => {
         </nav>
       </div>
       <div>
-        {status === 'authenticated' && (
-          <div className="mb-4 text-sm"><p className="font-semibold text-white">{session.user.name}</p><p className="text-gray-400 truncate">{session.user.email}</p></div>
+        {session && (
+          <div className="mb-4 text-sm"><p className="font-semibold text-gray-900">{session.user.name}</p><p className="text-gray-500 truncate">{session.user.email}</p></div>
         )}
-        <Link href={session ? '#' : '/login'} onClick={() => session && signOut({ callbackUrl: '/' })} className="w-full flex">
+        <Link href={session ? '#' : '/login'} onClick={() => session && signOut({ callbackUrl: '/' })} className="w-full flex text-gray-700 hover:text-gray-900">
           <ArrowRightEndOnRectangleIcon className="h-6 w-6 mr-3" /><span>{session ? 'Sign Out' : 'Sign In'}</span>
         </Link>
       </div>
@@ -413,21 +341,37 @@ const FeedbackButton = () => {
     );
 };
 
-
 // --- Main Layout Component ---
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // --- FIXED: Define isScrolled and add logic ---
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+        // Check if the window has been scrolled more than 0 pixels
+        setIsScrolled(window.scrollY > 0);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    // Cleanup function to remove the listener
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  // ---------------------------------------------
+
   return (
-    <div className="relative h-screen flex bg-gray-400 overflow-hidden">
+    <div className="relative h-screen flex bg-gray-100 overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-shrink-0 w-64 bg-white p-4 flex-col border-r border-gray-200">
         <SidebarContent />
       </aside>
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col w-0">
+      <div className="flex-1 flex flex-col w-0 h-full overflow-y-auto">
         {/* Corrected Header Structure */}
-        <div className={`relative z-10 flex-shrink-0 flex h-16 bg-white shadow ${isScrolled ? 'shadow-md' : 'shadow-sm'}`}>            <button onClick={() => setSidebarOpen(true)} className="px-4 border-r border-gray-900 text-gray-500 focus:outline-none lg:hidden">
+        {/* FIX: Used template literal backticks `` and fixed grey -> gray */}
+        <div className={`sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow ${isScrolled ? 'shadow-md' : 'shadow-sm'}`}>
+            <button onClick={() => setSidebarOpen(true)} className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none lg:hidden">
                 <span className="sr-only">Open sidebar</span>
                 <Bars3Icon className="h-6 w-6" />
             </button>
@@ -436,13 +380,11 @@ const Layout = ({ children }) => {
             </div>
         </div>
 
-        <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none p-6 lg:p-10 bg-gray-400">
+        <main className="flex-1 relative z-0 p-6 lg:p-10 bg-gray-100">
             <BetaBanner />
             {children}
-                <Footer />
+            <Footer />
         </main>
-        
-    
       </div>
 
       {/* Mobile Sidebar Flyout */}
