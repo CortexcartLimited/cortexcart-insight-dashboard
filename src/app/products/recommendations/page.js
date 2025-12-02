@@ -86,7 +86,7 @@ export default function ProductRecommendationsPage() {
             </div>
             {analysisError && <p className="text-sm text-red-600 mt-2">{analysisError}</p>}
             {analysisResult && (
-                <div className="p-4 bg-gray-50 rounded-md border mt-4">
+                <div className="p-4 bg-white text-gray-950 rounded-md border mt-4">
                     {/* ... Analysis result display ... */}
                 </div>
             )}
