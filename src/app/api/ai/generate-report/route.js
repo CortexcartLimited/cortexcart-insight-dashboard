@@ -6,9 +6,7 @@ import { getReportingData } from '@/lib/report-helper';
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.email) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     // 1. CHECK LIMIT
     const limitCheck = await checkAiLimit(session.user.email);
@@ -19,7 +17,7 @@ export async function POST(req) {
     try {
         const body = await req.json();
         
-        // 2. GET DATA DIRECTLY (Fixes the ENOTFOUND error)
+        // 2. GET DATA
         const contextData = await getReportingData(
             session.user.email, 
             body.startDate, 
@@ -51,10 +49,10 @@ export async function POST(req) {
             Keep it professional, concise, and encouraging.
         `;
 
-        // 4. CALL GEMINI (Direct REST API)
-        const apiKey = process.env.GEMINI_API_KEY;
-        // Using 2.0-flash-exp as it's the current stable beta model
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+        // 4. CALL GEMINI
+        const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+        // Using the stable Flash model which is most reliable
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const geminiResponse = await fetch(apiUrl, {
             method: 'POST',
@@ -62,19 +60,33 @@ export async function POST(req) {
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
 
-        if (!geminiResponse.ok) {
-            const err = await geminiResponse.json();
-            throw new Error(err.error?.message || 'AI Model Failed');
-        }
+        // --- SAFER RESPONSE HANDLING ---
+        const responseText = await geminiResponse.text();
         
-        const result = await geminiResponse.json();
+        if (!geminiResponse.ok) {
+            console.error("🔥 AI API Error Response:", responseText);
+            throw new Error(`AI Request Failed: ${geminiResponse.status} ${geminiResponse.statusText}`);
+        }
+
+        if (!responseText) {
+             throw new Error("AI returned an empty response.");
+        }
+
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            console.error("🔥 Invalid JSON from AI:", responseText);
+            throw new Error("AI returned invalid JSON.");
+        }
+
         const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
         
-        // Cleanup markdown if the AI adds it
+        // Cleanup markdown
         const reportHtml = rawText.replace(/```html|```/g, '').trim();
 
         // 5. CHARGE TOKENS
-        const usedTokens = estimateTokens(prompt) + estimateTokens(reportHtml);
+        const usedTokens = result.usageMetadata?.totalTokenCount || (estimateTokens(prompt) + estimateTokens(reportHtml));
         await chargeAiTokens(session.user.email, usedTokens);
 
         return NextResponse.json({ report: reportHtml });
