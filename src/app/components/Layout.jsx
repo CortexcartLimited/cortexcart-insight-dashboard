@@ -8,8 +8,8 @@ import RealTimeClock from './RealTimeClock';
 import { DocumentChartBarIcon } from '@heroicons/react/24/outline';
 import { 
     ChartPieIcon, Cog6ToothIcon, ArrowRightEndOnRectangleIcon,
-    MapIcon, TagIcon, Bars3Icon, XMarkIcon, InformationCircleIcon, 
-    ChatBubbleLeftRightIcon, ShareIcon, PuzzlePieceIcon, QuestionMarkCircleIcon,
+    MapIcon, TagIcon, Bars3Icon, XMarkIcon, InformationCircleIcon,
+    ChatBubbleLeftRightIcon, ShareIcon, PuzzlePieceIcon,
     LifebuoyIcon, BellIcon, SparklesIcon, ChevronDownIcon, WrenchIcon
 } from '@heroicons/react/24/outline';
 
@@ -169,9 +169,12 @@ const SidebarContent = () => {
   const [isFinancialsMenuOpen, setIsFinancialsMenuOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
-  const getLinkClass = (path) => {
-    return pathname.startsWith(path) ? 'flex items-center p-2 bg-gray-700 rounded-lg text-gray-100' : 'flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-900 hover:text-white transition-colors';
-  }; 
+ const getLinkClass = (path) => {
+    // CHANGE: 'text-gray-900' ensures high contrast on mobile instead of lighter grays
+    return pathname.startsWith(path) 
+        ? 'flex items-center p-2 bg-gray-800 text-white rounded-lg' // Active state
+        : 'flex items-center p-2 text-gray-900 font-medium rounded-lg hover:bg-gray-100 hover:text-black transition-colors'; // Inactive state
+};
 
   const getSubLinkClass = (path) => {
     return pathname.startsWith(path) ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-300';

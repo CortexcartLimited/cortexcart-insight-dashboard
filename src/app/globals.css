@@ -1,22 +1,19 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
 :root {
+  /* Default (Light Mode) - Ensuring high contrast */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111827; /* Dark Gray (almost black) for better readability */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Force Light Mode variables unless explicitly toggled (if you have a toggle) */
+/* Or fix the dark mode media query to actually work fully */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #f9fafb; /* Light Gray (almost white) */
   }
 }
 
@@ -24,4 +21,18 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Add this to prevent text becoming invisible */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- MOBILE TEXT FIX --- */
+/* Force all headings and paragraphs to use the foreground color */
+h1, h2, h3, h4, h5, h6, p, span, div {
+    color: var(--foreground);
+}
+
+/* Exception for specific muted text classes if you use them */
+.text-gray-500 {
+    color: #6b7280 !important; /* Force a readable mid-gray */
 }
