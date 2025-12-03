@@ -65,7 +65,7 @@ function LoginForm() {
     };
 
     return (
-        <Card className="w-full max-w-sm bg-white shadow-md">
+        <Card className="w-full max-w-sm bg-white shadow-md text-gray-900">
             <CardHeader className="text-center">
                 <Image src="/cortexcart-com-logo-home.png" alt="CortexCart Logo" width={320} height={100} className="mx-auto mb-4" />
                 <CardTitle>Welcome Back</CardTitle>
