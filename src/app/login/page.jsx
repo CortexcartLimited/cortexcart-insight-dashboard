@@ -108,7 +108,7 @@ function LoginForm() {
             </Link>
         </div>
                     </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-full" disabled={isLoading}>
                         {isLoading ? 'Signing in...' : 'Sign In'}
                     </Button>
                 </form>
@@ -137,7 +137,7 @@ function LoginForm() {
                                 key={provider.id}
                                 onClick={() => signIn(provider.id, { callbackUrl: '/dashboard' })}
                                 variant="outline"
-                                className="w-full flex justify-center items-center"
+                                className="w-full flex justify-center items-center text-gray-950 font-medium py-2 rounded-full"
                             >
                                 {icon}
                                 <span>Sign in with: {label}</span>
