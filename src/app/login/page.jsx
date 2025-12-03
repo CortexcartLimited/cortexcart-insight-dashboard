@@ -65,6 +65,7 @@ function LoginForm() {
     };
 
     return (
+        <div className="light-mode-forced w-full max-w-sm">
         <Card className="w-full max-w-sm bg-white shadow-md text-gray-900">
             <CardHeader className="text-center">
                 <Image src="/cortexcart-com-logo-home.png" alt="CortexCart Logo" width={320} height={100} className="mx-auto mb-4" />
@@ -158,7 +159,7 @@ function LoginForm() {
             <CardFooter className="justify-center border-t pt-4">
                  <p className="text-xs text-gray-400">App Version: {process.env.NEXT_PUBLIC_APP_VERSION}</p>
             </CardFooter>
-        </Card>
+        </Card></div>
     );
 }
 

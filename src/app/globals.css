@@ -36,3 +36,26 @@ h1, h2, h3, h4, h5, h6, p, span, div {
 .text-gray-500 {
     color: #6b7280 !important; /* Force a readable mid-gray */
 }
+/* --- NEW: Force Light Mode Variables --- */
+/* Apply this class to any container that MUST be white/light (like your Login Card) */
+.light-mode-forced {
+  --background: #ffffff !important;
+  --foreground: #171717 !important;
+  /* Reset other common shadcn/ui variables to light mode defaults just in case */
+  --muted: #f1f5f9 !important;
+  --muted-foreground: #64748b !important;
+  --card: #ffffff !important;
+  --card-foreground: #171717 !important;
+  --popover: #ffffff !important;
+  --popover-foreground: #171717 !important;
+  --border: #e2e8f0 !important;
+  --input: #e2e8f0 !important;
+  --primary: #171717 !important;
+  --primary-foreground: #ffffff !important;
+}
+
+/* Ensure text inside this container actually uses the forced foreground */
+.light-mode-forced * {
+    color: var(--foreground);
+    border-color: var(--border);
+}
