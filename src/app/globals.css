@@ -3,59 +3,75 @@
 @import "tailwindcss/utilities";
 
 :root {
-  /* Default (Light Mode) - Ensuring high contrast */
+  /* Force Default Variables (Light Mode) */
   --background: #ffffff;
-  --foreground: #111827; /* Dark Gray (almost black) for better readability */
+  --foreground: #111827; /* Dark Gray (High Contrast) */
+  
+  /* Add these for consistency if using shadcn components */
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #111827;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #111827;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #111827;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #111827;
+  --radius: 0.5rem;
 }
 
-/* Force Light Mode variables unless explicitly toggled (if you have a toggle) */
-/* Or fix the dark mode media query to actually work fully */
+/* --- FIX: DISABLE AUTOMATIC DARK MODE SWITCHING --- */
+/* This prevents mobile phones from turning text white on your light dashboard */
+/*
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #f9fafb; /* Light Gray (almost white) */
+    --foreground: #f9fafb;
   }
 }
+*/
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  /* Add this to prevent text becoming invisible */
+  /* Makes text sharper and more legible */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* --- MOBILE TEXT FIX --- */
-/* Force all headings and paragraphs to use the foreground color */
-h1, h2, h3, h4, h5, h6, p, span, div {
+/* Force high-contrast dark text on all main elements */
+h1, h2, h3, h4, h5, h6, p, span, div, li, a {
     color: var(--foreground);
 }
 
-/* Exception for specific muted text classes if you use them */
-.text-gray-500 {
-    color: #6b7280 !important; /* Force a readable mid-gray */
+/* Exceptions for muted/secondary text */
+.text-gray-500, .text-muted-foreground {
+    color: #6b7280 !important; /* Mid-gray, still readable */
 }
-/* --- NEW: Force Light Mode Variables --- */
-/* Apply this class to any container that MUST be white/light (like your Login Card) */
+
+.text-white {
+    color: #ffffff !important; /* Allow white text specifically where requested (like buttons/nav) */
+}
+
+/* --- UTILITY: Forced Light Mode Container --- */
+/* Use this class if a specific component (like a modal) is acting up */
 .light-mode-forced {
   --background: #ffffff !important;
   --foreground: #171717 !important;
-  /* Reset other common shadcn/ui variables to light mode defaults just in case */
-  --muted: #f1f5f9 !important;
-  --muted-foreground: #64748b !important;
-  --card: #ffffff !important;
-  --card-foreground: #171717 !important;
-  --popover: #ffffff !important;
-  --popover-foreground: #171717 !important;
-  --border: #e2e8f0 !important;
-  --input: #e2e8f0 !important;
-  --primary: #171717 !important;
-  --primary-foreground: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #171717 !important;
 }
-
-/* Ensure text inside this container actually uses the forced foreground */
 .light-mode-forced * {
-    color: var(--foreground);
-    border-color: var(--border);
+    color: #171717 !important;
+    border-color: #e2e8f0 !important;
 }
