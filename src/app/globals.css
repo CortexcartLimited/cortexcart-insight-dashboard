@@ -38,6 +38,13 @@
   }
 }
 */
+/* --- CRITICAL FIX: Link Color Inheritance --- */
+/* This forces links to use the text color of their container (e.g., White in footer) 
+   instead of the default browser Blue/Purple. */
+a {
+  color: inherit;
+  text-decoration: none;
+}
 /* --- UI COMPONENT VARIABLES (Restored) --- */
   /* These are required for Cards, Modals, and Popovers to have a background */
   --card: #ffffff;

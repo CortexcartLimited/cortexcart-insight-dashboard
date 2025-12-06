@@ -160,31 +160,50 @@ const Footer = () => {
     );
 };
 
-// --- Sub-component: Sidebar Content ---
 const SidebarContent = () => {
   const { data: session } = useSession();
   const pathname = usePathname();
+  // Keep menus open if a child is active
   const [isAiMenuOpen, setIsAiMenuOpen] = useState(false);
   const [isFinancialsMenuOpen, setIsFinancialsMenuOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
- // --- FIX 1: Updated Link Classes for Better Contrast & Hover ---
+  // --- 1. Standard Link Styling (Single Links) ---
   const getLinkClass = (path) => {
-    // Active State: Dark background to show selection clearly
     if (pathname.startsWith(path)) {
-        return 'flex items-center p-2 bg-gray-900 text-white rounded-lg transition-colors font-medium';
+        return 'flex items-center p-2 bg-gray-800 text-gray-200 [&_span]:text-gray-200 [&_svg]:text-gray-200 rounded-lg font-medium transition-colors';
     }
-    // Inactive State: Darker text (gray-700) and subtle light gray hover
     return 'flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-200 hover:text-gray-900 transition-colors font-medium';
   }; 
 
+  // --- 2. Sub-Link Styling (Dropdown Items) ---
   const getSubLinkClass = (path) => {
     if (pathname.startsWith(path)) {
         return 'text-blue-600 font-bold block py-1'; 
     }
-    // Fix sub-links too: Darker default, darker hover
     return 'text-gray-600 hover:text-gray-900 block py-1 transition-colors';
   };
+
+  // --- 3. FIX: Parent Button Styling (Dropdown Triggers) ---
+  // This checks if the current path matches ANY of the child paths.
+  // If yes -> Applies the "Active" Dark Style.
+  const getParentClass = (childPaths) => {
+    const isActive = childPaths.some(path => pathname.startsWith(path));
+    
+    if (isActive) {
+        // Active State (Dark)
+        return 'flex items-center justify-between w-full p-2 bg-gray-800 text-gray-200 [&_span]:text-gray-200 [&_svg]:text-gray-200 rounded-lg font-medium transition-colors';
+    }
+    // Inactive State (Light)
+    return 'flex items-center justify-between w-full p-2 text-gray-700 rounded-lg hover:bg-gray-200 hover:text-gray-900 transition-colors font-medium';
+  };
+
+  // Auto-open menus on load if active (Optional polish)
+  useEffect(() => {
+    if (['/reports', '/recommendations', '/products'].some(p => pathname.startsWith(p))) setIsAiMenuOpen(true);
+    if (pathname.startsWith('/financials')) setIsFinancialsMenuOpen(true);
+    if (['/experiments', '/heatmaps'].some(p => pathname.startsWith(p))) setIsToolsMenuOpen(true);
+  }, [pathname]);
 
   return (
     <>
@@ -195,47 +214,67 @@ const SidebarContent = () => {
             {session && (
             <> 
                 <li><a href="/dashboard" className={getLinkClass('/dashboard')}><ChartPieIcon className="h-6 w-6 mr-3" /><span>Dashboard</span></a></li>
+                
+                {/* --- AI Tools Section --- */}
                 <li>
-                    <button onClick={() => setIsAiMenuOpen(!isAiMenuOpen)} className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-600 hover:text-white transition-colors dark:text-gray-300">
+                    <button 
+                        onClick={() => setIsAiMenuOpen(!isAiMenuOpen)} 
+                        // FIX: Pass array of child paths to check active state
+                        className={getParentClass(['/reports', '/recommendations', '/products'])}
+                    >
                         <div className="flex items-center"><SparklesIcon className="h-6 w-6 mr-3" /><span>AI Tools</span></div>
                         <ChevronDownIcon className={`h-5 w-5 transition-transform ${isAiMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {isAiMenuOpen && (
-                        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l border-gray-700 ml-4">
-                            <li><a href="/reports" className={getSubLinkClass('/reports/ai')}><span>View AI Performance Report</span></a></li>
+                        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l-2 border-gray-200 ml-4">
+                            {/* Ensure hrefs match the check strings above */}
+                            <li><a href="/reports" className={getSubLinkClass('/reports')}><span>View AI Performance Report</span></a></li>
                             <li><a href="/recommendations" className={getSubLinkClass('/recommendations')}><span>Homepage AI</span></a></li>
                             <li><a href="/products/recommendations" className={getSubLinkClass('/products')}><span>Product AI</span></a></li>
                         </ul>
                     )}
                 </li>
+
                 <li><a href="/social" className={getLinkClass('/social')}><ShareIcon className="h-6 w-6 mr-3" /><span>Social Manager</span></a></li>
+                
+                {/* --- Financials Section --- */}
                 <li>
-                    <button onClick={() => setIsFinancialsMenuOpen(!isFinancialsMenuOpen)} className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-900 hover:text-white transition-colors">
+                    <button 
+                        onClick={() => setIsFinancialsMenuOpen(!isFinancialsMenuOpen)} 
+                        className={getParentClass(['/financials'])}
+                    >
                         <div className="flex items-center"><DocumentChartBarIcon className="h-6 w-6 mr-3" /><span>Financials</span></div> 
                         <ChevronDownIcon className={`h-5 w-5 transition-transform ${isFinancialsMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {isFinancialsMenuOpen && (
-                        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l border-gray-700 ml-4">
+                        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l-2 border-gray-200 ml-4">
                             <li><a href="/financials/quickbooks" className={getSubLinkClass('/financials/quickbooks')}><span>QuickBooks</span></a></li>
                             <li><a href="/financials/shopify" className={getSubLinkClass('/financials/shopify')}><span>Shopify</span></a></li>
                         </ul>
                     )}
                 </li>
+
+                {/* --- Experiment Tools Section --- */}
                 <li>
-                    <button className="flex items-center justify-between w-full p-2 text-gray-900 rounded-lg hover:bg-gray-600 hover:text-white transition-colors dark:text-gray-300" onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}>
+                    <button 
+                        onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} 
+                        className={getParentClass(['/experiments', '/heatmaps'])}
+                    >
                         <div className="flex items-center"><WrenchIcon className="h-6 w-6 mr-3" /><span>Experiment Tools</span></div>
                         <ChevronDownIcon className={`h-5 w-5 transition-transform ${isToolsMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {isToolsMenuOpen && (
-                        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l border-gray-700 ml-4">
+                        <ul className="pt-2 pl-7 mt-1 space-y-2 border-l-2 border-gray-200 ml-4">
                             <li><a href="/experiments" className={getSubLinkClass('/experiments')}><span>A/B Testing</span></a></li>
                             <li><a href="/heatmaps" className={getSubLinkClass('/heatmaps')}><span>Heatmaps</span></a></li>
                         </ul>
                     )}
                 </li>
-                <li className="pt-4 border-t border-gray-700 mt-4"><span className="px-2 text-xs font-semibold text-gray-400">Help & Support</span></li>
+
+                <li className="pt-4 border-t border-gray-200 mt-4"><span className="px-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Help & Support</span></li>
                 <li><a href="/support" className={getLinkClass('/support')}><PuzzlePieceIcon className="h-6 w-6 mr-3" /><span>Support</span></a></li>
-                <li className="pt-4 border-t border-gray-700 mt-4"><span className="px-2 text-xs font-semibold text-gray-400">General</span></li>
+                
+                <li className="pt-4 border-t border-gray-200 mt-4"><span className="px-2 text-xs font-bold text-gray-500 uppercase tracking-wider">General</span></li>
                 <li><a href="/roadmap" className={getLinkClass('/roadmap')}><MapIcon className="h-6 w-6 mr-3" /><span>Roadmap</span></a></li>
                 <li><a href="/notifications" className={getLinkClass('/notifications')}><BellIcon className="h-6 w-6 mr-3" /><span>Notifications</span></a></li>
             </>
@@ -243,11 +282,12 @@ const SidebarContent = () => {
           </ul>
         </nav>
       </div>
+      
       <div>
         {session && (
-          <div className="mb-4 text-sm"><p className="font-semibold text-gray-900">{session.user.name}</p><p className="text-gray-500 truncate">{session.user.email}</p></div>
+          <div className="mb-4 text-sm px-2"><p className="font-bold text-gray-900">{session.user.name}</p><p className="text-gray-600 truncate">{session.user.email}</p></div>
         )}
-        <Link href={session ? '#' : '/login'} onClick={() => session && signOut({ callbackUrl: '/' })} className="w-full flex text-gray-700 hover:text-gray-900">
+        <Link href={session ? '#' : '/login'} onClick={() => session && signOut({ callbackUrl: '/' })} className="w-full flex items-center p-2 text-gray-700 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors font-medium">
           <ArrowRightEndOnRectangleIcon className="h-6 w-6 mr-3" /><span>{session ? 'Sign Out' : 'Sign In'}</span>
         </Link>
       </div>
