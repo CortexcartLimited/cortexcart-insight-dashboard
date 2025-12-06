@@ -1,5 +1,5 @@
 'use client';
-
+import '@/app/globals.css';
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
@@ -9,8 +9,7 @@ import { DocumentChartBarIcon } from '@heroicons/react/24/outline';
 import { 
     ChartPieIcon, Cog6ToothIcon, ArrowRightEndOnRectangleIcon,
     MapIcon, TagIcon, Bars3Icon, XMarkIcon, InformationCircleIcon,
-    ChatBubbleLeftRightIcon, ShareIcon, PuzzlePieceIcon,
-    LifebuoyIcon, BellIcon, SparklesIcon, ChevronDownIcon, WrenchIcon
+    ChatBubbleLeftRightIcon, ShareIcon, PuzzlePieceIcon, BellIcon, SparklesIcon, ChevronDownIcon, WrenchIcon
 } from '@heroicons/react/24/outline';
 
 // --- Sub-component: Top Navigation ---
@@ -169,15 +168,22 @@ const SidebarContent = () => {
   const [isFinancialsMenuOpen, setIsFinancialsMenuOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
- const getLinkClass = (path) => {
-    // CHANGE: 'text-gray-900' ensures high contrast on mobile instead of lighter grays
-    return pathname.startsWith(path) 
-        ? 'flex items-center p-2 bg-gray-800 text-white rounded-lg' // Active state
-        : 'flex items-center p-2 text-gray-900 font-medium rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors'; // Inactive state
-};
+ // --- FIX 1: Updated Link Classes for Better Contrast & Hover ---
+  const getLinkClass = (path) => {
+    // Active State: Dark background to show selection clearly
+    if (pathname.startsWith(path)) {
+        return 'flex items-center p-2 bg-gray-900 text-white rounded-lg transition-colors font-medium';
+    }
+    // Inactive State: Darker text (gray-700) and subtle light gray hover
+    return 'flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-200 hover:text-gray-900 transition-colors font-medium';
+  }; 
 
   const getSubLinkClass = (path) => {
-    return pathname.startsWith(path) ? 'text-gray-500 font-semibold' : 'text-gray-500 hover:text-gray-900 block py-1 transition-colors';
+    if (pathname.startsWith(path)) {
+        return 'text-blue-600 font-bold block py-1'; 
+    }
+    // Fix sub-links too: Darker default, darker hover
+    return 'text-gray-600 hover:text-gray-900 block py-1 transition-colors';
   };
 
   return (
