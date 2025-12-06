@@ -26,7 +26,7 @@
   --input: #e2e8f0;
   --ring: #111827;
   --radius: 0.5rem;
-}
+
 
 /* --- FIX: DISABLE AUTOMATIC DARK MODE SWITCHING --- */
 /* This prevents mobile phones from turning text white on your light dashboard */
@@ -38,7 +38,35 @@
   }
 }
 */
-
+/* --- UI COMPONENT VARIABLES (Restored) --- */
+  /* These are required for Cards, Modals, and Popovers to have a background */
+  --card: #ffffff;
+  --card-foreground: #171717;
+  
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  
+  --primary: #171717;
+  --primary-foreground: #ffffff;
+  
+  --secondary: #f1f5f9;
+  --secondary-foreground: #171717;
+  
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  
+  --accent: #f1f5f9;
+  --accent-foreground: #171717;
+  
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #171717;
+  
+  --radius: 0.5rem;
+}
 body {
   background: var(--background);
   color: var(--foreground);

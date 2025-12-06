@@ -173,11 +173,11 @@ const SidebarContent = () => {
     // CHANGE: 'text-gray-900' ensures high contrast on mobile instead of lighter grays
     return pathname.startsWith(path) 
         ? 'flex items-center p-2 bg-gray-800 text-white rounded-lg' // Active state
-        : 'flex items-center p-2 text-gray-900 font-medium rounded-lg hover:bg-gray-100 hover:text-black transition-colors'; // Inactive state
+        : 'flex items-center p-2 text-gray-900 font-medium rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors'; // Inactive state
 };
 
   const getSubLinkClass = (path) => {
-    return pathname.startsWith(path) ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-300';
+    return pathname.startsWith(path) ? 'text-gray-500 font-semibold' : 'text-gray-500 hover:text-gray-900 block py-1 transition-colors';
   };
 
   return (
