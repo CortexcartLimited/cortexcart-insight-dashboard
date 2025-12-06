@@ -3,33 +3,31 @@
 
 import { createContext, useState, useEffect, useContext } from 'react';
 
-// 1. Create the context
 const ThemeContext = createContext();
 
-// 2. Create the provider component
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('light'); // Default theme is light
+  // FIX 1: Force default state to 'light'
+  const [theme, setTheme] = useState('light'); 
 
-  // 3. On component mount, check for saved theme in localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
+    // FIX 2: Ignore local storage or force it to light
+    // const savedTheme = localStorage.getItem('theme'); <-- Ignore old preferences
+    setTheme('light');
   }, []);
 
-  // 4. When the theme changes, update the body class and save to localStorage
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
+    // FIX 3: CRITICAL - Always REMOVE the 'dark' class
+    // This ensures that even if a stray 'dark' preference exists, we kill it.
+    document.documentElement.classList.remove('dark');
+    
+    // Optional: Enforce light mode in storage too
+    localStorage.setItem('theme', 'light');
+    
   }, [theme]);
 
+  // Helper to keep the API valid but do nothing
   const toggleTheme = () => {
-    setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
+    setTheme('light'); 
   };
 
   return (
@@ -39,7 +37,6 @@ export function ThemeProvider({ children }) {
   );
 }
 
-// 5. Create a custom hook to easily use the theme context
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {
