@@ -13,8 +13,9 @@ import SalesBarChart from '@/app/components/SalesBarChart';
 import ActivityTimeline from '@/app/components/ActivityTimeline';
 import DateFilter from '@/app/components/DataFilter';
 import TopPagesList from '@/app/components/TopPagesList';
-import TopReferrersList from '@/app/components/TopReferrersList';
-import DeviceChart from '@/app/components/DeviceChart';
+import TopPagesChart from '@/app/components/TopPagesChart';
+import SocialReachChart from '@/app/components/SocialReachChart';
+import SocialPlatformPie from '@/app/components/SocialPlatformPie';
 import LiveVisitorCount from '@/app/components/LiveVisitorCount';
 import SkeletonCard from '@/app/components/SkeletonCard';
 import Ga4LineChart from '@/app/components/Ga4LineChart';
@@ -328,19 +329,18 @@ const aiContext = {
                   <ActivityTimeline eventsData={recentEvents} />
                 </ChartContainer>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <ChartContainer title="Top Pages">
-                    <TopPagesList pages={topPages} />
-                </ChartContainer>
-                <ChartContainer title="Device Breakdown">
-                  <div className="h-64 flex items-center justify-center">
-                    <DeviceChart deviceData={deviceData} />
-                  </div>
-                </ChartContainer>
-                <ChartContainer title="Top Referrers">
-                  <TopReferrersList referrers={topReferrers} />
-                </ChartContainer>
-              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    {/* Replaces TopPagesList */}
+    <TopPagesChart data={topPages} />
+    
+    {/* New Social Pie Chart */}
+    <SocialPlatformPie />
+</div>
+
+{/* New Full Width Brush Chart */}
+<div className="mb-8">
+    <SocialReachChart />
+</div>
             </div>
           ) : (
             /* --- GOOGLE VIEW (Contains Sub-Tabs) --- */
