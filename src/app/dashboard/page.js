@@ -353,13 +353,7 @@ const aiContext = {
         <TrafficSourceTable />
         
     </div>
-    <StatCard className="bg-blue-600 text-white capitalize p-2 lg:col-span-2"> 
-<h3>Upgrade to Business</h3>
-<span>Get more with the Business Plan</span>
-<p>Stop Guessing and start growing with Cortexcart</p>
-<button className='bg-white text-dark border-radius-2'>Upgrade Now</button>
-
-    </StatCard>
+    
 
         
     {/* Top Posts takes up 1/3 width */}
