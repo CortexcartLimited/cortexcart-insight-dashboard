@@ -21,12 +21,13 @@ import SkeletonCard from '@/app/components/SkeletonCard';
 import Ga4LineChart from '@/app/components/Ga4LineChart';
 import PerformanceScore from '@/app/components/PerformanceScore';
 import OnboardingModal from '@/app/components/OnboardingModal';
-import VisitorsByCountryChart from '@/app/components/VisitorsByCountryChart';
 import NewVsReturningChart from '@/app/components/NewVsReturningChart';
 import DemographicsCharts from '@/app/components/DemographicsCharts';
 import GoogleAdsCharts from '@/app/components/GoogleAdsCharts';
 import AiChatAssistant from '@/app/components/AiChatAssistant';
 import TopReferrersList from '@/app/components/TopReferrersList';
+import TrafficSourceTable from '@/app/components/TrafficSourceTable';
+import TopSocialPosts from '@/app/components/TopSocialPosts';
 
 
 import { 
@@ -320,14 +321,14 @@ const aiContext = {
                 <StatCard title="Total Sales" value={stats?.sales?.toLocaleString() || 0} icon="🛒" />
                 <StatCard title="Page Views" value={stats?.pageviews?.toLocaleString() || 0} icon="👁️" />
               </div>
-              <ChartContainer title="Sales by Day">
+              <ChartContainer title="Sales by Day" className="text-sm font-medium text-gray-500">
                 <SalesBarChart apiData={chartApiData} currencySymbol={currencySymbol} />
               </ChartContainer>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ChartContainer title="Top Referrers" className="h-full">
                     <TopReferrersList data={topReferrers} />
                 </ChartContainer>
-                <ChartContainer title="Recent Events">
+                <ChartContainer title="Recent Events" className="text-sm font-medium text-gray-500">
                   <ActivityTimeline eventsData={recentEvents} />
                 </ChartContainer>
               </div>
@@ -344,7 +345,19 @@ const aiContext = {
 <div className="mb-8">
     <SocialReachChart />
 </div>
-            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    {/* Traffic Table takes up 2/3 width */}
+    <div className="lg:col-span-2">
+        <TrafficSourceTable />
+    </div>
+    
+    {/* Top Posts takes up 1/3 width */}
+    <div>
+        <TopSocialPosts />
+    </div>
+</div>
+</div>
           ) : (
             /* --- GOOGLE VIEW (Contains Sub-Tabs) --- */
             <div className="space-y-8">
