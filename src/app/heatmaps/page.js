@@ -6,6 +6,7 @@ import h337 from 'heatmap.js';
 
 export default function HeatmapPage() {
     const [urlToAnalyze, setUrlToAnalyze] = useState('');
+    const [iframeUrl, setIframeUrl] = useState(''); // <--- NEW: Separate state for the iframe
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -14,22 +15,34 @@ export default function HeatmapPage() {
         setIsLoading(true);
         setError('');
 
+        // Validate URL before proceeding
+        let validUrl;
+        try {
+            validUrl = new URL(urlToAnalyze);
+        } catch (_) {
+            setError('Please enter a valid URL (e.g., https://example.com)');
+            setIsLoading(false);
+            return;
+        }
+
+        // 1. Update the iframe ONLY now
+        setIframeUrl(urlToAnalyze);
+
         // Clear any previous heatmap
         const existingHeatmap = document.getElementById('heatmap-container');
         if (existingHeatmap) existingHeatmap.innerHTML = '';
 
         try {
-            // Get the path from the full URL
-            const pagePath = new URL(urlToAnalyze).pathname;
+            const pagePath = validUrl.pathname;
             
-            // Fetch the click data from our API
+            // Fetch the click data
             const res = await fetch(`/api/heatmaps?path=${pagePath}`);
             if (!res.ok) throw new Error('Failed to fetch heatmap data.');
             const data = await res.json();
 
             if (data.length === 0) {
                 setError('No click data found for this page in the last 30 days.');
-                return;
+                return; // Don't crash if no data
             }
 
             // Create and configure the heatmap instance
@@ -47,7 +60,8 @@ export default function HeatmapPage() {
             });
 
         } catch (err) {
-            setError(err.message);
+            console.error(err);
+            setError(err.message || "An error occurred generating the heatmap.");
         } finally {
             setIsLoading(false);
         }
@@ -67,9 +81,9 @@ export default function HeatmapPage() {
                         type="url"
                         value={urlToAnalyze}
                         onChange={(e) => setUrlToAnalyze(e.target.value)}
-                        placeholder="Enter the full URL of a page to analyze..."
+                        placeholder="Enter the full URL (e.g., https://cortexcart.com)"
                         required
-                        className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                        className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900"
                     />
                     <button
                         type="submit"
@@ -83,14 +97,25 @@ export default function HeatmapPage() {
             </div>
             
             {/* Container for the heatmap and iframe */}
-<div className="mt-8 relative grid" style={{ width: '100%', height: '1200px' }}>
-               <div id="heatmap-container" className="relative w-full h-full pointer-events-none" style={{ gridArea: '1 / 1' }}></div>
-<iframe
-    src={urlToAnalyze}
-    className="w-full h-full border-2 border-gray-300 rounded-lg"
-    title="Website Preview"
-    style={{ gridArea: '1 / 1' }}
-></iframe>
+            <div className="mt-8 relative grid" style={{ width: '100%', height: '1200px' }}>
+               <div id="heatmap-container" className="relative w-full h-full pointer-events-none z-10" style={{ gridArea: '1 / 1' }}></div>
+               
+               {/* FIX: Only render iframe if we have a valid URL committed */}
+               {iframeUrl && (
+                   <iframe
+                        src={iframeUrl}
+                        className="w-full h-full border-2 border-gray-300 rounded-lg"
+                        title="Website Preview"
+                        style={{ gridArea: '1 / 1' }}
+                        sandbox="allow-same-origin allow-scripts" // Added sandbox for safety
+                   ></iframe>
+               )}
+               
+               {!iframeUrl && (
+                   <div className="w-full h-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 bg-gray-50" style={{ gridArea: '1 / 1' }}>
+                       Enter a URL above to see the heatmap overlay.
+                   </div>
+               )}
             </div>
         </Layout>
     );
