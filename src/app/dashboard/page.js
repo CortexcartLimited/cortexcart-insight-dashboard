@@ -26,6 +26,8 @@ import NewVsReturningChart from '@/app/components/NewVsReturningChart';
 import DemographicsCharts from '@/app/components/DemographicsCharts';
 import GoogleAdsCharts from '@/app/components/GoogleAdsCharts';
 import AiChatAssistant from '@/app/components/AiChatAssistant';
+import TopReferrersList from '@/app/components/TopReferrersList';
+
 
 import { 
     StickinessCard, 
@@ -322,14 +324,15 @@ const aiContext = {
                 <SalesBarChart apiData={chartApiData} currencySymbol={currencySymbol} />
               </ChartContainer>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <ChartContainer title="Visitors by Country" className="h-full">
-                    <VisitorsByCountryChart dateRange={dateRange} siteId={siteId} externalData={ga4Demographics?.countryData} />
+                <ChartContainer title="Top Referrers" className="h-full">
+                    <TopReferrersList data={topReferrers} />
                 </ChartContainer>
                 <ChartContainer title="Recent Events">
                   <ActivityTimeline eventsData={recentEvents} />
                 </ChartContainer>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+               
     {/* Replaces TopPagesList */}
     <TopPagesChart data={topPages} />
     
