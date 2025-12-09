@@ -197,6 +197,12 @@ const SidebarContent = () => {
                 </li>
                 <li><a href="/social" className={getLinkClass('/social')}><ShareIcon className="h-6 w-6 mr-3" /><span>Social Manager</span></a></li>
                 <li>
+    <a href="/crm" className={getLinkClass('/crm')}>
+        <ChatBubbleLeftRightIcon className="h-6 w-6 mr-3" />
+        <span>CRM & Inbox</span>
+    </a>
+</li>
+                <li>
                     <button onClick={() => setIsFinancialsMenuOpen(!isFinancialsMenuOpen)} className={getParentClass(['/financials'])}>
                         <div className="flex items-center"><DocumentChartBarIcon className="h-6 w-6 mr-3" /><span>Financials</span></div> 
                         <ChevronDownIcon className={`h-5 w-5 transition-transform ${isFinancialsMenuOpen ? 'rotate-180' : ''}`} />
