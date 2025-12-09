@@ -21,7 +21,7 @@ function Loading() {
 export default function SocialConnectionsPage() {
     return (
         <Layout>
-            <div className="flex justify-between items-center mb-4 bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold text-gray-800">Social Connections</h2>
                 <Link href="/settings" className="flex items-right text-blue-500 hover:text-blue-600 font-bold py-2 px-4 rounded-lg transition duration-300">
                     Back to Settings Page

@@ -170,7 +170,7 @@ const SocialConnectionsClient = () => {
                 const isDisabled = !isConnected && hasReachedLimit;
 
                 return (
-                    <div key={platform} className="py-4 sm:flex sm:items-center sm:justify-between">
+                    <div key={platform} className="py-4 sm:flex sm:items-center sm:justify-between bg-white p-4 rounded-lg shadow-sm">
                         {/* Platform Name & Note */}
                         <div>
                             <p className="text-lg font-semibold text-gray-900">{config.name}</p>

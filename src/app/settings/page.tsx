@@ -87,7 +87,7 @@ View, copy and paste your Widget code here that is specific to you and your webs
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Need more help?</h2>
           </div>
           <p className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
-       <em> <b>Try our <Link href="/faq" className="text-blue-500">FAQ's</Link></b></em> We have sections for all areas of this app, we also have videos to walk you through each step of using our app. Need to talk, raise a <Link href="/support" className="text-blue-500">support ticket</Link> depending on your plan you can get a response within 24 hours</p>
+       <em> <b>Try our <Link href="support/knowledgebase" className="text-blue-500">Knowledgebase</Link></b></em> We have sections for all areas of this app, we also have videos to walk you through each step of using our app. Need to talk, raise a <Link href="/support" className="text-blue-500">support ticket</Link> depending on your plan you can get a response within 24 hours</p>
           
         </div>
   
