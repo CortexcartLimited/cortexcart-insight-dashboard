@@ -44,7 +44,8 @@ export async function middleware(req) {
         '/favicon.ico',
         '/_next',        // Next.js system files
         '/static',        // Static assets
-        '/api/webhooks' // Webhooks for meta
+        '/api/webhooks', // Webhooks for meta
+        '/api/crm/send-message' // send-message
     ];
 
     // If the path starts with any of these, stop and let it pass.
