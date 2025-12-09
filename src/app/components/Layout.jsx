@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import RealTimeClock from './RealTimeClock';
+import AiChatAssistant from './AiChatAssistant';
 import { 
     ChartPieIcon, Cog6ToothIcon, ArrowRightEndOnRectangleIcon,
     MapIcon, Bars3Icon, XMarkIcon, InformationCircleIcon,
@@ -407,7 +408,7 @@ const Layout = ({ children }) => {
             <SidebarContent />
         </div>
       </div>
-      
+      <AiChatAssistant />
       <FeedbackButton />
     </div>
   );
