@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/app/components/Layout';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
 
 export default function AbTestingPage() {
     const [experiments, setExperiments] = useState([]);
@@ -33,6 +33,35 @@ export default function AbTestingPage() {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setNewExperiment(prev => ({ ...prev, [name]: value }));
+    };
+// --- NEW: Handle Status Toggle ---
+    const handleToggleStatus = async (id, currentStatus) => {
+        const newStatus = currentStatus === 'running' ? 'draft' : 'running';
+        
+        // Optimistic UI update
+        setExperiments(prev => prev.map(exp => 
+            exp.id === id ? { ...exp, status: newStatus } : exp
+        ));
+
+        const res = await fetch(`/api/experiments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+
+        if (!res.ok) {
+            alert("Failed to update status");
+            fetchExperiments(); // Revert on error
+        } else {
+            // Refresh to ensure any "auto-stopped" experiments are updated in UI
+            fetchExperiments();
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if(!confirm("Are you sure?")) return;
+        await fetch(`/api/experiments/${id}`, { method: 'DELETE' });
+        fetchExperiments();
     };
 
     const handleSaveExperiment = async (e) => {
@@ -88,16 +117,36 @@ export default function AbTestingPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
-                                    {isLoading ? (
+                                 {isLoading ? (
                                         <tr><td colSpan="4" className="py-4 text-center text-gray-500">Loading experiments...</td></tr>
                                     ) : experiments.map((exp) => (
                                         <tr key={exp.id}>
                                             <td className="py-4 pl-6 text-sm font-medium text-gray-900">{exp.name}</td>
-                                            <td className="px-3 py-4 text-sm text-gray-500 font-mono">{exp.target_selector}</td>
+                                            <td className="px-3 py-4 text-sm text-gray-500 font-mono">{exp.target_path}</td>
                                             <td className="px-3 py-4 text-sm text-gray-500"><StatusBadge status={exp.status} /></td>
                                             <td className="py-4 pl-3 pr-6 text-right text-sm font-medium">
-                                                <button className="text-gray-400 hover:text-blue-600 mr-4"><PencilIcon className="h-5 w-5"/></button>
-                                                <button className="text-gray-400 hover:text-red-600"><TrashIcon className="h-5 w-5"/></button>
+                                                {/* --- PLAY / PAUSE BUTTONS --- */}
+                                                {exp.status === 'running' ? (
+                                                    <button 
+                                                        onClick={() => handleToggleStatus(exp.id, 'running')}
+                                                        className="text-green-600 hover:text-green-900 mr-4"
+                                                        title="Stop Experiment"
+                                                    >
+                                                        <PauseIcon className="h-5 w-5" />
+                                                    </button>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => handleToggleStatus(exp.id, 'draft')}
+                                                        className="text-gray-400 hover:text-green-600 mr-4"
+                                                        title="Start Experiment"
+                                                    >
+                                                        <PlayIcon className="h-5 w-5" />
+                                                    </button>
+                                                )}
+                                                
+                                                <button onClick={() => handleDelete(exp.id)} className="text-gray-400 hover:text-red-600">
+                                                    <TrashIcon className="h-5 w-5"/>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
