@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+// --- ADD THIS DEBUG LINE ---
+    console.log("DEBUG: Using Phone ID:", process.env.WHATSAPP_PHONE_NUMBER_ID);
+    // ---------------------------
+
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
