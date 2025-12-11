@@ -40,7 +40,7 @@ export async function POST(req) {
                 // 1. Find or Create Conversation
                 // We assume 'admin' email for now, or you'd need logic to map phones to users
                 // For a single-tenant app, you can use a default email or match via other means.
-                const userEmail = "admin@cortexcart.com"; // REPLACE with logic if multi-tenant
+                const userEmail = "millarsfoods@gmail.com"; // REPLACE with logic if multi-tenant
 
                 // Upsert Conversation
                 await db.query(`
