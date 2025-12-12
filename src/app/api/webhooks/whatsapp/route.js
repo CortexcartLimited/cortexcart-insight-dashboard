@@ -1,55 +1,56 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db'; // Using your raw MySQL connection
+import { db } from '@/lib/db';
 
-// 1. VERIFICATION (Meta calls this when you first set up the webhook)
 export async function GET(req) {
-    const { searchParams } = new URL(req.url);
-    const mode = searchParams.get('hub.mode');
-    const token = searchParams.get('hub.verify_token');
-    const challenge = searchParams.get('hub.challenge');
+    const mode = req.nextUrl.searchParams.get("hub.mode");
+    const token = req.nextUrl.searchParams.get("hub.verify_token");
+    const challenge = req.nextUrl.searchParams.get("hub.challenge");
 
-    // Check if the token matches your .env variable
-    if (mode === 'subscribe' && token === process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
-        console.log("✅ WhatsApp Webhook Verified!");
-        return new NextResponse(challenge, { status: 200 });
-    } else {
-        return new NextResponse('Forbidden', { status: 403 });
+    if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+        return new NextResponse(challenge);
     }
+    return new NextResponse("Forbidden", { status: 403 });
 }
 
-// 2. RECEIVE MESSAGES (Meta calls this when a customer messages you)
 export async function POST(req) {
     try {
         const body = await req.json();
 
-        // 1. Basic validation
+        // 1. Log the Raw Payload (So we see exactly what Meta sends)
+        // console.log("DEBUG: Raw Webhook:", JSON.stringify(body, null, 2));
+
         if (!body.object || !body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             return NextResponse.json({ status: 'ignored' });
         }
 
         const value = body.entry[0].changes[0].value;
-        const metadata = value.metadata; 
-        const message = value.messages[0];
+        const incomingPhoneId = value.metadata.phone_number_id; // <--- THIS IS THE KEY
         
-        const businessPhoneId = metadata.phone_number_id; // <--- THIS ID TELLS US WHO THE USER IS
+        console.log(`DEBUG: Received Message on Phone ID: ${incomingPhoneId}`);
+
+        // 2. Look up the User
+        const [users] = await db.query(
+            `SELECT user_email FROM social_connect WHERE page_id = ? AND platform = 'whatsapp'`,
+            [incomingPhoneId]
+        );
+
+        if (!users.length) {
+            console.error(`ERROR: No user found for Phone ID [${incomingPhoneId}]. Check 'social_connect' table.`);
+            // FALLBACK FOR TESTING: If database lookup fails, default to your email
+            // console.log("DEBUG: Using Fallback Email");
+            // const ownerEmail = "YOUR_EMAIL@cortexcart.com"; 
+            return NextResponse.json({ status: 'ignored_unknown_user' });
+        }
+
+        const ownerEmail = users[0].user_email;
+        console.log(`DEBUG: Routing message to user: ${ownerEmail}`);
+
+        // 3. Process Message
+        const message = value.messages[0];
         const contactPhone = message.from;
         const text = message.text?.body || '[Media/Other]';
         const contactName = value.contacts?.[0]?.profile?.name || 'Unknown';
 
-        // 2. MULTI-TENANT ROUTER: Find the user who owns this WhatsApp Number
-        const [users] = await db.query(
-            `SELECT user_email FROM social_connect WHERE page_id = ? AND platform = 'whatsapp'`,
-            [businessPhoneId]
-        );
-
-        if (!users.length) {
-            console.warn(`Webhook received for unknown Phone ID: ${businessPhoneId}`);
-            return NextResponse.json({ status: 'ignored_unknown_user' });
-        }
-
-        const ownerEmail = users[0].user_email; // <--- The correct user email
-
-        // 3. Find or Create Conversation for THAT User
         let [conv] = await db.query(
             `SELECT id FROM crm_conversations WHERE user_email = ? AND external_id = ?`,
             [ownerEmail, contactPhone]
@@ -74,17 +75,17 @@ export async function POST(req) {
             conversationId = newConv.insertId;
         }
 
-        // 4. Save Message
         await db.query(
             `INSERT INTO crm_messages (conversation_id, direction, content, created_at)
              VALUES (?, 'inbound', ?, NOW())`,
             [conversationId, text]
         );
 
+        console.log("DEBUG: Message Saved Successfully");
         return NextResponse.json({ status: 'success' });
 
     } catch (error) {
-        console.error("Webhook Error:", error);
+        console.error("Webhook Critical Error:", error);
         return NextResponse.json({ status: 'error' }, { status: 500 });
     }
 }
