@@ -1,5 +1,3 @@
-// src/app/api/social/post/route.js
-
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -19,7 +17,7 @@ export async function POST(req) {
         return NextResponse.json({ error: 'Invalid request body. Expected JSON.' }, { status: 400 });
     }
 
-    const { platform, content, image_url, video_url, title, board_id } = postData;
+    const { platform, content, image_url } = postData;
 
     let endpoint;
     let payload = {};
@@ -36,7 +34,6 @@ export async function POST(req) {
                 break;
             case 'instagram':
                 endpoint = '/api/social/instagram/accounts/post';
-                // Fetch the active instagram_user_id for this user
                 const [igRows] = await db.query(
                     `SELECT active_instagram_user_id FROM social_connect WHERE user_email = ? AND platform = 'instagram'`,
                     [user_email]
@@ -51,25 +48,37 @@ export async function POST(req) {
                     instagramUserId: igRows[0].active_instagram_user_id 
                 };
                 break;
-            // Add cases for your other platforms (Pinterest, YouTube) here
             default:
                 throw new Error(`Unknown platform: ${platform}`);
         }
 
-        // --- START OF FIX ---
-        // This fetch call now includes the "Content-Type" header,
-        // which solves the "Failed to parse body as FormData" error.
-        const postResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}${endpoint}`, {
+        // --- DEBUGGING START ---
+        // 1. Construct and Log the Target URL
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const targetUrl = `${baseUrl}${endpoint}`;
+        console.log(`[SOCIAL POST] Fetching internal API: ${targetUrl}`);
+
+        const postResponse = await fetch(targetUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json', // <-- THIS IS THE FIX
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`,
             },
             body: JSON.stringify(payload),
         });
-        // --- END OF FIX ---
 
+        // 2. Handle Non-OK Responses Safely
         if (!postResponse.ok) {
+            const contentType = postResponse.headers.get("content-type");
+            
+            // If it's HTML, log the text to debug (It might be a 404 page or Cloudflare)
+            if (contentType && contentType.includes("text/html")) {
+                const htmlText = await postResponse.text();
+                console.error(`[SOCIAL POST] Internal API returned HTML Error (${postResponse.status}):`, htmlText.substring(0, 200)); // Log first 200 chars
+                throw new Error(`Internal API Failed with HTML (${postResponse.status}). Check server logs.`);
+            }
+
+            // If it's JSON, parse normally
             const errorData = await postResponse.json();
             throw new Error(errorData.error || `API returned status ${postResponse.status}`);
         }
