@@ -54,8 +54,9 @@ export async function POST(req) {
 
         // --- DEBUGGING START ---
         // 1. Construct and Log the Target URL
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const targetUrl = `${baseUrl}${endpoint}`;
+            const port = process.env.PORT || 3000;
+            const baseUrl = `http://127.0.0.1:${port}`;
+            const targetUrl = `${baseUrl}${endpoint}`;
         console.log(`[SOCIAL POST] Fetching internal API: ${targetUrl}`);
 
         const postResponse = await fetch(targetUrl, {
