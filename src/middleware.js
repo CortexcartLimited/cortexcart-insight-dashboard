@@ -45,7 +45,8 @@ export async function middleware(req) {
         '/_next',        // Next.js system files
         '/static',        // Static assets
         '/api/webhooks', // Webhooks for meta
-        '/api/crm/send-message' // send-message
+        '/api/crm/send-message', // send-message
+        '/api/webhooks/whatsapp'
     ];
 
     // If the path starts with any of these, stop and let it pass.
