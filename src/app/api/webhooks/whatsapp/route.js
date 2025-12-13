@@ -34,7 +34,7 @@ export async function POST(req) {
     }
 
     try {
-        const body = await req.json();
+        const body = JSON.parse(rawBody);
 
         // 1. Log the Raw Payload (So we see exactly what Meta sends)
         // console.log("DEBUG: Raw Webhook:", JSON.stringify(body, null, 2));
