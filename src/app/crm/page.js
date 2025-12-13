@@ -1,45 +1,82 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Layout from '@/app/components/Layout';
-import { UserCircleIcon, PaperAirplaneIcon, PhoneIcon, EllipsisVerticalIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/solid';
+import { UserCircleIcon, PaperAirplaneIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/solid';
 
 export default function CrmPage() {
     const [chats, setChats] = useState([]);
     const [selectedChat, setSelectedChat] = useState(null);
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState([]); // This was staying empty!
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    
+    // Auto-scroll ref
+    const messagesEndRef = useRef(null);
 
-    // 1. Fetch Conversations (With Error Handling)
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    // 1. Fetch Conversations (Inbox List)
+    const fetchConversations = async () => {
+        try {
+            const res = await fetch('/api/crm/conversations');
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setChats(data);
+                // Auto-select first chat if none selected
+                if (!selectedChat && data.length > 0) setSelectedChat(data[0]);
+            }
+        } catch (err) {
+            console.error("Inbox Load Error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        setLoading(true);
-        fetch('/api/crm/conversations')
-            .then(async (res) => {
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Failed to load chats');
-                
-                // CRITICAL FIX: Ensure data is an array before setting
-                if (Array.isArray(data)) {
-                    setChats(data);
-                    if (data.length > 0) setSelectedChat(data[0]);
-                } else {
-                    setChats([]);
-                    console.warn("API returned non-array:", data);
-                }
-            })
-            .catch(err => {
-                console.error("Load Error:", err);
-                setError(err.message);
-                setChats([]); // Prevent crash
-            })
-            .finally(() => setLoading(false));
+        fetchConversations();
+        // Optional: Poll inbox every 10s to see new chats
+        const interval = setInterval(fetchConversations, 10000);
+        return () => clearInterval(interval);
     }, []);
+
+    // ==================================================================
+    // 2. CRITICAL FIX: Fetch Messages when 'selectedChat' changes
+    // ==================================================================
+    useEffect(() => {
+        if (!selectedChat) return;
+
+        const fetchMessages = async () => {
+            try {
+                // Assuming you have this endpoint (If 404, we will create it next)
+                const res = await fetch(`/api/crm/messages?conversationId=${selectedChat.id}`);
+                const data = await res.json();
+                
+                if (Array.isArray(data)) {
+                    setMessages(data); // <--- Populates the right pane!
+                    setTimeout(scrollToBottom, 100);
+                }
+            } catch (err) {
+                console.error("Message Load Error:", err);
+            }
+        };
+
+        fetchMessages();
+
+        // POLL MESSAGES: Check for new replies every 3 seconds
+        const interval = setInterval(fetchMessages, 3000);
+        return () => clearInterval(interval);
+
+    }, [selectedChat]); // <--- Runs whenever you click a different user
+
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedChat) return;
         
+        // Optimistic UI Update (Show immediately)
         const tempMsg = {
             id: Date.now(),
             direction: 'outbound',
@@ -48,9 +85,10 @@ export default function CrmPage() {
         };
         setMessages(prev => [...prev, tempMsg]);
         setNewMessage('');
+        setTimeout(scrollToBottom, 100);
         
         try {
-            const res = await fetch('/api/crm/send-message', {
+            await fetch('/api/crm/send-message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -58,11 +96,10 @@ export default function CrmPage() {
                     text: tempMsg.content 
                 })
             });
-
-            if (!res.ok) throw new Error('Failed to send');
-
+            // Refresh to get the real DB ID and timestamp
+            // fetchMessages(); 
         } catch (err) {
-            alert("Error sending message: " + err.message);
+            alert("Error sending message");
         }
     };
 
@@ -80,15 +117,7 @@ export default function CrmPage() {
                     
                     <div className="flex-1 overflow-y-auto">
                         {loading && <div className="p-4 text-sm text-gray-500">Loading chats...</div>}
-                        {error && <div className="p-4 text-sm text-red-500">Error: {error}</div>}
                         
-                        {!loading && !error && chats.length === 0 && (
-                            <div className="p-8 text-center text-gray-400 text-sm">
-                                No conversations found.<br/>
-                                <span className="text-xs">Send a WhatsApp message to your test number to start one.</span>
-                            </div>
-                        )}
-
                         {chats.map(chat => (
                             <div 
                                 key={chat.id}
@@ -120,7 +149,7 @@ export default function CrmPage() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50">
                                 {messages.length === 0 && <div className="text-center text-gray-400 mt-10">Start the conversation...</div>}
                                 
                                 {messages.map((msg, idx) => (
@@ -137,6 +166,8 @@ export default function CrmPage() {
                                         </div>
                                     </div>
                                 ))}
+                                {/* Invisible element to scroll to */}
+                                <div ref={messagesEndRef} />
                             </div>
 
                             <div className="p-4 bg-white border-t border-gray-200">
