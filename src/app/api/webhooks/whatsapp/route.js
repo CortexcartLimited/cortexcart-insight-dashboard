@@ -13,16 +13,26 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-    // --- NUCLEAR LOGGING START ---
+    // 1. Read the text ONCE
+    const rawBody = await req.text();
+    
+    // 2. Log it
     console.log("------------------------------------------------");
     console.log("🔥 INCOMING HIT DETECTED 🔥");
-    const rawBody = await req.text(); // Read as text first to avoid JSON parsing errors
     console.log("RAW BODY:", rawBody);
     console.log("------------------------------------------------");
-    
+
     if (!rawBody) return NextResponse.json({ status: 'empty' });
-    const body = JSON.parse(rawBody); // Parse it back to JSON for the rest of your code
-    // --- NUCLEAR LOGGING END ---
+
+    // 3. Parse the text manually (Do NOT use await req.json() anymore)
+    let body;
+    try {
+        body = JSON.parse(rawBody);
+    } catch (e) {
+        console.error("JSON Parse Error:", e);
+        return NextResponse.json({ status: 'invalid_json' }, { status: 400 });
+    }
+
     try {
         const body = await req.json();
 
