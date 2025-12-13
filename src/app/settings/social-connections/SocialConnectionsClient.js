@@ -4,7 +4,7 @@ import { Switch } from '@headlessui/react';
 import { Cog6ToothIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import FacebookPageManager from '@/app/components/social/FacebookPageManager';
 import InstagramAccountManager from '@/app/components/social/InstagramAccountManager';
-import WhatsAppConnect from './WhatsAppConnect'; // <--- IMPORTED HERE
+import WhatsAppConnect from '@app/settings/social-connections/WhatsAppConnect'; // <--- IMPORTED HERE
 import useSWR from 'swr';
 import Link from 'next/link';
 
