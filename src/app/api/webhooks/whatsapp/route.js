@@ -83,7 +83,7 @@ export async function POST(req) {
 
             await db.query(
                 `UPDATE crm_conversations 
-                 SET last_message = ?, updated_at = NOW(), unread_count = unread_count + 1 
+                 SET last_message = ?, updated_at = NOW(), unread_count = unread_count + 1, status = 'open' 
                  WHERE id = ?`,
                 [text, conversationId]
             );
